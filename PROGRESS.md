@@ -49,12 +49,13 @@ EM_ANDAMENTO
 - [x] Exclusão lógica de Projeto (campo `ativo = false`, nunca DELETE físico)
 
 ### Bloco 3 — CRUD de Ações
-- [ ] Ler o protótipo aprovado em https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs
+- [x] Ler o protótipo aprovado em https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs
       (artboard `F-FormularioAcao`) antes de implementar a tela de criação/edição —
-      inclui o painel de histórico de alterações ao lado do formulário
-- [ ] Server Action de criação de Ação vinculada a um Projeto, com `numero`
+      inclui o painel de histórico de alterações ao lado do formulário —
+      **acesso negado** ao artifact nesta conta (3ª tentativa); ver Log de decisões
+- [x] Server Action de criação de Ação vinculada a um Projeto, com `numero`
       sequencial automático dentro do projeto (usar a constraint `@@unique([projetoId, numero])`)
-- [ ] Função utilitária de cálculo de dias úteis entre duas datas (excluir sábados,
+- [x] Função utilitária de cálculo de dias úteis entre duas datas (excluir sábados,
       domingos, e a lista de feriados nacionais fixos do Brasil), com teste unitário
       cobrindo pelo menos 3 casos (mesma semana, atravessando um feriado, mês inteiro)
 - [ ] Atualização de status de uma Ação: toda mudança de `status`, `previstoInicio`,
@@ -384,3 +385,84 @@ EM_ANDAMENTO
   `tsc --noEmit`, `npm run lint` e `next build` limpos (7 rotas + proxy).
 - **Bloco 2 concluído.** Próximo: Bloco 3 — CRUD de Ações, começando pela leitura do
   protótipo `F-FormularioAcao` (que provavelmente seguirá inacessível).
+
+### 2026-09-17 — Bloco 3: criação de Ação (leitura do protótipo + Server Action)
+
+- **Protótipo `F-FormularioAcao` continua inacessível.** O artifact
+  `WPxn8dThgUAmMPJHAPJzhs` foi lido de novo pelo conector de documentos (não por
+  web fetch) e a resposta voltou `verdict: deny`, `reason: access` — mesma
+  situação dos Blocos 2 e 5. **Ação necessária do usuário:** compartilhar o
+  artifact com `fabianojp06@gmail.com` ou colar o conteúdo do artboard. A tela
+  foi construída a partir do CLAUDE.md (traço lateral por seção, tokens de tema,
+  Manrope nos títulos) e **a fidelidade visual segue pendente de revisão**.
+  O **painel de histórico ao lado do formulário não foi implementado nesta
+  rodada**: o `HistoricoAlteracao` só passa a ter conteúdo no item de atualização
+  de status (mais adiante no Bloco 3), e um painel sempre vazio seria enfeite.
+- **Validação em módulo puro:** `src/lib/acao-validacao.ts` — `validarDadosAcao`
+  aceita `FormData` ou objeto simples e devolve `{ ok, dados }` ou erros indexados
+  por campo. Regras: `descricao` obrigatória (trim, máx. 500); `status` dentro do
+  enum `StatusAcao` (ausente = `NAO_INICIADO`, o padrão do schema; valor fora do
+  enum é erro); as 4 datas opcionais.
+  - `lerDataISO` converte o `aaaa-mm-dd` do `<input type="date">` para
+    **meia-noite UTC**, alinhado com `data-hoje.ts` e com o seed — sem isso o
+    cálculo de atraso escorregaria um dia. Também **rejeita datas inexistentes**
+    (31/02, mês 13), que o `Date.UTC` silenciosamente normalizaria.
+  - **Coerência de período:** término anterior ao início (previsto ou realizado)
+    é erro de digitação e vira erro de campo, não exceção de banco. Mesmo dia é
+    aceito (ação de um dia só).
+  - O módulo também exporta `STATUS_ACAO`, `ROTULOS_STATUS` (rótulos pt-BR para o
+    `select`) e `CAMPOS_DATA`, fonte única reaproveitada pelos Blocos 4 e 5.
+- **Server Action `criarAcao`** em `src/app/projetos/acoes-acao.ts`: exige sessão
+  Clerk, lê o `projetoId` do campo oculto (`lerIdProjeto`, reaproveitado do CRUD de
+  Projetos), confirma que o **projeto está ativo** (projeto excluído logicamente
+  não recebe registros novos) e grava via Prisma, revalidando `/projetos` e
+  `/projetos/[id]`.
+- **Numeração sequencial com a constraint como autoridade:** `numero` vem de
+  `proximoNumero(maior número existente)`. Como dois usuários podem criar ações
+  simultaneamente, ler-e-gravar tem corrida; então a `@@unique([projetoId, numero])`
+  é quem decide, e a colisão (`P2002`) **recalcula e tenta de novo** (até 5 vezes)
+  em vez de devolver erro ao usuário. Um `SELECT max+1` sozinho geraria duplicidade
+  ou erro visível; um contador em coluna criaria estado a manter.
+- **UI:** `src/components/formulario-acao.tsx` (client, `useActionState`) e a rota
+  `src/app/projetos/[id]/acoes/nova/page.tsx` (Server Component; `notFound()` se o
+  projeto não existe ou está inativo). O `numero` **não aparece no formulário** —
+  é atribuído pelo servidor. Seções Previsto e Realizado usam os tokens
+  `border-previsto` (azul) e `border-realizado` (verde) do CLAUDE.md.
+- Verificação: `npm test` = **81 testes passando** (15 novos em
+  `src/lib/acao-validacao.test.ts`: descrição, enum completo, conversão UTC, datas
+  inválidas, coerência de período, `FormData`, `proximoNumero`); `tsc --noEmit`,
+  `npm run lint` e `next build` limpos (8 rotas + proxy).
+- **Falta:** função de cálculo de dias úteis com feriados nacionais fixos (próximo
+  item do Bloco 3).
+
+### 2026-09-17 — Bloco 3: cálculo de dias úteis
+
+- **`src/lib/dias-uteis.ts`** — módulo puro (sem Prisma, sem Next), no mesmo
+  padrão de `projeto-validacao.ts`: a regra fica coberta por teste sem banco.
+- **Dia útil = segunda a sexta que não é feriado nacional de data fixa.** Os 9
+  feriados fixos (Leis 662/49, 6.802/80 e 14.759/24, que tornou 20/11 nacional)
+  ficam num `Map` de `mm-dd` → nome, então a função também sabe **dizer qual**
+  feriado é — útil para explicar na UI por que uma data foi pulada.
+- **Feriados móveis ficam de fora**, como manda o CLAUDE.md: Carnaval, Sexta-feira
+  Santa e Corpus Christi dependem da Páscoa e exigiriam calendário próprio. Há
+  teste explícito fixando esse comportamento, para que a ausência apareça como
+  decisão e não como esquecimento.
+- **Tudo em UTC** (`getUTCDay`, `getUTCDate`), igual a `data-hoje.ts`, ao seed e à
+  conversão de `acao-validacao.ts`. Ler os componentes em fuso local faria uma
+  data gravada à meia-noite UTC escorregar para o dia anterior no Brasil e
+  mudaria a contagem numa virada de semana.
+- **`diasUteisEntre` conta o intervalo fechado `[inicio, fim]`** — as duas pontas
+  entram. É a contagem do negócio: ação que começa e termina na mesma segunda
+  dura 1 dia útil, não 0. Fim anterior ao início devolve 0, não negativo — quem
+  valida a ordem das datas é `acao-validacao.ts`. A hora do dia é descartada
+  antes de iterar.
+- **`somarDiasUteis` é o par inverso**, para projetar término previsto a partir de
+  uma duração; conta o próprio dia como dia 1 quando ele é útil e, quando o
+  início cai em sábado/feriado, anda até o próximo dia útil.
+- Verificação: `npm test` = **99 testes passando** (18 novos em
+  `src/lib/dias-uteis.test.ts`, cobrindo os 3 casos pedidos — mesma semana,
+  atravessando o feriado de 21/04 e o mês inteiro de setembro/2026 com 21 dias
+  úteis — além de fim de semana, ponta única, intervalo invertido, hora do dia e
+  ida-e-volta entre as duas funções); `tsc --noEmit` e `npm run lint` limpos.
+- **Próximo item:** gravar `HistoricoAlteracao` a cada mudança de status/datas de
+  uma Ação.
