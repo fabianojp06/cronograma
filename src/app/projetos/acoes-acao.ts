@@ -10,7 +10,9 @@ import {
   proximoNumero,
   validarDadosAcao,
   type ErrosAcao,
+  type StatusAcao,
 } from '@/lib/acao-validacao'
+import { validarRealizado, type ErrosRealizado } from '@/lib/acao-realizado'
 import { CAMPOS_AUDITADOS, gravarAcaoComHistorico } from '@/lib/acao-historico'
 
 export type EstadoFormularioAcao = {
@@ -157,5 +159,75 @@ export async function atualizarAcao(
   } catch (erro) {
     console.error('Falha ao atualizar ação', erro)
     return { erroGeral: 'Não foi possível salvar a ação. Tente novamente.' }
+  }
+}
+
+export type EstadoFormularioRealizado = {
+  /** Preenchido só no sucesso — a UI confirma o apontamento sem sair da tela. */
+  apontada?: {
+    id: string
+    numero: number
+    status: StatusAcao
+    /** Campos que entraram em `HistoricoAlteracao` neste apontamento. */
+    camposAlterados: string[]
+  }
+  erros?: ErrosRealizado
+  erroGeral?: string
+}
+
+/**
+ * Registra as datas **Realizado** de uma Ação — fluxo separado de `atualizarAcao`.
+ *
+ * O apontamento é a operação do dia a dia de quem executa: manda só as duas
+ * datas realizadas, nunca reescreve o Previsto (que é o plano contra o qual o
+ * Gantt compara) e nem a descrição. O `status` é derivado do apontamento em
+ * `validarRealizado`, em vez de ser digitado de novo.
+ *
+ * A gravação reaproveita `gravarAcaoComHistorico`, então a trilha de auditoria
+ * sai idêntica à do fluxo de edição: uma linha por campo alterado, na mesma
+ * transação do `update`.
+ */
+export async function registrarRealizado(
+  _estadoAnterior: EstadoFormularioRealizado,
+  formData: FormData,
+): Promise<EstadoFormularioRealizado> {
+  const { userId } = await auth()
+  if (!userId) {
+    return { erroGeral: 'Sessão expirada. Entre novamente para registrar o realizado.' }
+  }
+
+  const acaoId = lerIdAcao(formData)
+  if (!acaoId) return { erroGeral: 'Ação não identificada. Recarregue a página.' }
+
+  try {
+    const atual = await prisma.acao.findFirst({
+      where: { id: acaoId, projeto: { ativo: true } },
+      select: { ...SELECAO_AUDITADA, numero: true, projetoId: true },
+    })
+    if (!atual) return { erroGeral: 'Ação não encontrada ou projeto excluído.' }
+
+    const validacao = validarRealizado(formData, atual)
+    if (!validacao.ok) return { erros: validacao.erros }
+
+    const { alteracoes } = await gravarAcaoComHistorico(prisma, {
+      acaoId,
+      atual,
+      dados: validacao.dados,
+      alteradoPor: userId,
+    })
+
+    revalidatePath('/projetos')
+    revalidatePath(`/projetos/${atual.projetoId}`)
+    return {
+      apontada: {
+        id: acaoId,
+        numero: atual.numero,
+        status: validacao.dados.status,
+        camposAlterados: alteracoes.map((linha) => linha.campo),
+      },
+    }
+  } catch (erro) {
+    console.error('Falha ao registrar realizado da ação', erro)
+    return { erroGeral: 'Não foi possível registrar o realizado. Tente novamente.' }
   }
 }

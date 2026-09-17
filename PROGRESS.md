@@ -62,7 +62,7 @@ EM_ANDAMENTO
       `previstoTermino`, `realizadoInicio` ou `realizadoTermino` deve gravar uma linha
       em `HistoricoAlteracao` com valor antigo e novo — cobrir com teste que confirma
       que o histórico é criado
-- [ ] Endpoint/Server Action específico para registrar datas "Realizado" (distinto do
+- [x] Endpoint/Server Action específico para registrar datas "Realizado" (distinto do
       fluxo de registrar datas "Previsto")
 
 ### Bloco 4 — Visualização Gantt
@@ -492,3 +492,32 @@ EM_ANDAMENTO
   `atualizarAcao` — o formulário de Ação hoje só cria. O backlog trata a UI de
   Gantt/detalhe no Bloco 4; o próximo item (Server Action específica de datas
   "Realizado") reaproveita `gravarAcaoComHistorico`.
+
+### 2026-09-17 — Bloco 3: apontamento de datas Realizado
+- `src/lib/acao-realizado.ts` (puro): `validarRealizado` lê **só**
+  `realizadoInicio`/`realizadoTermino` do formulário. Previsto e descrição
+  ficam intocados de propósito — Previsto é o plano contra o qual o Gantt do
+  Bloco 4 compara; se o apontamento pudesse reescrevê-lo, o atraso nunca
+  apareceria.
+- Regras que distinguem este fluxo do de Previsto: data realizada **no futuro é
+  recusada** (apontamento registra o que já ocorreu; hoje é aceito), e término
+  sem início — nem no formulário, nem já gravado no banco — também. Por isso a
+  validação recebe o estado atual da Ação, não só o `FormData`.
+- `statusAposRealizado` deriva o status em vez de pedir que ele seja digitado de
+  novo: término preenchido conclui; apagar o término de uma Ação concluída a
+  devolve para `EM_CURSO_75`; início sem término tira de `NAO_INICIADO`; status
+  intermediário (25/50/75) informado à mão é preservado.
+- `alteracoesDeAcao` passou a aceitar `novos` **parcial** e a ignorar campo
+  ausente. Sem isso o apontamento, que não manda Previsto, geraria linhas falsas
+  de histórico "previstoInicio: 2026-09-01 → null". Ausência ≠ apagar.
+- Server Action `registrarRealizado` em `src/app/projetos/acoes-acao.ts`
+  reaproveita `gravarAcaoComHistorico`, então a auditoria sai idêntica à da
+  edição (uma linha por campo, mesma transação) e devolve `camposAlterados`
+  para a UI confirmar o que foi gravado.
+- **Verificação:** `npm test` — 16 arquivos, **124 testes** passando (13 novos em
+  `src/lib/acao-realizado.test.ts`, incluindo um que confirma que o apontamento
+  não fabrica histórico de Previsto); `tsc --noEmit` e `eslint` limpos.
+- **Próximo item:** Bloco 4 — o backlog pede ler o artboard `D-DetalheGantt` do
+  protótipo antes de implementar, e o acesso ao artifact segue negado nesta
+  conta (ver registro anterior no Log); a implementação terá de se apoiar nos
+  tokens e na descrição do CLAUDE.md.

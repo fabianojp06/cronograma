@@ -41,16 +41,19 @@ export function serializarValor(valor: Date | string | null | undefined): string
 /**
  * Linhas de histórico correspondentes ao que mudou entre o estado atual e o
  * novo. Campo que não mudou não gera linha — o histórico registra alterações,
- * não gravações.
+ * não gravações. Campo **ausente** em `novos` também não gera linha: fluxos
+ * parciais (como o apontamento de Realizado) só mandam os campos que tocam, e
+ * ausência não é o mesmo que apagar.
  */
 export function alteracoesDeAcao(
   atual: Partial<EstadoAuditado>,
-  novos: EstadoAuditado,
+  novos: Partial<EstadoAuditado>,
   alteradoPor: string | null = null,
 ): LinhaHistorico[] {
   const linhas: LinhaHistorico[] = []
 
   for (const campo of CAMPOS_AUDITADOS) {
+    if (!(campo in novos)) continue
     const valorAntigo = serializarValor(atual[campo])
     const valorNovo = serializarValor(novos[campo])
     if (valorAntigo === valorNovo) continue
@@ -97,7 +100,7 @@ export async function gravarAcaoComHistorico(
   entrada: {
     acaoId: string
     atual: Partial<EstadoAuditado>
-    dados: DadosAcao & Record<string, unknown>
+    dados: Partial<EstadoAuditado> & Record<string, unknown>
     alteradoPor?: string | null
   },
 ): Promise<ResultadoGravacaoAcao> {
