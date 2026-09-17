@@ -1,0 +1,76 @@
+// Schema do Sistema Cronograma CTCEA — nomes de domínio em português (ver CLAUDE.md).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum StatusAcao {
+  NAO_INICIADO
+  EM_CURSO_25
+  EM_CURSO_50
+  EM_CURSO_75
+  CONCLUIDO
+}
+
+model Projeto {
+  id             String   @id @default(cuid())
+  referencia     String? // ex: "CRO-DEP-2026-001"
+  nome           String
+  equipe         String? // ex: STI, GIA, GRH
+  natureza       String? // ex: Desenvolvimento, Infraestrutura, Iniciativa
+  categoria      String?
+  responsavel    String?
+  apoio          String?
+  setorEnvolvido String?
+  comentario     String?
+  prioridade     Int?
+  ativo          Boolean  @default(true) // exclusão lógica — nunca DELETE físico
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  acoes Acao[]
+
+  @@index([ativo])
+  @@index([equipe])
+}
+
+model Acao {
+  id               String     @id @default(cuid())
+  projetoId        String
+  projeto          Projeto    @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  numero           Int // sequencial dentro do projeto
+  descricao        String
+  status           StatusAcao @default(NAO_INICIADO)
+
+  previstoInicio   DateTime?
+  previstoTermino  DateTime?
+  realizadoInicio  DateTime?
+  realizadoTermino DateTime?
+  duracaoDiasUteis Int? // calculado, não editável diretamente
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  historico HistoricoAlteracao[]
+
+  @@unique([projetoId, numero])
+  @@index([projetoId])
+}
+
+model HistoricoAlteracao {
+  id          String   @id @default(cuid())
+  acaoId      String
+  acao        Acao     @relation(fields: [acaoId], references: [id], onDelete: Cascade)
+  campo       String // ex: "status", "previstoTermino"
+  valorAntigo String?
+  valorNovo   String?
+  alteradoEm  DateTime @default(now())
+  alteradoPor String? // login/nome de quem alterou, se aplicável
+
+  @@index([acaoId, alteradoEm])
+}

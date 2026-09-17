@@ -21,7 +21,7 @@ EM_ANDAMENTO
       ANTES de qualquer outro código, para que o script `npm test` já exista desde
       a primeira verificação do autoloop
 - [x] Setup do projeto Next.js (App Router) + TypeScript + Tailwind CSS
-- [ ] Configurar Prisma + PostgreSQL com o schema inicial descrito em SCHEMA.md
+- [x] Configurar Prisma + PostgreSQL com o schema inicial descrito em SCHEMA.md
       (models Projeto, Acao, HistoricoAlteracao, enum StatusAcao)
 - [ ] Rodar a primeira migration e criar seed com 3 projetos de exemplo e 5 ações
       cada, com datas Previsto variadas (algumas no passado, algumas futuras)
@@ -111,3 +111,27 @@ EM_ANDAMENTO
 - `@types/node` subiu para `^24` porque o Vitest 5 não resolve com `^20` (ERESOLVE).
 - **Falta:** Prisma + PostgreSQL com o schema do SCHEMA.md (próximo item do Bloco 1).
 
+### 2026-09-17 — Bloco 1: Prisma + PostgreSQL (schema inicial)
+- `prisma/schema.prisma` criado com os models `Projeto`, `Acao`, `HistoricoAlteracao`
+  e o enum `StatusAcao`, fiéis ao SCHEMA.md. Desvios (todos aditivos, nada removido):
+  - `onDelete: Cascade` nas relações `Acao -> Projeto` e `HistoricoAlteracao -> Acao`
+    (integridade referencial; a exclusão de Projeto no sistema continua sendo lógica
+    via `ativo = false`, conforme o Bloco 2).
+  - Índices `@@index` em `Projeto(ativo)`, `Projeto(equipe)`, `Acao(projetoId)` e
+    `HistoricoAlteracao(acaoId, alteradoEm)` para os filtros do dashboard e do painel
+    de histórico.
+- **Prisma 7.10.0** (CLI e client pinados na mesma versão). No Prisma 7 o
+  `datasource.url` não existe mais no schema: a URL passou para `prisma.config.ts`
+  (`env('DATABASE_URL')`, carregada via `dotenv/config`) e o client usa o driver
+  adapter `@prisma/adapter-pg`.
+- Client gerado em `src/generated/prisma` (gitignored) — `postinstall: prisma generate`
+  garante a geração em qualquer clone/CI. Singleton em `src/lib/prisma.ts` com cache em
+  `globalThis` para não vazar pool no hot-reload do Next.
+- `.env.example` versionado (exceção `!.env.example` no .gitignore); `.env` real
+  continua fora do repositório.
+- Scripts novos: `db:migrate` (`prisma migrate dev`) e `db:studio`.
+- Testes: `src/lib/prisma.test.ts` cobre o enum `StatusAcao`, a presença dos 3 models,
+  a constraint `@@unique([projetoId, numero])` e o campo `ativo`. `npm test` = 6 testes
+  passando; `tsc --noEmit` limpo.
+- **Falta:** rodar a primeira migration e o seed — depende do `DATABASE_URL` real do
+  Railway, que ainda não foi provisionado (próximos itens do Bloco 1).
