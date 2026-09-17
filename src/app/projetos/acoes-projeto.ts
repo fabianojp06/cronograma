@@ -2,8 +2,14 @@
 
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 
 import { prisma } from '@/lib/prisma'
+import {
+  confirmacaoValida,
+  DADOS_EXCLUSAO_LOGICA,
+  PALAVRA_CONFIRMACAO,
+} from '@/lib/projeto-exclusao'
 import { CAMPOS_PROJETO, camposAlterados, lerIdProjeto } from '@/lib/projeto-edicao'
 import { validarDadosProjeto, type ErrosProjeto } from '@/lib/projeto-validacao'
 
@@ -97,4 +103,55 @@ export async function atualizarProjeto(
   }
 
   return { salvo: { id, nome: validacao.dados.nome } }
+}
+
+export type EstadoExclusaoProjeto = {
+  erroGeral?: string
+}
+
+/**
+ * Exclusão **lógica** de um Projeto: grava `ativo = false` e nunca apaga a
+ * linha. As Ações e o `HistoricoAlteracao` do projeto continuam no banco —
+ * são a trilha de auditoria exigida pelo CLAUDE.md.
+ *
+ * Exige a palavra de confirmação digitada pelo usuário (ver
+ * `projeto-exclusao.ts`). No sucesso, redireciona para a listagem: a tela de
+ * edição deixa de existir para um projeto inativo.
+ */
+export async function excluirProjeto(
+  _estadoAnterior: EstadoExclusaoProjeto,
+  formData: FormData,
+): Promise<EstadoExclusaoProjeto> {
+  const { userId } = await auth()
+  if (!userId) {
+    return { erroGeral: 'Sessão expirada. Entre novamente para excluir o projeto.' }
+  }
+
+  const id = lerIdProjeto(formData)
+  if (!id) return { erroGeral: 'Projeto não identificado. Recarregue a página.' }
+
+  if (!confirmacaoValida(formData)) {
+    return {
+      erroGeral: `Digite ${PALAVRA_CONFIRMACAO} para confirmar a exclusão do projeto.`,
+    }
+  }
+
+  try {
+    // `updateMany` com `ativo: true` no filtro: excluir de novo não é erro de
+    // banco, é simplesmente nenhuma linha afetada.
+    const { count } = await prisma.projeto.updateMany({
+      where: { id, ativo: true },
+      data: DADOS_EXCLUSAO_LOGICA,
+    })
+    if (count === 0) {
+      return { erroGeral: 'Projeto não encontrado ou já excluído.' }
+    }
+  } catch (erro) {
+    console.error('Falha ao excluir projeto', erro)
+    return { erroGeral: 'Não foi possível excluir o projeto. Tente novamente.' }
+  }
+
+  revalidatePath('/projetos')
+  revalidatePath(`/projetos/${id}`)
+  redirect('/projetos')
 }

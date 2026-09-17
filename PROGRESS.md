@@ -46,7 +46,7 @@ EM_ANDAMENTO
 - [x] Tela de listagem de Projetos com filtro por equipe, categoria e status
       agregado (calculado a partir das Ações)
 - [x] Edição de Projeto existente
-- [ ] Exclusão lógica de Projeto (campo `ativo = false`, nunca DELETE físico)
+- [x] Exclusão lógica de Projeto (campo `ativo = false`, nunca DELETE físico)
 
 ### Bloco 3 — CRUD de Ações
 - [ ] Ler o protótipo aprovado em https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs
@@ -352,3 +352,35 @@ EM_ANDAMENTO
 - Verificação: `npm test` = **60 testes passando** (9 novos em `projeto-edicao.test.ts`);
   `tsc --noEmit`, `npm run lint` e `next build` limpos (7 rotas + proxy).
 - **Falta:** exclusão lógica de Projeto (`ativo = false`) — último item do Bloco 2.
+
+### 2026-09-17 — Bloco 2: exclusão lógica de Projeto
+
+- **Server Action `excluirProjeto`** em `src/app/projetos/acoes-projeto.ts`: exige
+  sessão Clerk, lê o `id` do campo oculto (`lerIdProjeto`, reaproveitado da edição) e
+  grava **apenas `ativo = false`** — nunca `delete`. As Ações e o `HistoricoAlteracao`
+  continuam no banco: são a trilha de auditoria exigida pelo CLAUDE.md, e apagá-las
+  junto contrariaria o requisito central do sistema.
+- **`updateMany` com `ativo: true` no filtro**, não `update`: excluir um projeto já
+  excluído (duplo submit, botão voltar) vira "nenhuma linha afetada" e devolve mensagem
+  de negócio, em vez de estourar `P2025` como erro de banco. No sucesso, revalida
+  `/projetos` e `/projetos/[id]` e redireciona para a listagem — a tela de edição deixa
+  de existir para um projeto inativo (`findFirst({ ativo: true })` → `notFound()`, regra
+  que já estava no item anterior).
+- **Confirmação digitada** (módulo puro novo `src/lib/projeto-exclusao.ts`): a action só
+  prossegue se o campo `confirmacao` contiver a palavra `EXCLUIR` (tolerando espaços e
+  caixa). A tela de edição fica a um link da listagem, então um botão de exclusão sem
+  trava seria clique acidental esperando acontecer. O módulo também exporta
+  `DADOS_EXCLUSAO_LOGICA = { ativo: false }`, com teste que trava a forma do objeto — é a
+  garantia automatizada de que essa mutação nunca vire outra coisa.
+- **UI:** `src/components/excluir-projeto.tsx` (client, `useActionState`) renderizado no
+  fim da tela de edição, dentro de um `<details>` recolhido, com traço lateral `warn` em
+  vez de card — mesmo padrão visual do resto do painel. O texto explica que nada é
+  apagado do banco.
+- Nenhuma tela precisou mudar para esconder o projeto excluído: `whereProjetoAtivo` já
+  força `ativo: true` na listagem e a rota de edição já filtrava por `ativo`.
+- **Fidelidade ao protótipo segue pendente de revisão** — o artifact continua inacessível
+  a esta conta (ver rodadas anteriores).
+- Verificação: `npm test` = **66 testes passando** (6 novos em `projeto-exclusao.test.ts`);
+  `tsc --noEmit`, `npm run lint` e `next build` limpos (7 rotas + proxy).
+- **Bloco 2 concluído.** Próximo: Bloco 3 — CRUD de Ações, começando pela leitura do
+  protótipo `F-FormularioAcao` (que provavelmente seguirá inacessível).

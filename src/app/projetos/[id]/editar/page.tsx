@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { ExcluirProjeto } from '@/components/excluir-projeto'
 import { FormularioProjeto } from '@/components/formulario-projeto'
 import { prisma } from '@/lib/prisma'
 import { valoresIniciais } from '@/lib/projeto-edicao'
@@ -48,6 +49,7 @@ export default async function EditarProjetoPage({
       <FormularioProjeto
         projeto={{ id: projeto.id, valores: valoresIniciais(projeto) }}
       />
+      <ExcluirProjeto id={projeto.id} nome={projeto.nome} />
     </main>
   )
 }
