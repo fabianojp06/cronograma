@@ -6,14 +6,18 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { lerIdProjeto } from '@/lib/projeto-edicao'
 import {
+  lerIdAcao,
   proximoNumero,
   validarDadosAcao,
   type ErrosAcao,
 } from '@/lib/acao-validacao'
+import { CAMPOS_AUDITADOS, gravarAcaoComHistorico } from '@/lib/acao-historico'
 
 export type EstadoFormularioAcao = {
   /** Preenchido só no sucesso — a UI confirma sem sair da tela. */
   criada?: { id: string; numero: number; descricao: string }
+  /** Preenchido só no sucesso da edição. */
+  salva?: { id: string; numero: number; descricao: string }
   erros?: ErrosAcao
   /** Erro que não pertence a um campo específico (falha de banco, sessão). */
   erroGeral?: string
@@ -96,5 +100,62 @@ export async function criarAcao(
   revalidatePath(`/projetos/${projetoId}`)
   return {
     criada: { ...criada, descricao: validacao.dados.descricao },
+  }
+}
+
+/** `select` com o estado auditável da Ação — base do "valor antigo". */
+const SELECAO_AUDITADA = Object.fromEntries(
+  CAMPOS_AUDITADOS.map((campo) => [campo, true]),
+) as { [C in (typeof CAMPOS_AUDITADOS)[number]]: true }
+
+/**
+ * Atualiza uma Ação existente gravando a trilha de auditoria.
+ *
+ * Toda mudança de `status` ou de uma das quatro datas vira linha em
+ * `HistoricoAlteracao` (valor antigo, valor novo, quem alterou, quando), na
+ * mesma transação do `update` — requisito central do CLAUDE.md. Quem alterou
+ * vem do `userId` do Clerk.
+ */
+export async function atualizarAcao(
+  _estadoAnterior: EstadoFormularioAcao,
+  formData: FormData,
+): Promise<EstadoFormularioAcao> {
+  const { userId } = await auth()
+  if (!userId) {
+    return { erroGeral: 'Sessão expirada. Entre novamente para salvar a ação.' }
+  }
+
+  const acaoId = lerIdAcao(formData)
+  if (!acaoId) return { erroGeral: 'Ação não identificada. Recarregue a página.' }
+
+  const validacao = validarDadosAcao(formData)
+  if (!validacao.ok) return { erros: validacao.erros }
+
+  let projetoId: string
+  try {
+    // Ação de projeto excluído logicamente não é editável.
+    const atual = await prisma.acao.findFirst({
+      where: { id: acaoId, projeto: { ativo: true } },
+      select: { ...SELECAO_AUDITADA, numero: true, projetoId: true },
+    })
+    if (!atual) return { erroGeral: 'Ação não encontrada ou projeto excluído.' }
+
+    projetoId = atual.projetoId
+
+    await gravarAcaoComHistorico(prisma, {
+      acaoId,
+      atual,
+      dados: validacao.dados,
+      alteradoPor: userId,
+    })
+
+    revalidatePath('/projetos')
+    revalidatePath(`/projetos/${projetoId}`)
+    return {
+      salva: { id: acaoId, numero: atual.numero, descricao: validacao.dados.descricao },
+    }
+  } catch (erro) {
+    console.error('Falha ao atualizar ação', erro)
+    return { erroGeral: 'Não foi possível salvar a ação. Tente novamente.' }
   }
 }

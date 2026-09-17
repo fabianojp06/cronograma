@@ -152,3 +152,12 @@ export function validarDadosAcao(entrada: EntradaAcao): ResultadoValidacaoAcao {
 export function proximoNumero(maiorNumero: number | null | undefined): number {
   return maiorNumero && maiorNumero > 0 ? maiorNumero + 1 : 1
 }
+
+/**
+ * Lê o `id` da Ação vindo do campo oculto do formulário de edição. Devolve
+ * `null` quando ausente — a action trata isso como erro geral, não de campo.
+ */
+export function lerIdAcao(entrada: EntradaAcao): string | null {
+  const id = lerCampo(entrada, 'id')
+  return id === '' ? null : id
+}

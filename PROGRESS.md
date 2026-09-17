@@ -58,7 +58,7 @@ EM_ANDAMENTO
 - [x] Função utilitária de cálculo de dias úteis entre duas datas (excluir sábados,
       domingos, e a lista de feriados nacionais fixos do Brasil), com teste unitário
       cobrindo pelo menos 3 casos (mesma semana, atravessando um feriado, mês inteiro)
-- [ ] Atualização de status de uma Ação: toda mudança de `status`, `previstoInicio`,
+- [x] Atualização de status de uma Ação: toda mudança de `status`, `previstoInicio`,
       `previstoTermino`, `realizadoInicio` ou `realizadoTermino` deve gravar uma linha
       em `HistoricoAlteracao` com valor antigo e novo — cobrir com teste que confirma
       que o histórico é criado
@@ -466,3 +466,29 @@ EM_ANDAMENTO
   ida-e-volta entre as duas funções); `tsc --noEmit` e `npm run lint` limpos.
 - **Próximo item:** gravar `HistoricoAlteracao` a cada mudança de status/datas de
   uma Ação.
+
+### 2026-09-17 — Bloco 3: trilha de auditoria da Ação (HistoricoAlteracao)
+- `src/lib/acao-historico.ts`: `CAMPOS_AUDITADOS` (`status` + as quatro datas),
+  `alteracoesDeAcao` (diff atual x novo, uma linha por campo alterado) e
+  `gravarAcaoComHistorico`, que faz o `update` da Ação e o `createMany` do
+  histórico **na mesma transação** — sem isso uma falha após o `update` deixaria
+  a alteração sem rastro, que é justamente o buraco da planilha atual.
+- O cliente Prisma entra por parâmetro, com um tipo estrutural mínimo
+  (`ClienteTransacaoAcao`/`ClienteGravacaoAcao`). Assim o teste injeta um cliente
+  falso e confirma a criação do histórico sem precisar de banco — coerente com o
+  resto da suíte, que roda sem PostgreSQL.
+- Valores são serializados como texto: datas viram `aaaa-mm-dd` em UTC (mesma
+  convenção de `lerDataISO`), para as colunas `valorAntigo`/`valorNovo` ficarem
+  legíveis no painel de histórico do artboard `F-FormularioAcao`.
+- Campo que não mudou não gera linha; mudar só a descrição atualiza a Ação e não
+  cria histórico (descrição não está na lista de campos auditados do CLAUDE.md).
+- Server Action `atualizarAcao` em `src/app/projetos/acoes-acao.ts`: lê o estado
+  auditável atual, recusa Ação de projeto inativo, grava com histórico e usa o
+  `userId` do Clerk como `alteradoPor`. Novo helper `lerIdAcao` em
+  `acao-validacao.ts` (espelha o `lerIdProjeto`).
+- **Verificação:** `npm test` — 15 arquivos, 111 testes, todos passando;
+  `tsc --noEmit` e `eslint` limpos nos arquivos tocados.
+- **Escopo deixado de fora de propósito:** a tela de edição de Ação que consome
+  `atualizarAcao` — o formulário de Ação hoje só cria. O backlog trata a UI de
+  Gantt/detalhe no Bloco 4; o próximo item (Server Action específica de datas
+  "Realizado") reaproveita `gravarAcaoComHistorico`.
