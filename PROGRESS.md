@@ -30,7 +30,7 @@ EM_ANDAMENTO
       `clerk_sdk_snippet` do MCP do Clerk para o código de integração correto do
       Next.js App Router; a chave secreta e a publishable key vão em variáveis de
       ambiente (`.env.local`, nunca commitadas)
-- [ ] Conectar o repositório GitHub ao projeto Vercel `prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO`
+- [x] Conectar o repositório GitHub ao projeto Vercel `prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO`
       (deploy automático a cada push) e ao projeto Railway
       `28445ef3-95ee-44bd-bfba-b5af383d8057` (banco PostgreSQL) — registrar no
       Log de decisões o domínio gerado pela Vercel e a connection string (via
@@ -203,3 +203,51 @@ EM_ANDAMENTO
   e `npm run lint` limpos; `next build` completo com chaves de exemplo (4 rotas + proxy).
 - **Falta:** conectar GitHub → Vercel e provisionar o PostgreSQL no Railway (último item
   do Bloco 1).
+
+### 2026-09-17 — Bloco 1: Railway (PostgreSQL) + Vercel (deploy automático)
+- **PostgreSQL provisionado no Railway** (projeto `28445ef3-...`, ambiente `production`):
+  serviço **`Postgres`** (`39b6e75a-3875-4287-b0b5-f215ea9fc4c7`), criado a partir do
+  template verificado `postgres`. Foi criado **ao vivo**, deliberadamente fora do patch
+  staged que já existia no ambiente (o serviço de app `cronograma`, em `staged-create`,
+  3 mudanças pendentes) — assim provisionar o banco não commitou nada que o usuário
+  ainda não aprovou. **O patch staged continua pendente e é decisão do usuário aplicá-lo.**
+- **TCP proxy público** criado no serviço Postgres (porta de aplicação 5432), porque a
+  `DATABASE_URL` padrão aponta para `postgres.railway.internal`, que só resolve dentro
+  da rede do Railway — a Vercel e a máquina de desenvolvimento precisam do endpoint
+  público. Host/porta ficam em `RAILWAY_TCP_PROXY_DOMAIN` / `RAILWAY_TCP_PROXY_PORT`.
+- **Connection string NÃO está registrada aqui nem no repositório** (regra do CLAUDE.md).
+  Ela se obtém com `railway link -p 28445ef3-... -e production -s Postgres` seguido de
+  `railway variables -s Postgres --kv`. O `.env.example` foi reescrito com esse
+  procedimento, mantendo o Docker local como alternativa offline.
+- **Migration e seed aplicados no banco do Railway:** `prisma migrate deploy` aplicou
+  `20260917231112_inicial` (a mesma migration versionada, sem regerar nada) e o
+  `db:seed` criou os 3 projetos de exemplo com 5 ações cada. O banco de produção já
+  responde com dados.
+- **Vercel:** o projeto `prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO` (**`cronograma-lktu`**) já
+  estava conectado ao repositório `fabianojp06/cronograma` — existe o domínio de branch
+  `cronograma-lktu-git-main-fabianojp06s-projects.vercel.app`, ou seja, **push na `main`
+  já dispara deploy automático**. Domínios gerados:
+  - Produção: `https://cronograma-lktu-fabianojp06s-projects.vercel.app`
+  - Branch `main`: `https://cronograma-lktu-git-main-fabianojp06s-projects.vercel.app`
+- **Bug de build encontrado e corrigido:** o último deploy estava em `ERROR`. Causa real
+  (dos build logs): `prisma.config.ts` usava `env('DATABASE_URL')` do `prisma/config`,
+  que **lança** quando a variável não existe. Como `prisma generate` roda no `postinstall`,
+  o `npm install` inteiro morria antes de qualquer código do app. Trocado por
+  `process.env.DATABASE_URL ?? ''` — a geração do client não precisa da URL; só
+  migrate/seed/studio precisam, e esses falham com mensagem própria. Regressão travada
+  por teste (`src/lib/prisma-config.test.ts`, 2 testes).
+- **Pendências manuais (não automatizáveis daqui — a CLI da Vercel está deslogada nesta
+  máquina e o login é interativo; o MCP da Vercel não expõe escrita de env vars):**
+  1. Cadastrar em **Vercel → Settings → Environment Variables** (Production e Preview):
+     `DATABASE_URL` (a do TCP proxy público do Railway), `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
+     `CLERK_SECRET_KEY` e as 4 variáveis `NEXT_PUBLIC_CLERK_SIGN_*` do `.env.example`.
+     Sem as chaves do Clerk o build passa, mas a aplicação não autentica em produção.
+  2. Habilitar o login social Microsoft/Outlook no dashboard do Clerk (pendência que já
+     vinha do item anterior).
+  3. Decidir sobre o patch staged do serviço de app `cronograma` no Railway — a aplicação
+     está na Vercel, então rodar o app também no Railway provavelmente é redundante.
+- Verificação: `npm test` = **21 testes passando**; `tsc --noEmit` e `npm run lint` limpos;
+  `next build` completo **com `DATABASE_URL` ausente do ambiente**, reproduzindo a
+  condição exata que quebrava a Vercel.
+- **Bloco 1 concluído.** Próximo: Bloco 2 — CRUD de Projetos, começando pela leitura do
+  protótipo `E-FormularioProjeto`.
