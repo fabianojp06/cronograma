@@ -248,6 +248,8 @@ EM_ANDAMENTO
      está na Vercel, então rodar o app também no Railway provavelmente é redundante.
 - Verificação: `npm test` = **21 testes passando**; `tsc --noEmit` e `npm run lint` limpos;
   `next build` completo **com `DATABASE_URL` ausente do ambiente**, reproduzindo a
-  condição exata que quebrava a Vercel.
+  condição exata que quebrava a Vercel. **Confirmado na própria Vercel:** o deploy do
+  push desta rodada saiu de `ERROR` para `Build Completed` / `Deployment completed`
+  (`npm install` -> `prisma generate` -> `next build` -> 4 rotas + proxy).
 - **Bloco 1 concluído.** Próximo: Bloco 2 — CRUD de Projetos, começando pela leitura do
   protótipo `E-FormularioProjeto`.
