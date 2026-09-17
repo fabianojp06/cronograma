@@ -97,6 +97,12 @@ export function ListaProjetos({ linhas }: { linhas: LinhaProjeto[] }) {
                 {linha.referencia ? (
                   <span className="block text-xs text-textFaint">{linha.referencia}</span>
                 ) : null}
+                <Link
+                  className="mt-1 inline-block text-xs text-textMuted hover:text-accent"
+                  href={`/projetos/${linha.id}/editar`}
+                >
+                  Editar
+                </Link>
               </td>
               <td className="px-3 py-3 text-textMuted">{linha.equipe ?? '-'}</td>
               <td className="px-3 py-3 text-textMuted">{linha.categoria ?? '-'}</td>

@@ -2,7 +2,12 @@
 
 import { useActionState } from 'react'
 
-import { criarProjeto, type EstadoFormularioProjeto } from '@/app/projetos/acoes-projeto'
+import {
+  atualizarProjeto,
+  criarProjeto,
+  type EstadoFormularioProjeto,
+} from '@/app/projetos/acoes-projeto'
+import type { ValoresProjeto } from '@/lib/projeto-edicao'
 import type { ErrosProjeto } from '@/lib/projeto-validacao'
 
 const ESTADO_INICIAL: EstadoFormularioProjeto = {}
@@ -38,15 +43,34 @@ function Campo({
   )
 }
 
-export function FormularioProjeto() {
-  const [estado, acao, enviando] = useActionState(criarProjeto, ESTADO_INICIAL)
+export type ProjetoEmEdicao = { id: string; valores: ValoresProjeto }
+
+/**
+ * Mesmo formulário para criar e editar: quando `projeto` vem preenchido, o `id`
+ * segue em campo oculto e a Server Action passa a ser `atualizarProjeto`.
+ */
+export function FormularioProjeto({ projeto }: { projeto?: ProjetoEmEdicao }) {
+  const editando = projeto !== undefined
+  const [estado, acao, enviando] = useActionState(
+    editando ? atualizarProjeto : criarProjeto,
+    ESTADO_INICIAL,
+  )
   const erros = estado.erros
+  const valores = projeto?.valores
 
   return (
     <form action={acao} className="mt-8 space-y-6" key={estado.criado?.id}>
+      {projeto ? <input type="hidden" name="id" value={projeto.id} /> : null}
+
       {estado.criado ? (
         <p className="border-l-2 border-accent bg-surface py-2 pl-3 text-sm text-text">
           Projeto <strong>{estado.criado.nome}</strong> criado.
+        </p>
+      ) : null}
+
+      {estado.salvo ? (
+        <p className="border-l-2 border-accent bg-surface py-2 pl-3 text-sm text-text">
+          Alterações do projeto <strong>{estado.salvo.nome}</strong> salvas.
         </p>
       ) : null}
 
@@ -62,6 +86,7 @@ export function FormularioProjeto() {
           <div className="sm:col-span-2">
             <Campo
               nome="nome"
+            defaultValue={valores?.nome}
               rotulo="Assunto (projeto / iniciativa) *"
               erros={erros}
               required
@@ -71,12 +96,14 @@ export function FormularioProjeto() {
           </div>
           <Campo
             nome="referencia"
+            defaultValue={valores?.referencia}
             rotulo="Referência"
             erros={erros}
             placeholder="Ex.: PLA-DEP-2026-014"
           />
           <Campo
             nome="prioridade"
+            defaultValue={valores?.prioridade}
             rotulo="Prioridade"
             erros={erros}
             type="number"
@@ -90,23 +117,50 @@ export function FormularioProjeto() {
       <section className="border-l-2 border-borderSoft pl-4">
         <h2 className="font-display text-base font-bold">Classificação</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Campo nome="equipe" rotulo="Equipe" erros={erros} placeholder="STI" />
+          <Campo
+            nome="equipe"
+            defaultValue={valores?.equipe}
+            rotulo="Equipe"
+            erros={erros}
+            placeholder="STI"
+          />
           <Campo
             nome="natureza"
+            defaultValue={valores?.natureza}
             rotulo="Natureza"
             erros={erros}
             placeholder="Desenvolvimento"
           />
-          <Campo nome="categoria" rotulo="Categoria" erros={erros} />
+          <Campo
+            nome="categoria"
+            defaultValue={valores?.categoria}
+            rotulo="Categoria"
+            erros={erros}
+          />
         </div>
       </section>
 
       <section className="border-l-2 border-borderSoft pl-4">
         <h2 className="font-display text-base font-bold">Responsáveis</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Campo nome="responsavel" rotulo="Responsável" erros={erros} />
-          <Campo nome="apoio" rotulo="Apoio" erros={erros} />
-          <Campo nome="setorEnvolvido" rotulo="Setor envolvido" erros={erros} />
+          <Campo
+            nome="responsavel"
+            defaultValue={valores?.responsavel}
+            rotulo="Responsável"
+            erros={erros}
+          />
+          <Campo
+            nome="apoio"
+            defaultValue={valores?.apoio}
+            rotulo="Apoio"
+            erros={erros}
+          />
+          <Campo
+            nome="setorEnvolvido"
+            defaultValue={valores?.setorEnvolvido}
+            rotulo="Setor envolvido"
+            erros={erros}
+          />
         </div>
       </section>
 
@@ -116,6 +170,7 @@ export function FormularioProjeto() {
           className={`${classeCampo} min-h-24`}
           id="comentario"
           name="comentario"
+          defaultValue={valores?.comentario}
           maxLength={2000}
         />
         <Erro mensagem={erros?.comentario} />
@@ -127,7 +182,7 @@ export function FormularioProjeto() {
           disabled={enviando}
           type="submit"
         >
-          {enviando ? 'Salvando…' : 'Salvar projeto'}
+          {enviando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Salvar projeto'}
         </button>
         <a className="text-sm text-textMuted hover:text-text" href="/projetos">
           Cancelar

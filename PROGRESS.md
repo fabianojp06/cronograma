@@ -45,7 +45,7 @@ EM_ANDAMENTO
       campos opcionais) cobrindo os campos do SCHEMA.md
 - [x] Tela de listagem de Projetos com filtro por equipe, categoria e status
       agregado (calculado a partir das Ações)
-- [ ] Edição de Projeto existente
+- [x] Edição de Projeto existente
 - [ ] Exclusão lógica de Projeto (campo `ativo = false`, nunca DELETE físico)
 
 ### Bloco 3 — CRUD de Ações
@@ -323,3 +323,32 @@ EM_ANDAMENTO
   9 em `projeto-filtros.test.ts`, 4 em `projetos-listagem.test.ts`); `tsc --noEmit`,
   `npm run lint` e `next build` limpos (6 rotas + proxy).
 - **Falta:** edição de Projeto existente (próximo item do Bloco 2).
+
+### 2026-09-17 — Bloco 2: edição de Projeto existente
+
+- **Rota `/projetos/[id]/editar`** (Server Component): carrega o projeto com
+  `findFirst({ where: { id, ativo: true } })` e chama `notFound()` quando não existe
+  — projeto excluído logicamente (`ativo = false`) **não é editável**, o que já deixa
+  o próximo item (exclusão lógica) coerente. Link "Editar" adicionado em cada linha
+  da listagem.
+- **Reuso do mesmo formulário:** `FormularioProjeto` ganhou a prop opcional
+  `projeto={{ id, valores }}`. Quando ela vem preenchida, o `id` vai em campo oculto,
+  os inputs recebem `defaultValue` e a Server Action passa a ser `atualizarProjeto`.
+  Duplicar o formulário criaria duas telas para divergir — a validação e o layout são
+  os mesmos.
+- **Server Action `atualizarProjeto`** em `src/app/projetos/acoes-projeto.ts`: exige
+  sessão Clerk, lê o `id`, valida com o mesmo `validarDadosProjeto`, confere se o
+  projeto existe e está ativo, e **só grava se algum campo mudou** (`camposAlterados`)
+  — sem isso, um "salvar" sem alteração sujaria o `updatedAt` e revalidaria cache à
+  toa. Erro de banco vira `erroGeral`, sem vazar a exceção.
+- **Módulo puro novo `src/lib/projeto-edicao.ts`** (mesma razão de `projeto-validacao.ts`:
+  regra testável sem banco): `CAMPOS_PROJETO` (lista única dos campos editáveis, derivada
+  de `CAMPOS_TEXTO_OPCIONAIS` para não sair de sincronia), `valoresIniciais` (null → string
+  vazia para o formulário), `lerIdProjeto` e `camposAlterados`.
+- `EstadoFormularioProjeto` ganhou `salvo?: { id, nome }`, distinto de `criado`, para a UI
+  confirmar "alterações salvas" sem fingir que criou um registro novo.
+- **Fidelidade ao protótipo segue pendente de revisão** — o artifact
+  `E-FormularioProjeto` continua inacessível a esta conta (ver rodadas anteriores).
+- Verificação: `npm test` = **60 testes passando** (9 novos em `projeto-edicao.test.ts`);
+  `tsc --noEmit`, `npm run lint` e `next build` limpos (7 rotas + proxy).
+- **Falta:** exclusão lógica de Projeto (`ativo = false`) — último item do Bloco 2.
