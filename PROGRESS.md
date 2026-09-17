@@ -14,13 +14,13 @@ EM_ANDAMENTO
 ## Backlog
 
 ### Bloco 1 — Fundação
-- [ ] Clonar https://github.com/fabianojp06/cronograma (privado) e fazer o commit
+- [x] Clonar https://github.com/fabianojp06/cronograma (privado) e fazer o commit
       inicial (setup do Next.js) antes de rodar o autoloop.sh pela primeira vez
-- [ ] Configurar `CHECK_CMD` de testes (Jest ou Vitest) e escrever o primeiro teste
+- [x] Configurar `CHECK_CMD` de testes (Jest ou Vitest) e escrever o primeiro teste
       trivial só para validar que o pipeline de teste funciona — fazer este item
       ANTES de qualquer outro código, para que o script `npm test` já exista desde
       a primeira verificação do autoloop
-- [ ] Setup do projeto Next.js (App Router) + TypeScript + Tailwind CSS
+- [x] Setup do projeto Next.js (App Router) + TypeScript + Tailwind CSS
 - [ ] Configurar Prisma + PostgreSQL com o schema inicial descrito em SCHEMA.md
       (models Projeto, Acao, HistoricoAlteracao, enum StatusAcao)
 - [ ] Rodar a primeira migration e criar seed com 3 projetos de exemplo e 5 ações
@@ -95,3 +95,19 @@ EM_ANDAMENTO
 
 ## Log de decisões
 (o Claude preenche aqui a cada rodada: o que fez, por quê, o que falta)
+
+### 2026-09-17 — Bloco 1: pipeline de testes
+- Marcados como concluídos os itens já entregues em commits anteriores: repositório
+  clonado com commit inicial e scaffold do Next.js (App Router + TS + Tailwind v4).
+- **Framework de teste escolhido: Vitest** (`vitest run` via `npm test`) — integra-se
+  nativamente ao pipeline Vite/ESM e ao `tsconfig` do projeto, sem a camada extra de
+  transpilação que o Jest exigiria com Next 16 + TS. Essa escolha é definitiva para
+  todo o projeto (CLAUDE.md pede consistência).
+- `CHECK_CMD` do autoloop = `npm test`.
+- Criado `vitest.config.mts` (ambiente `node`, resolução nativa de paths do tsconfig,
+  padrão de arquivos `src/**/*.test.ts(x)` e `tests/**/*.test.ts(x)`).
+- Primeiro teste trivial em `src/lib/formatacao.test.ts` cobrindo `formatarDataBR`
+  (datas em pt-BR, dd/mm/aaaa) — 2 testes, ambos passando.
+- `@types/node` subiu para `^24` porque o Vitest 5 não resolve com `^20` (ERESOLVE).
+- **Falta:** Prisma + PostgreSQL com o schema do SCHEMA.md (próximo item do Bloco 1).
+
