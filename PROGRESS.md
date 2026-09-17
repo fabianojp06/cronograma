@@ -43,7 +43,7 @@ EM_ANDAMENTO
       — **acesso negado** ao artifact nesta conta; ver Log de decisões
 - [x] Server Action de criação de Projeto com validação (nome obrigatório; demais
       campos opcionais) cobrindo os campos do SCHEMA.md
-- [ ] Tela de listagem de Projetos com filtro por equipe, categoria e status
+- [x] Tela de listagem de Projetos com filtro por equipe, categoria e status
       agregado (calculado a partir das Ações)
 - [ ] Edição de Projeto existente
 - [ ] Exclusão lógica de Projeto (campo `ativo = false`, nunca DELETE físico)
@@ -288,3 +288,38 @@ EM_ANDAMENTO
   `src/lib/projeto-validacao.test.ts`); `tsc --noEmit`, `npm run lint` e `next build`
   limpos (5 rotas + proxy).
 - **Falta:** tela de listagem de Projetos com filtros (próximo item do Bloco 2).
+
+### 2026-09-17 — Bloco 2: listagem de Projetos com filtros
+
+- **Rota `/projetos`** (Server Component, `src/app/projetos/page.tsx`): tabela de
+  projetos ativos com Equipe, Categoria, Responsável, status agregado, barra de
+  progresso embutida na linha e contagem `concluídas/total`. Cada linha linka para
+  `/projetos/[id]` (tela do Bloco 4, ainda não existente) e há atalho para
+  `/projetos/novo`. Ordenação por `prioridade` e depois `nome`.
+- **Status agregado é derivado, não coluna** (`src/lib/projeto-resumo.ts`, módulo puro):
+  `SEM_ACOES` | `NAO_INICIADO` | `EM_ANDAMENTO` | `ATRASADO` | `CONCLUIDO`.
+  `ATRASADO` tem **precedência** sobre `EM_ANDAMENTO`/`NAO_INICIADO` porque é o que o
+  painel precisa destacar; `CONCLUIDO` só quando todas as ações estão concluídas.
+  A regra de atraso é a do CLAUDE.md (`previstoTermino < hoje`, sem `realizadoTermino`,
+  `status != CONCLUIDO`) e já fica aqui pronta para reuso nos Blocos 4 e 5.
+- **Comparação de datas em UTC** (`src/lib/data-hoje.ts`): as datas de negócio são
+  gravadas à meia-noite UTC (ver `emDias` do seed), então "hoje" também é normalizado
+  para meia-noite UTC — sem isso o atraso escorregaria um dia conforme o fuso do servidor.
+- **Filtros em query string** (`src/lib/projeto-filtros.ts` + `FiltrosProjetos` com
+  `method="get"`): a tela fica linkável/compartilhável e funciona sem JavaScript.
+  - Equipe e categoria são **colunas**, então vão para o `where` do Prisma
+    (`whereProjetoAtivo`, que sempre força `ativo: true` — a exclusão é lógica).
+  - Status é **derivado**, então é filtrado em memória (`filtrarPorStatus`) depois do
+    resumo. Status desconhecido na URL é ignorado em vez de virar erro.
+  - As opções dos `select` vêm de **todos** os projetos ativos, não do resultado
+    filtrado — senão aplicar um filtro esconderia as outras opções.
+- **Composição projeto + resumo** isolada em `src/lib/projetos-listagem.ts`
+  (`montarLinhas`, `opcoesDistintas`), de novo pura, para manter o `CHECK_CMD` sem banco.
+- Cores só via tokens (`border-warn`, `text-realizado`, `bg-tableHeadBg`, `border-previsto`),
+  traço lateral por status em vez de card com sombra. **Fidelidade ao protótipo segue
+  pendente de revisão** — o artifact `E-FormularioProjeto`/`C-PainelOperacional` continua
+  inacessível a esta conta (ver rodada anterior).
+- Verificação: `npm test` = **51 testes passando** (23 novos: 10 em `projeto-resumo.test.ts`,
+  9 em `projeto-filtros.test.ts`, 4 em `projetos-listagem.test.ts`); `tsc --noEmit`,
+  `npm run lint` e `next build` limpos (6 rotas + proxy).
+- **Falta:** edição de Projeto existente (próximo item do Bloco 2).
