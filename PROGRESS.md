@@ -25,7 +25,7 @@ EM_ANDAMENTO
       (models Projeto, Acao, HistoricoAlteracao, enum StatusAcao)
 - [x] Rodar a primeira migration e criar seed com 3 projetos de exemplo e 5 ações
       cada, com datas Previsto variadas (algumas no passado, algumas futuras)
-- [ ] Integrar Clerk (Instance ID `ins_3JTS4qDnU1wKm8mPloItwq6KxYJ`) como autenticação,
+- [x] Integrar Clerk (Instance ID `ins_3JTS4qDnU1wKm8mPloItwq6KxYJ`) como autenticação,
       habilitando login social via Microsoft/Outlook (Azure AD OAuth) — usar
       `clerk_sdk_snippet` do MCP do Clerk para o código de integração correto do
       Next.js App Router; a chave secreta e a publishable key vão em variáveis de
@@ -170,3 +170,36 @@ EM_ANDAMENTO
   (2 testes: migration versionada e conteúdo do SQL). **`npm test` = 16 testes passando**;
   `tsc --noEmit` e `npm run lint` limpos.
 - **Falta:** integrar o Clerk (próximo item do Bloco 1) e provisionar Railway + Vercel.
+
+### 2026-09-17 — Bloco 1: autenticação com Clerk
+- **`@clerk/nextjs` 7.9.4 + `@clerk/localizations` 4.17.1** instalados. Código obtido via
+  `clerk_sdk_snippet` do MCP do Clerk (bundles `server-side` e `show-component`).
+- **Padrão fechado:** `src/proxy.ts` roda `clerkMiddleware` e chama `auth.protect()` em
+  tudo que não casa com `ROTAS_PUBLICAS` (`/entrar*`, `/cadastrar*`, `/api/webhooks*`).
+  Uso interno da CTCEA — nenhuma tela de domínio é pública.
+  - O arquivo é `src/proxy.ts`, **não** `middleware.ts`: o Next 16.3 deprecou a convenção
+    `middleware` em favor de `proxy` (aviso explícito no build). Mesma API.
+  - Os padrões de rota pública vivem em `src/lib/rotas-publicas.ts` (módulo separado) só
+    para poderem ser cobertos por teste sem carregar o proxy inteiro.
+- **`ClerkProvider`** envolve o `RootLayout` com `localization={ptBR}` (UI do Clerk em
+  português, requisito do CLAUDE.md), `signInUrl="/entrar"` / `signUpUrl="/cadastrar"`
+  (rotas em português) e `colorPrimary` = `#0F766E`, o token `accent` do tema claro.
+- Telas `src/app/entrar/[[...entrar]]` e `src/app/cadastrar/[[...cadastrar]]` (catch-all,
+  exigido pelo Clerk para os passos de verificação/2FA).
+- `src/components/cabecalho.tsx` com `UserButton` (sessão ativa) ou botão Entrar.
+  Usamos **`<Show when="signed-in">`**, não `<SignedIn>`: no Core 3 do `@clerk/nextjs` 7
+  os componentes `SignedIn`/`SignedOut`/`Protect` foram removidos e quebram o build.
+- **Variáveis de ambiente** documentadas em `.env.example` (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
+  `CLERK_SECRET_KEY`, URLs de sign-in/sign-up e fallback). O `.env` real continua fora do
+  repositório — nenhuma chave foi commitada.
+- **Pendência manual (não automatizável daqui):** habilitar o **login social Microsoft/Outlook
+  (Azure AD OAuth)** no dashboard do Clerk (User & Authentication → SSO Connections →
+  Microsoft) da instância `ins_3JTS4qDnU1wKm8mPloItwq6KxYJ`, e cadastrar Client ID/Secret de
+  um app registrado no Azure AD para produção. Isso é configuração de instância, não de
+  código: o SDK já renderiza o botão assim que a conexão for ligada. Requer as chaves de API
+  da instância, que ainda não estão disponíveis nesta máquina.
+- Verificação: `npm test` = **19 testes passando** (3 novos em `src/lib/rotas-publicas.test.ts`,
+  cobrindo rotas públicas, subcaminhos do Clerk, webhooks e o padrão fechado); `tsc --noEmit`
+  e `npm run lint` limpos; `next build` completo com chaves de exemplo (4 rotas + proxy).
+- **Falta:** conectar GitHub → Vercel e provisionar o PostgreSQL no Railway (último item
+  do Bloco 1).
