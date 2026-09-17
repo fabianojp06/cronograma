@@ -1,5 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from '@/generated/prisma/client'
+import { PrismaClient } from '../generated/prisma/client'
 
 // Em desenvolvimento o hot-reload do Next recria os módulos a cada alteração;
 // guardamos a instância no globalThis para não abrir um pool novo a cada reload.

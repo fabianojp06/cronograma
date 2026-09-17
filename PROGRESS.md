@@ -23,7 +23,7 @@ EM_ANDAMENTO
 - [x] Setup do projeto Next.js (App Router) + TypeScript + Tailwind CSS
 - [x] Configurar Prisma + PostgreSQL com o schema inicial descrito em SCHEMA.md
       (models Projeto, Acao, HistoricoAlteracao, enum StatusAcao)
-- [ ] Rodar a primeira migration e criar seed com 3 projetos de exemplo e 5 ações
+- [x] Rodar a primeira migration e criar seed com 3 projetos de exemplo e 5 ações
       cada, com datas Previsto variadas (algumas no passado, algumas futuras)
 - [ ] Integrar Clerk (Instance ID `ins_3JTS4qDnU1wKm8mPloItwq6KxYJ`) como autenticação,
       habilitando login social via Microsoft/Outlook (Azure AD OAuth) — usar
@@ -135,3 +135,38 @@ EM_ANDAMENTO
   passando; `tsc --noEmit` limpo.
 - **Falta:** rodar a primeira migration e o seed — depende do `DATABASE_URL` real do
   Railway, que ainda não foi provisionado (próximos itens do Bloco 1).
+
+### 2026-09-17 — Bloco 1: primeira migration + seed
+- **Migration inicial aplicada e versionada:** `prisma/migrations/20260917231112_inicial/`
+  — cria o enum `StatusAcao`, as tabelas `Projeto`, `Acao` e `HistoricoAlteracao`, os 4
+  índices e a unique `Acao_projetoId_numero_key`, exatamente como o schema descreve.
+- **Banco usado:** o projeto Railway `28445ef3-...` **ainda não tem serviço PostgreSQL**
+  (só um serviço de app `cronograma` em estado *staged-create*, não commitado). Para não
+  provisionar infraestrutura fora do escopo deste item, a migration foi gerada e validada
+  contra um **PostgreSQL 16 local em Docker** (`cronograma-pg`, porta 55432). O `.env.example`
+  documenta esse setup. Quando o serviço do Railway existir (item posterior do Bloco 1),
+  basta `npm run db:deploy` — a migration é a mesma, nada precisa ser regerado.
+- **Seed:** dados de exemplo em `src/lib/seed-dados.ts` como **função pura** `dadosSeed(hoje)`
+  (sem Prisma, sem banco) e o gravador em `prisma/seed.ts`. Essa separação existe para que os
+  dados sejam cobertos por teste unitário sem exigir banco no `CHECK_CMD`.
+  - 3 projetos (`CRO-DEP-2026-001` / STI, `PLA-DEP-2026-014` / STI, `PLA-DEP-2026-027` / GRH),
+    5 ações cada = 15 ações.
+  - Datas Previsto são **offsets em dias relativos a `hoje`**, não datas fixas, para que o
+    cenário (parte no passado, parte no futuro) continue válido em qualquer rodada futura.
+  - Inclui deliberadamente **2 ações em atraso** (previsto vencido, sem `realizadoTermino`,
+    status != CONCLUIDO) para exercitar a regra visual vermelha dos Blocos 4 e 5.
+  - **Idempotente:** cada projeto é localizado por `referencia` e recriado (ações caem por
+    cascade). Rodado 2x seguidas → continua 3 projetos / 15 ações.
+- **`tsx` adicionado como devDependency** para rodar o seed: o client do Prisma 7 é gerado
+  em TypeScript com imports sem extensão, que o `node --experimental-strip-types` não
+  resolve. Por isso também trocamos `@/generated/prisma/...` por import relativo em
+  `src/lib/prisma.ts` (o alias `@/` não existe fora do bundler do Next).
+- Scripts novos: `db:seed` (`tsx prisma/seed.ts`) e `db:deploy` (`prisma migrate deploy`,
+  para produção). O seed também está registrado em `prisma.config.ts` (`migrations.seed`),
+  então `prisma migrate reset` repopula o banco automaticamente.
+- Testes: `src/lib/seed-dados.test.ts` (8 testes: contagens, numeração sequencial, unicidade
+  de referência, `previstoInicio <= previstoTermino`, presença de passado e futuro, presença
+  de atrasos, `realizadoTermino` só em concluídas, `emDias`) e `src/lib/migrations.test.ts`
+  (2 testes: migration versionada e conteúdo do SQL). **`npm test` = 16 testes passando**;
+  `tsc --noEmit` e `npm run lint` limpos.
+- **Falta:** integrar o Clerk (próximo item do Bloco 1) e provisionar Railway + Vercel.
