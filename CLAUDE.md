@@ -19,8 +19,10 @@ PLA-DEP) e um **drill-down por projeto** (modelo CRO-DEP).
 ## Repositório
 
 - GitHub: https://github.com/fabianojp06/cronograma (privado)
-- `autoloop.sh` espera este repositório já clonado e com pelo menos um commit
-  inicial na raiz antes da primeira rodada.
+- `autoloop.sh` (bash) ou `autoloop.ps1` (PowerShell, para Windows sem WSL/Git
+  Bash) espera este repositório já clonado e com pelo menos um commit inicial na
+  raiz antes da primeira rodada. Use o script correspondente ao seu terminal —
+  a lógica é idêntica nos dois.
 
 ## Infraestrutura
 

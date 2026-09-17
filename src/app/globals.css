@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Tokens de tema — valores definidos em CLAUDE.md ("Painel Operacional").
+   Nunca hardcodar estas cores nos componentes; usar sempre as classes
+   geradas a partir de @theme inline (bg-surface, text-textMuted, ...). */
+:root {
+  --bg: #F5F7FA;
+  --surface: #FFFFFF;
+  --border: #E3E8EC;
+  --border-soft: #F0F3F5;
+  --text: #16212B;
+  --text-muted: #5B6B76;
+  --text-faint: #8B98A3;
+  --accent: #0F766E;
+  --on-accent: #FFFFFF;
+  --warn: #E76F51;
+  --table-head-bg: #FAFBFC;
+}
+
+.dark {
+  --bg: #0B1418;
+  --surface: #121C21;
+  --border: #1E2B31;
+  --border-soft: #18232A;
+  --text: #EAF1F0;
+  --text-muted: #8FA3A0;
+  --text-faint: #5C716E;
+  --accent: #2DD4BF;
+  --on-accent: #0B1418;
+  --warn: #F3866A;
+  --table-head-bg: #0F1A1F;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-borderSoft: var(--border-soft);
+  --color-text: var(--text);
+  --color-textMuted: var(--text-muted);
+  --color-textFaint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-onAccent: var(--on-accent);
+  --color-warn: var(--warn);
+  --color-tableHeadBg: var(--table-head-bg);
+
+  /* Cores semânticas de status (ver CLAUDE.md) */
+  --color-previsto: #2563EB;
+  --color-realizado: #16A34A;
+
+  --font-display: var(--font-manrope);
+  --font-sans: var(--font-public-sans);
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-public-sans), system-ui, sans-serif;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-manrope), system-ui, sans-serif;
+}

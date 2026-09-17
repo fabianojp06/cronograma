@@ -1,0 +1,9 @@
+[2026-09-17 19:39:17] Verificando autenticacao do Claude Code...
+[2026-09-17 19:39:17] AVISO: working tree do git nao esta limpo. Recomenda-se commitar antes
+[2026-09-17 19:39:17] de rodar o autoloop, para poder reverter facilmente se algo der errado.
+[2026-09-17 19:39:17] === Iniciando autoloop.ps1 (v1.1) ===
+[2026-09-17 19:39:17] Projeto: C:\Users\fabia\Documents\crono\cronograma
+[2026-09-17 19:39:17] Maximo de iteracoes: 3
+[2026-09-17 19:39:17] Comando de verificacao: npm test
+[2026-09-17 19:39:17] --- Iteracao 1/3 ---
+[2026-09-17 19:39:17] Chamando Claude Code...
