@@ -14,9 +14,13 @@ EM_ANDAMENTO
 ## Backlog
 
 ### Bloco 1 — Fundação
-- [x] Clonar https://github.com/fabianojp06/cronograma (privado) e fazer o commit
+- [ ] Clonar https://github.com/fabianojp06/cronograma (privado) e fazer o commit
       inicial (setup do Next.js) antes de rodar o autoloop.sh pela primeira vez
-- [x] Setup do projeto Next.js (App Router) + TypeScript + Tailwind CSS
+- [ ] Configurar `CHECK_CMD` de testes (Jest ou Vitest) e escrever o primeiro teste
+      trivial só para validar que o pipeline de teste funciona — fazer este item
+      ANTES de qualquer outro código, para que o script `npm test` já exista desde
+      a primeira verificação do autoloop
+- [ ] Setup do projeto Next.js (App Router) + TypeScript + Tailwind CSS
 - [ ] Configurar Prisma + PostgreSQL com o schema inicial descrito em SCHEMA.md
       (models Projeto, Acao, HistoricoAlteracao, enum StatusAcao)
 - [ ] Rodar a primeira migration e criar seed com 3 projetos de exemplo e 5 ações
@@ -26,8 +30,6 @@ EM_ANDAMENTO
       `clerk_sdk_snippet` do MCP do Clerk para o código de integração correto do
       Next.js App Router; a chave secreta e a publishable key vão em variáveis de
       ambiente (`.env.local`, nunca commitadas)
-- [ ] Configurar `CHECK_CMD` de testes (Jest ou Vitest) e escrever o primeiro teste
-      trivial só para validar que o pipeline de teste funciona
 - [ ] Conectar o repositório GitHub ao projeto Vercel `prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO`
       (deploy automático a cada push) e ao projeto Railway
       `28445ef3-95ee-44bd-bfba-b5af383d8057` (banco PostgreSQL) — registrar no
@@ -93,22 +95,3 @@ EM_ANDAMENTO
 
 ## Log de decisões
 (o Claude preenche aqui a cada rodada: o que fez, por quê, o que falta)
-
-- 2026-09-17 — Bloco 1, itens 1 e 2. O item de clonar o repositório já estava
-  satisfeito (repo clonado em `C:/Users/fabia/Documents/crono/cronograma`, remote
-  `origin` apontando para o GitHub e dois commits na raiz), então foi apenas
-  marcado. Scaffold do Next.js criado com `create-next-app` (App Router,
-  TypeScript, ESLint, `src/`, alias `@/*`, npm) — gerado em diretório temporário e
-  copiado para a raiz porque o `create-next-app` recusa diretório não vazio.
-  Versões: Next.js 16.3.5, React 19.2.8, Tailwind CSS v4 (via
-  `@tailwindcss/postcss`, sem `tailwind.config.js` — configuração por `@theme` no
-  CSS). Os tokens de tema do CLAUDE.md foram implementados em
-  `src/app/globals.css` como CSS variables (`:root` claro / `.dark` escuro) e
-  expostos ao Tailwind via `@theme inline`, mais um `@custom-variant dark` baseado
-  em classe (não em `prefers-color-scheme`) para permitir a alternância manual
-  claro/escuro exigida pelo protótipo. Fontes Manrope (display) e Public Sans
-  (corpo) carregadas via `next/font/google`. `lang="pt-BR"`. Arquivo `teste.ts`
-  (conteúdo placeholder "init") removido. Verificação: `npm run build` (que já roda
-  o TypeScript) e `npm run lint` passam. Falta: definir o `CHECK_CMD` real de
-  testes (item do Bloco 1 ainda pendente) — até lá, `npm run build` é a verificação
-  usada.
