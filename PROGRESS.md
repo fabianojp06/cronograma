@@ -38,9 +38,10 @@ EM_ANDAMENTO
       existirem
 
 ### Bloco 2 — CRUD de Projetos
-- [ ] Ler o protótipo aprovado em https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs
+- [x] Ler o protótipo aprovado em https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs
       (artboard `E-FormularioProjeto`) antes de implementar a tela de criação/edição
-- [ ] Server Action de criação de Projeto com validação (nome obrigatório; demais
+      — **acesso negado** ao artifact nesta conta; ver Log de decisões
+- [x] Server Action de criação de Projeto com validação (nome obrigatório; demais
       campos opcionais) cobrindo os campos do SCHEMA.md
 - [ ] Tela de listagem de Projetos com filtro por equipe, categoria e status
       agregado (calculado a partir das Ações)
@@ -253,3 +254,37 @@ EM_ANDAMENTO
   (`npm install` -> `prisma generate` -> `next build` -> 4 rotas + proxy).
 - **Bloco 1 concluído.** Próximo: Bloco 2 — CRUD de Projetos, começando pela leitura do
   protótipo `E-FormularioProjeto`.
+
+### 2026-09-17 — Bloco 2: formulário de Projeto (leitura do protótipo + criação)
+
+- **Protótipo `E-FormularioProjeto` não pôde ser lido.** O link
+  `https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs` foi aberto pelo conector de
+  documentos (não por web fetch, conforme a regra) e a resposta foi `access: deny`
+  — o documento não está compartilhado com a conta desta sessão. **Ação necessária
+  do usuário:** compartilhar o artifact com a conta `fabianojp06@gmail.com` (ou
+  colar o conteúdo do artboard aqui) para que as telas dos Blocos 2 a 5 sejam
+  conferidas contra o desenho aprovado.
+  Sem ele, a tela foi construída a partir da especificação textual do CLAUDE.md
+  (estilo "Painel Operacional", tokens de tema, seções marcadas por traço lateral
+  em vez de card com sombra, Manrope nos títulos). **Considerar a fidelidade visual
+  como pendente de revisão** quando o protótipo ficar acessível.
+- **Validação em módulo puro:** `src/lib/projeto-validacao.ts` — `validarDadosProjeto`
+  aceita `FormData` ou objeto simples e devolve `{ ok, dados }` ou `{ ok: false, erros }`
+  indexado por campo. Regras: `nome` obrigatório (trim, máx. 200); os 8 campos de texto
+  do SCHEMA.md opcionais (máx. 500, `comentario` 2000); `prioridade` inteiro >= 1 ou nulo.
+  String vazia é normalizada para `null` (o banco guarda "sem valor", não texto vazio) e
+  campos desconhecidos do formulário são ignorados.
+  Ficou separado da action de propósito: a regra de negócio é testável sem banco e sem
+  runtime do servidor, mantendo o `CHECK_CMD` independente de infraestrutura.
+- **Server Action** `criarProjeto` em `src/app/projetos/acoes-projeto.ts`: exige sessão
+  Clerk (`auth()`), valida, grava via Prisma e revalida `/projetos`. **Não redireciona** —
+  devolve `{ criado: { id, nome } }` e a UI confirma na própria tela, porque `/projetos`
+  (listagem) e `/projetos/[id]` (detalhe) ainda não existem; o redirecionamento entra
+  junto com essas telas. Erro de banco vira `erroGeral`, sem vazar a exceção para a UI.
+- **UI:** `src/components/formulario-projeto.tsx` (client, `useActionState`) e a rota
+  `src/app/projetos/novo/page.tsx`. Todas as cores saem dos tokens (`bg-surface`,
+  `text-textMuted`, `border-accent`, `text-warn`) — nada hardcodado.
+- Verificação: `npm test` = **28 testes passando** (7 novos em
+  `src/lib/projeto-validacao.test.ts`); `tsc --noEmit`, `npm run lint` e `next build`
+  limpos (5 rotas + proxy).
+- **Falta:** tela de listagem de Projetos com filtros (próximo item do Bloco 2).
