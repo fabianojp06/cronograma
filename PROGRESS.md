@@ -118,6 +118,14 @@ não de código — ver as entradas de 2026-09-18 no Log de decisões.
 - [x] Relatórios de auditoria sobre `HistoricoAlteracao`: replanejamentos por ação e
       alterações recentes por campo/autor
 
+### Bloco 8 — Modo escuro
+- [x] Alternador de tema no cabeçalho com três opções (Sistema / Claro / Escuro),
+      preferência guardada no `localStorage`
+- [x] Aplicação do tema antes da primeira pintura, sem flash branco na recarga
+- [x] Acompanhar a troca de tema do sistema operacional em tempo real enquanto a
+      preferência for "Sistema"
+- [x] UI do Clerk (modal de login, UserButton) seguindo os mesmos tokens
+
 ## Log de decisões
 (o Claude preenche aqui a cada rodada: o que fez, por quê, o que falta)
 
@@ -954,3 +962,45 @@ alternador for implementado. Candidato a Bloco 8.
 - Observação registrada no mesmo dia: o repositório está ligado a **dois projetos
   Vercel** (`cronograma` / `prj_xVigz...` e `cronograma-lktu` / `prj_HxI1VBY...`,
   este último o do CLAUDE.md). Cada push gera dois deploys — decidir qual manter.
+
+### 2026-09-18 — Bloco 8: modo escuro
+
+- O `globals.css` já trazia **todos** os tokens de `.dark` desde o Bloco 1, mas
+  **nada aplicava a classe** — a alternância exigida pelo CLAUDE.md nunca tinha
+  saído do papel. Este bloco fecha essa lacuna.
+- **Três opções, não duas**: Sistema (padrão), Claro e Escuro. Abrir o sistema já
+  no tema que a pessoa usa no resto do computador é o comportamento esperado; só
+  quem quer divergir precisa escolher.
+- `src/lib/tema.ts` concentra a regra (resolução, leitura tolerante a valor
+  corrompido, serialização do estado) como **módulo puro**, coberto por 23 testes.
+  Inclui o `SCRIPT_TEMA`, que é executado nos testes com `new Function` num
+  ambiente simulado — ele decide o que a pessoa vê no primeiro frame, então não
+  podia ficar sem cobertura só por ser uma string.
+- **Sem flash branco**: o script roda inline no `<head>`, antes da primeira
+  pintura. O `<html>` leva `suppressHydrationWarning` porque a classe muda antes
+  do React hidratar — divergência intencional.
+- O alternador usa **`useSyncExternalStore`**, não `setState` em `useEffect`: o
+  lint do React Compiler barra o segundo padrão, e de fato `localStorage` e
+  `prefers-color-scheme` são stores externos. O instantâneo é a string
+  `"<preferencia>|<efetivo>"` — precisa ser primitivo para não re-renderizar em
+  laço, e carregar o efetivo junto é o que faz a troca no sistema operacional
+  chegar ao componente enquanto a preferência é "Sistema".
+- **UI do Clerk** recebe `appearance.variables` apontando para as CSS variables
+  (`var(--accent)`, `var(--surface)`...), então troca junto sem precisar de um
+  provider client nem da dependência `@clerk/themes`. Os nomes mudaram no Core 3
+  (`colorForeground`, `colorMutedForeground`, `colorInput`... — não mais
+  `colorText`/`colorInputBackground`).
+
+**Verificação**: `npm test` = **311 passando em 28 arquivos**; tsc, lint e build
+limpos. Além disso, o componente foi exercitado **num navegador de verdade**
+(harness Vite + Playwright, descartado depois): 22 cenários, todos passando —
+troca de todos os tokens (não só o fundo), persistência, sobrevivência à recarga,
+ausência de flash no primeiro frame, escolha explícita vencendo o sistema
+operacional, acompanhamento do SO em tempo real com "Sistema", valor corrompido
+caindo em Sistema, e nenhum erro de hidratação no console. Os valores medidos
+batem com a tabela do CLAUDE.md (`#F5F7FA`→`#0B1418`, `#FFFFFF`→`#121C21`,
+`#16212B`→`#EAF1F0`).
+
+**Ressalva honesta**: a UI do Clerk não pôde ser conferida em tela — exige chaves
+vivas e rede até o Clerk, que este ambiente não tem. O mapeamento de variáveis
+está tipado e compila; vale um olhar na tela de login depois do deploy.
