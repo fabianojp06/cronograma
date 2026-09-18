@@ -68,6 +68,22 @@ Tipografia: `Manrope` (títulos/display) + `Public Sans` (corpo). Deve existir
 alternância completa entre modo claro e escuro (não só cor de fundo — todo o
 conjunto de tokens abaixo troca junto).
 
+**Implementado** (ver `src/lib/tema.ts` + `src/components/alternador-tema.tsx`):
+o alternador fica no cabeçalho com três opções — **Sistema** (padrão, segue o
+sistema operacional), **Claro** e **Escuro** — e a escolha é guardada no
+`localStorage` sob a chave `ctcea-tema`. O modo escuro é ligado pela classe
+`dark` no `<html>`; nenhum componente deve testar o tema por conta própria,
+basta usar os tokens. Duas regras que não podem ser quebradas ao mexer nisso:
+
+- `SCRIPT_TEMA` é injetado inline no `<head>` pelo layout e roda **antes da
+  primeira pintura**. Sem ele, quem usa tema escuro vê um flash branco a cada
+  navegação, porque o servidor não tem como conhecer a preferência.
+- Por isso o `<html>` leva `suppressHydrationWarning`: o script altera a classe
+  antes do React hidratar, e a divergência é intencional.
+- O alternador lê a preferência por `useSyncExternalStore` (`localStorage` e
+  `prefers-color-scheme` são stores externos), nunca com `setState` dentro de
+  `useEffect` — o lint do React Compiler barra, e com razão.
+
 Tokens de tema (usar exatamente estes valores; implementar como CSS variables ou
 tema do Tailwind, não hardcoded em cada componente):
 

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 
+import { AlternadorTema } from "@/components/alternador-tema";
+
 /**
  * Itens do menu principal. Ficam aqui, num array, para que o cabeçalho não
  * precise ser reescrito a cada tela nova — e para a ordem ser explícita.
@@ -34,7 +36,9 @@ export function Cabecalho() {
         </nav>
       </Show>
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-4">
+        {/* Fora do <Show>: a escolha de tema vale também na tela de login. */}
+        <AlternadorTema />
         <Show when="signed-in">
           <UserButton />
         </Show>
