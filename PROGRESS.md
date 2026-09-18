@@ -72,7 +72,7 @@ EM_ANDAMENTO
       **acesso negado** ao artifact nesta conta (4ª tentativa); ver Log de decisões
 - [x] Componente de grade semanal renderizando, para um Projeto, as barras Previsto
       (azul) e Realizado (verde) de cada Ação sobrepostas na linha do tempo
-- [ ] Regra visual de atraso: se `previstoTermino < hoje` e `status != CONCLUIDO` e
+- [x] Regra visual de atraso: se `previstoTermino < hoje` e `status != CONCLUIDO` e
       não há `realizadoTermino`, a barra Previsto fica vermelha
 - [ ] Navegação/scroll horizontal por período (a planilha original cobre ~13 meses;
       o componente não precisa renderizar tudo de uma vez — paginar por mês/trimestre)
@@ -578,3 +578,21 @@ EM_ANDAMENTO
   `next build` limpos (9 rotas + proxy).
 - **Falta no Bloco 4:** regra visual de atraso (barra Previsto em vermelho) e
   navegação/paginação horizontal por mês/trimestre — próximos itens.
+
+### 2026-09-17 — Bloco 4: regra visual de atraso na barra Previsto
+- `previstoEmAtraso(acao, hoje)` em `src/lib/gantt.ts`: `previstoTermino < hoje`
+  **e** `status != CONCLUIDO` **e** sem `realizadoTermino`, exatamente a regra do
+  CLAUDE.md. Comparação normalizada por `inicioDoDiaUTC` nos dois lados, para que
+  uma data gravada com hora (ex.: 23:59 de hoje) não conte como atraso.
+- Regra **reescrita** aqui em vez de importada de `acaoEstaAtrasada`
+  (`projeto-resumo.ts`): aquele módulo importa o enum gerado pelo Prisma e
+  `gantt.ts` é deliberadamente livre de Prisma. As duas versões estão cobertas por
+  teste — se a regra mudar, mudar nas duas.
+- `GanttProjeto` passa a pintar a barra Previsto com o token `warn` (contorno +
+  preenchimento 20%) quando em atraso, com `title` "Previsto — em atraso", e ganhou
+  a entrada "Previsto em atraso" na legenda.
+- 6 novos testes em `gantt.test.ts` (atraso, término hoje/futuro, concluída,
+  realizado apontado, sem previstoTermino, data com hora). `npm test`: 155 testes,
+  17 arquivos, todos passando. `tsc --noEmit` limpo.
+- **Falta no Bloco 4:** navegação/scroll horizontal por período (paginar por
+  mês/trimestre) — hoje a grade renderiza todas as semanas de uma vez.

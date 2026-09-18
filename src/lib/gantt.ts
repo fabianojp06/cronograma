@@ -14,6 +14,8 @@
  * uma data gravada à meia-noite UTC cair na semana anterior no Brasil.
  */
 
+import type { StatusAcao } from './acao-validacao'
+
 const MS_POR_DIA = 24 * 60 * 60 * 1000
 
 function inicioDoDiaUTC(data: Date): Date {
@@ -235,4 +237,24 @@ export function agruparPorMes(semanas: Semana[]): GrupoDeMes[] {
   }
 
   return grupos
+}
+
+/** Recorte de uma Ação para decidir a cor da barra Previsto. */
+export type AcaoComStatus = AcaoNaGrade & { status: StatusAcao }
+
+/**
+ * Regra visual de atraso do CLAUDE.md: a barra Previsto fica vermelha quando
+ * `previstoTermino < hoje`, a ação não está `CONCLUIDO` e não há
+ * `realizadoTermino` apontado.
+ *
+ * É a mesma regra de `acaoEstaAtrasada` em `projeto-resumo.ts`, reescrita aqui
+ * em vez de importada porque aquele módulo depende do enum gerado pelo Prisma e
+ * este é deliberadamente livre de Prisma (ver cabeçalho). As duas são cobertas
+ * por teste; se a regra mudar, mude nas duas.
+ */
+export function previstoEmAtraso(acao: AcaoComStatus, hoje: Date): boolean {
+  if (acao.status === 'CONCLUIDO') return false
+  if (acao.realizadoTermino !== null) return false
+  if (acao.previstoTermino === null) return false
+  return inicioDoDiaUTC(acao.previstoTermino).getTime() < inicioDoDiaUTC(hoje).getTime()
 }

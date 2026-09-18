@@ -4,6 +4,7 @@ import {
   faixaDaBarra,
   gerarSemanas,
   periodoDaGrade,
+  previstoEmAtraso,
   type AcaoNaGrade,
 } from '@/lib/gantt'
 import { ROTULOS_STATUS, type StatusAcao } from '@/lib/acao-validacao'
@@ -87,6 +88,10 @@ export function GanttProjeto({
           <span className="h-2 w-6 rounded-full bg-realizado" />
           Realizado
         </span>
+        <span className="flex items-center gap-2">
+          <span className="h-2 w-6 rounded-full border border-warn" />
+          Previsto em atraso
+        </span>
         {hojeColuna !== null && (
           <span className="flex items-center gap-2">
             <span className="h-3 w-0 border-l border-dashed border-accent" />
@@ -153,6 +158,7 @@ export function GanttProjeto({
               acao.previstoTermino,
               semanas,
             )
+            const emAtraso = previstoEmAtraso(acao, hoje)
             const realizado = faixaDaBarra(
               acao.realizadoInicio,
               acao.realizadoTermino,
@@ -197,8 +203,8 @@ export function GanttProjeto({
                   <Barra
                     faixa={previsto}
                     linha={linhaPrevisto}
-                    classe="border border-previsto"
-                    titulo="Previsto"
+                    classe={emAtraso ? 'border border-warn bg-warn/20' : 'border border-previsto'}
+                    titulo={emAtraso ? 'Previsto — em atraso' : 'Previsto'}
                   />
                 )}
                 {realizado !== null && (

@@ -8,6 +8,7 @@ import {
   inicioDaSemanaUTC,
   periodoDaGrade,
   periodoDasAcoes,
+  previstoEmAtraso,
   type AcaoNaGrade,
 } from './gantt'
 
@@ -203,5 +204,48 @@ describe('agruparPorMes', () => {
   it('separa meses de anos diferentes', () => {
     const grupos = agruparPorMes(gerarSemanas(data('2026-12-28'), data('2027-01-04')))
     expect(grupos.map((g) => g.rotulo)).toEqual(['dez/26', 'jan/27'])
+  })
+})
+
+describe('previstoEmAtraso', () => {
+  const hoje = data('2026-09-17')
+  const base = {
+    previstoInicio: data('2026-09-01'),
+    previstoTermino: data('2026-09-10'),
+    realizadoInicio: null,
+    realizadoTermino: null,
+    status: 'EM_CURSO_50' as const,
+  }
+
+  it('acusa atraso com previstoTermino no passado, sem realizado e não concluída', () => {
+    expect(previstoEmAtraso(base, hoje)).toBe(true)
+  })
+
+  it('não acusa atraso quando previstoTermino é hoje ou futuro', () => {
+    expect(previstoEmAtraso({ ...base, previstoTermino: hoje }, hoje)).toBe(false)
+    expect(
+      previstoEmAtraso({ ...base, previstoTermino: data('2026-09-30') }, hoje),
+    ).toBe(false)
+  })
+
+  it('não acusa atraso quando a ação está concluída', () => {
+    expect(previstoEmAtraso({ ...base, status: 'CONCLUIDO' }, hoje)).toBe(false)
+  })
+
+  it('não acusa atraso quando já há realizadoTermino apontado', () => {
+    expect(
+      previstoEmAtraso({ ...base, realizadoTermino: data('2026-09-12') }, hoje),
+    ).toBe(false)
+  })
+
+  it('não acusa atraso sem previstoTermino', () => {
+    expect(previstoEmAtraso({ ...base, previstoTermino: null }, hoje)).toBe(false)
+  })
+
+  it('compara por dia, ignorando a hora gravada na data', () => {
+    const terminoHojeComHora = new Date('2026-09-17T23:59:00.000Z')
+    expect(
+      previstoEmAtraso({ ...base, previstoTermino: terminoHojeComHora }, hoje),
+    ).toBe(false)
   })
 })
