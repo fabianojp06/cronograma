@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 import { ROTULO_STATUS_AGREGADO, STATUS_AGREGADOS } from '@/lib/projeto-resumo'
 import { algumFiltroAtivo, type FiltrosProjeto } from '@/lib/projeto-filtros'
 
@@ -89,9 +91,9 @@ export function FiltrosProjetos({
           Filtrar
         </button>
         {algumFiltroAtivo(filtros) ? (
-          <a className="text-sm text-textMuted hover:text-text" href="/projetos">
+          <Link className="text-sm text-textMuted hover:text-text" href="/projetos">
             Limpar filtros
-          </a>
+          </Link>
         ) : null}
       </div>
     </form>

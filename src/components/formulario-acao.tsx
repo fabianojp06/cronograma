@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useActionState } from 'react'
 
 import { criarAcao, type EstadoFormularioAcao } from '@/app/projetos/acoes-acao'
@@ -131,9 +132,9 @@ export function FormularioAcao({ projetoId }: { projetoId: string }) {
         >
           {enviando ? 'Salvando…' : 'Salvar ação'}
         </button>
-        <a className="text-sm text-textMuted hover:text-text" href="/projetos">
+        <Link className="text-sm text-textMuted hover:text-text" href="/projetos">
           Cancelar
-        </a>
+        </Link>
       </div>
     </form>
   )

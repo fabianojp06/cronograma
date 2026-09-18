@@ -66,10 +66,11 @@ EM_ANDAMENTO
       fluxo de registrar datas "Previsto")
 
 ### Bloco 4 — Visualização Gantt
-- [ ] Ler o protótipo aprovado em https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs
+- [x] Ler o protótipo aprovado em https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs
       (artboard `D-DetalheGantt`) antes de implementar — layout, tokens de cor e
-      comportamento visual descritos em CLAUDE.md devem ser seguidos fielmente
-- [ ] Componente de grade semanal renderizando, para um Projeto, as barras Previsto
+      comportamento visual descritos em CLAUDE.md devem ser seguidos fielmente —
+      **acesso negado** ao artifact nesta conta (4ª tentativa); ver Log de decisões
+- [x] Componente de grade semanal renderizando, para um Projeto, as barras Previsto
       (azul) e Realizado (verde) de cada Ação sobrepostas na linha do tempo
 - [ ] Regra visual de atraso: se `previstoTermino < hoje` e `status != CONCLUIDO` e
       não há `realizadoTermino`, a barra Previsto fica vermelha
@@ -521,3 +522,59 @@ EM_ANDAMENTO
   protótipo antes de implementar, e o acesso ao artifact segue negado nesta
   conta (ver registro anterior no Log); a implementação terá de se apoiar nos
   tokens e na descrição do CLAUDE.md.
+
+### 2026-09-17 — Bloco 4: grade semanal do Gantt
+
+- **Protótipo `D-DetalheGantt` continua inacessível.** O artifact
+  `WPxn8dThgUAmMPJHAPJzhs` foi lido pelo conector de documentos (não por web
+  fetch) e voltou `verdict: deny`, `reason: access` — 4ª tentativa, mesma
+  situação dos Blocos 2, 3 e 5. **Ação necessária do usuário:** compartilhar o
+  artifact com `fabianojp06@gmail.com` ou colar o conteúdo do artboard. A grade
+  foi construída a partir do CLAUDE.md (tokens de tema, Previsto azul /
+  Realizado verde, linha do "hoje") e **a fidelidade visual segue pendente de
+  revisão**.
+- **`src/lib/gantt.ts`** — módulo puro (sem Prisma, sem Next), no mesmo padrão de
+  `projeto-resumo.ts` e `dias-uteis.ts`: todo o posicionamento é aritmética de
+  calendário e fica coberto por teste sem banco.
+  - **A coluna é a semana, não o dia** — igual às planilhas PLA-DEP/CRO-DEP, que
+    apontam Previsto x Realizado por semana. Dia daria ~400 colunas para os 13
+    meses da planilha sem informação nova.
+  - `inicioDaSemanaUTC` ancora a semana na **segunda-feira** (convenção da
+    planilha); domingo pertence à semana que começou seis dias antes. Tudo em
+    **UTC**, alinhado a `data-hoje.ts` e `acao-validacao.ts` — ler componentes em
+    fuso local faria uma data de meia-noite UTC cair na semana anterior no Brasil.
+  - `periodoDaGrade` = período das ações **alargado por `hoje`**, para que a linha
+    do "hoje" sempre tenha coluna onde aparecer; projeto sem data apontada cai na
+    semana corrente em vez de grade vazia.
+  - `faixaDaBarra` **recorta** a barra aos limites da grade, devolve `null` para
+    barra inteiramente fora, desenha **uma semana quando só uma ponta foi
+    apontada** (ação iniciada sem término é informação, não ausência) e não gera
+    faixa negativa se o término vier antes do início (a ordem das datas é erro de
+    campo em `acao-validacao.ts`, não deve virar layout quebrado).
+  - `agruparPorMes` monta o cabeçalho de dois níveis (mês em cima, dia da
+    segunda-feira embaixo).
+- **`src/components/gantt-projeto.tsx`** — Server Component, **um único CSS grid**
+  para todo o corpo: coluna 1 é o rótulo da ação (`sticky left-0`, acompanha a
+  rolagem horizontal) e as demais são as semanas. Cada ação ocupa **duas linhas**
+  (Previsto em cima, Realizado embaixo), como na planilha. Grid único — e não um
+  por ação — porque é o que permite a **linha vertical tracejada do "hoje"**
+  atravessar todas as ações com `gridRow: 3 / -1`. Previsto = barra de **contorno**
+  azul (`border-previsto`), Realizado = barra **sólida** verde (`bg-realizado`),
+  conforme o CLAUDE.md. Spacers de altura fixa por sublinha evitam que uma ação
+  sem data apontada colapse a raia.
+- **`src/app/projetos/[id]/page.tsx`** — a rota de detalhe do projeto **não
+  existia** (a listagem já linkava para ela e caía em 404, e as Server Actions já
+  revalidavam esse caminho). Server Component com `notFound()` para projeto
+  inexistente ou logicamente excluído, cabeçalho com resumo agregado
+  (`resumirAcoes`) e atalhos para editar / nova ação.
+- **Lint pré-existente corrigido:** três `<a href="/projetos">` de "Cancelar" /
+  "Limpar filtros" viraram `<Link>` — a regra `no-html-link-for-pages` passou a
+  acusá-los, e navegação client-side é o comportamento correto mesmo.
+- Verificação: `npm test` = **149 testes passando** (25 novos em
+  `src/lib/gantt.test.ts`: âncora de segunda-feira, geração de semanas incluindo
+  os ~13 meses da planilha, período das ações, recorte de barra nas duas pontas,
+  ponta única, faixa invertida, coluna do "hoje" dentro e fora da grade,
+  agrupamento por mês atravessando o ano); `tsc --noEmit`, `npm run lint` e
+  `next build` limpos (9 rotas + proxy).
+- **Falta no Bloco 4:** regra visual de atraso (barra Previsto em vermelho) e
+  navegação/paginação horizontal por mês/trimestre — próximos itens.
