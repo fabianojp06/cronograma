@@ -1,3 +1,7 @@
+'use client'
+
+import { useMemo, useState } from 'react'
+
 import {
   agruparPorMes,
   colunaDeHoje,
@@ -7,6 +11,13 @@ import {
   previstoEmAtraso,
   type AcaoNaGrade,
 } from '@/lib/gantt'
+import {
+  gerarJanelas,
+  janelaInicial,
+  limitarIndice,
+  ROTULOS_GRANULARIDADE,
+  type Granularidade,
+} from '@/lib/gantt-periodo'
 import { ROTULOS_STATUS, type StatusAcao } from '@/lib/acao-validacao'
 
 export type LinhaGantt = AcaoNaGrade & {
@@ -54,8 +65,12 @@ function Barra({
  * único (e não um por ação) para que a linha vertical do "hoje" possa atravessar
  * todas as ações com `gridRow: 3 / -1`.
  *
- * A rolagem horizontal é do contêiner: a planilha original cobre ~13 meses e o
- * cabeçalho de mês vai junto, então não há tela larga o bastante para tudo.
+ * A grade desenha **uma janela de período por vez** (mês ou trimestre, ver
+ * `gantt-periodo.ts`): a planilha original cobre ~13 meses e não há tela larga o
+ * bastante para tudo. Dentro da janela ainda há rolagem horizontal do contêiner,
+ * para telas estreitas. A janela aberta por padrão é a de "hoje" quando o
+ * projeto a cobre; a navegação é client-side (o período inteiro já veio do
+ * servidor), então trocar de janela não refaz consulta ao banco.
  */
 export function GanttProjeto({
   acoes,
@@ -72,14 +87,107 @@ export function GanttProjeto({
     )
   }
 
-  const periodo = periodoDaGrade(acoes, hoje)
-  const semanas = gerarSemanas(periodo.inicio, periodo.fim)
+  return <Grade acoes={acoes} hoje={hoje} />
+}
+
+function Grade({ acoes, hoje }: { acoes: LinhaGantt[]; hoje: Date }) {
+  const [granularidade, setGranularidade] = useState<Granularidade>('TRIMESTRE')
+
+  const periodo = useMemo(() => periodoDaGrade(acoes, hoje), [acoes, hoje])
+  const janelas = useMemo(
+    () => gerarJanelas(periodo, granularidade),
+    [periodo, granularidade],
+  )
+
+  // O índice é guardado junto da granularidade que o gerou: ao trocar de
+  // mês para trimestre o número de janelas muda, e reposicionar pela data da
+  // janela aberta mantém o usuário no mesmo ponto do calendário.
+  const [posicao, setPosicao] = useState(() => ({
+    granularidade,
+    indice: janelaInicial(janelas, hoje),
+  }))
+
+  const indice =
+    posicao.granularidade === granularidade
+      ? limitarIndice(posicao.indice, janelas.length)
+      : janelaInicial(janelas, hoje)
+  const janela = janelas[indice]
+
+  function irPara(novoIndice: number) {
+    setPosicao({ granularidade, indice: limitarIndice(novoIndice, janelas.length) })
+  }
+
+  function trocarGranularidade(nova: Granularidade) {
+    const janelasNovas = gerarJanelas(periodo, nova)
+    setPosicao({
+      granularidade: nova,
+      indice: janelaInicial(janelasNovas, janela.inicio),
+    })
+    setGranularidade(nova)
+  }
+
+  const semanas = gerarSemanas(janela.inicio, janela.fim)
   const meses = agruparPorMes(semanas)
   const hojeColuna = colunaDeHoje(semanas, hoje)
+  const indiceDeHoje = janelaInicial(janelas, hoje)
 
   return (
     <section className="mt-8">
-      <div className="flex flex-wrap items-center gap-5 text-xs text-textMuted">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-border px-2 py-1 text-sm disabled:opacity-40"
+            onClick={() => irPara(indice - 1)}
+            disabled={indice === 0}
+            aria-label="Período anterior"
+          >
+            ←
+          </button>
+          <span className="min-w-28 text-center font-display text-sm font-bold">
+            {janela.rotulo}
+          </span>
+          <button
+            type="button"
+            className="rounded-md border border-border px-2 py-1 text-sm disabled:opacity-40"
+            onClick={() => irPara(indice + 1)}
+            disabled={indice === janelas.length - 1}
+            aria-label="Próximo período"
+          >
+            →
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-border px-2 py-1 text-xs text-textMuted disabled:opacity-40"
+            onClick={() => irPara(indiceDeHoje)}
+            disabled={indice === indiceDeHoje}
+          >
+            Hoje
+          </button>
+          <span className="text-xs text-textFaint tabular-nums">
+            {indice + 1} de {janelas.length}
+          </span>
+        </div>
+
+        <label className="flex items-center gap-2 text-xs text-textMuted">
+          Exibir por
+          <select
+            className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-text"
+            value={granularidade}
+            onChange={(evento) =>
+              trocarGranularidade(evento.target.value as Granularidade)
+            }
+          >
+            {(Object.keys(ROTULOS_GRANULARIDADE) as Granularidade[]).map((opcao) => (
+              <option key={opcao} value={opcao}>
+                {ROTULOS_GRANULARIDADE[opcao]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-5 text-xs text-textMuted">
         <span className="flex items-center gap-2">
           <span className="h-2 w-6 rounded-full border border-previsto" />
           Previsto

@@ -74,7 +74,7 @@ EM_ANDAMENTO
       (azul) e Realizado (verde) de cada Ação sobrepostas na linha do tempo
 - [x] Regra visual de atraso: se `previstoTermino < hoje` e `status != CONCLUIDO` e
       não há `realizadoTermino`, a barra Previsto fica vermelha
-- [ ] Navegação/scroll horizontal por período (a planilha original cobre ~13 meses;
+- [x] Navegação/scroll horizontal por período (a planilha original cobre ~13 meses;
       o componente não precisa renderizar tudo de uma vez — paginar por mês/trimestre)
 
 ### Bloco 5 — Dashboard consolidado (visão PLA-DEP)
@@ -596,3 +596,25 @@ EM_ANDAMENTO
   17 arquivos, todos passando. `tsc --noEmit` limpo.
 - **Falta no Bloco 4:** navegação/scroll horizontal por período (paginar por
   mês/trimestre) — hoje a grade renderiza todas as semanas de uma vez.
+
+### 2026-09-17 — Bloco 4: paginação por período do Gantt
+- Criado `src/lib/gantt-periodo.ts` (puro, sem Prisma/Next, igual a `gantt.ts`):
+  `gerarJanelas`, `indiceDaJanela`, `janelaInicial` e `limitarIndice`.
+- **Decisão: janelas são fatias de calendário** (mês cheio ou trimestre cheio),
+  não blocos de N semanas — assim o rótulo da janela ("set/26", "3º tri/26")
+  coincide com o cabeçalho de mês da grade e a navegação fica previsível entre
+  projetos diferentes. Padrão = trimestre (~13 colunas, cabe na tela).
+- `GanttProjeto` virou Client Component: controles ← / → , botão "Hoje", contador
+  "n de N" e seletor Mês/Trimestre. **Toda a navegação é client-side** — o período
+  inteiro já veio do servidor, então trocar de janela não refaz consulta ao banco.
+- A janela aberta por padrão é a de "hoje" quando o projeto a cobre; se "hoje"
+  está fora do período do projeto, abre na primeira janela (abrir num trimestre
+  vazio esconderia todas as barras). Ao trocar de granularidade, a posição é
+  reancorada pela data da janela aberta, não pelo índice.
+- A rolagem horizontal do contêiner foi mantida dentro da janela, para telas
+  estreitas. O recorte das barras fora da janela já era feito por `faixaDaBarra`.
+- 16 testes novos em `src/lib/gantt-periodo.test.ts` (virada de ano, alinhamento
+  ao trimestre de calendário, período de um dia, `fim` anterior a `inicio`,
+  os 13 meses da planilha). `npm test`: 18 arquivos, 171 testes, todos passando;
+  `next build` OK.
+- **Falta:** Bloco 5 — dashboard consolidado (visão PLA-DEP).
