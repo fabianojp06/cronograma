@@ -1,8 +1,8 @@
 # PROGRESS — Cronograma CTCEA
 
 ## Status
-BACKLOG_CONCLUIDO (todos os itens dos Blocos 1–6 marcados; pendente apenas a
-execução dos scripts de migração contra os .xlsx reais, que não estão no repositório)
+BACKLOG_CONCLUIDO (Blocos 1–7 marcados). Pendências restantes são operacionais,
+não de código — ver as entradas de 2026-09-18 no Log de decisões.
 
 ## Contexto do projeto (não apagar — referência para o Claude)
 - Sistema independente que substitui as planilhas PLA-DEP-2026-001.xlsx (consolidado
@@ -101,6 +101,22 @@ execução dos scripts de migração contra os .xlsx reais, que não estão no r
 - [x] Validação pós-importação: contagem de linhas da planilha original vs. registros
       criados, reportada no Log de decisões — `npm run validar:importacao`; a regra de
       conferência está coberta por teste, o número real depende de rodar contra o .xlsx
+
+### Bloco 7 — Dashboards (relatórios consolidados)
+- [x] Menu principal no cabeçalho (Painel / Projetos / Dashboards), visível só com
+      sessão ativa
+- [x] Catálogo de relatórios (`src/lib/dashboard-catalogo.ts`) como fonte única de
+      verdade, alimentando o índice de navegação e as âncoras das seções
+- [x] Relatórios de distribuição por equipe, responsável, natureza, categoria e
+      prioridade, com barra de magnitude embutida na linha
+- [x] Composição da carteira por status agregado (barra empilhada + legenda + números)
+- [x] Relatórios de prazo: aderência Previsto x Realizado, ranking de maiores atrasos
+      (em dias úteis) e radar de vencimentos em 7/15/30 dias
+- [x] Relatórios temporais: curva acumulada Previsto x Realizado (burn-up) e carga
+      de inícios/términos por mês
+- [x] Relatório de higiene do cadastro, com o efeito de cada pendência sobre os números
+- [x] Relatórios de auditoria sobre `HistoricoAlteracao`: replanejamentos por ação e
+      alterações recentes por campo/autor
 
 ## Log de decisões
 (o Claude preenche aqui a cada rodada: o que fez, por quê, o que falta)
@@ -860,3 +876,57 @@ execução dos scripts de migração contra os .xlsx reais, que não estão no r
 - Observação de negócio: o PLA-DEP real tem 1 ação por item; o detalhamento em
   várias ações existe só no CRO-DEP (item 53 do PLA-DEP = projeto do CRO-DEP,
   hoje importados como dois projetos separados).
+
+### 2026-09-18 — Bloco 7: tela de Dashboards
+
+**Menu.** `src/components/cabecalho.tsx` ganhou um menu principal (Painel / Projetos /
+Dashboards) num array `MENU`, para não ser reescrito a cada tela nova. Fica dentro de
+`<Show when="signed-in">`: as telas de domínio são fechadas, um menu para quem não tem
+sessão só levaria ao redirect do Clerk.
+
+**15 relatórios em 6 grupos**, todos em `/dashboards`, com índice de âncoras no topo:
+- *Panorama*: panorama geral (reaproveita `IndicadoresPainel`) e composição por status.
+- *Distribuição*: por equipe, responsável, natureza, categoria e prioridade.
+- *Prazos*: aderência ao prazo, maiores atrasos, próximos vencimentos (7/15/30 dias).
+- *Evolução no tempo*: Previsto x Realizado acumulado (burn-up) e carga por mês.
+- *Qualidade do cadastro*: pendências, com o efeito de cada uma sobre os números.
+- *Auditoria*: replanejamentos e alterações recentes.
+
+**Decisões que valem registro:**
+- O **catálogo** (`dashboard-catalogo.ts`) é a fonte única: índice e seções derivam
+  dele, e a página lança erro se referenciar um id inexistente. Cada relatório declara
+  a *pergunta de negócio* que responde — o critério para um relatório existir.
+- Os relatórios partem de `montarLinhas`/`resumirAcoes`, as mesmas funções do painel
+  consolidado. Duas origens de verdade divergiriam na primeira mudança de regra.
+- **Os filtros valem para a carteira, mas não para a auditoria**: a pergunta da
+  auditoria é "o que mudou no sistema", e recortá-la por equipe esconderia justamente
+  o que se quer fiscalizar. Limitada às 500 alterações mais recentes.
+- **Aderência ao prazo** só considera ação concluída **com** previsto e realizado. Sem
+  as duas pontas não é "no prazo" nem "atrasada" — é não avaliável, e misturar
+  inflaria artificialmente algum dos lados. O número de não avaliáveis aparece na tela.
+- **Atraso é sempre em dias úteis** (`diasUteisEntre`), descontando o dia do prazo.
+- O **burn-up** interrompe a curva Realizado no mês corrente: estendê-la sobre meses
+  futuros desenharia uma queda de ritmo que não aconteceu.
+- **Nenhuma dependência nova.** Gráficos em SVG inline e `div` com largura percentual,
+  tudo server component. Hover via `<title>` nativo, sem JavaScript no cliente.
+- As **regras de cor de gráfico** foram para o CLAUDE.md, incluindo a ordem fixa da
+  pilha de status (verde ao lado de laranja fica abaixo do piso de legibilidade em
+  protanopia; a ordem adotada sobe o pior par adjacente de ΔE 6.6 para 11.7).
+
+**Verificação:**
+- `npm test` = **288 testes passando em 27 arquivos** (221 antes; +67 em 6 arquivos
+  novos de teste, um por módulo de agregação).
+- `tsc --noEmit` e `npm run lint` limpos; `next build` completo, rota `/dashboards`
+  registrada.
+- **Conferência visual** num Postgres local descartável (migration + seed + histórico
+  fictício): os componentes foram renderizados em modo claro e escuro e as consultas
+  Prisma da página foram executadas de verdade. Isso pegou **dois defeitos que o build
+  não pegaria**: (1) as barras de "Carga por mês" não apareciam — `height` em % não
+  resolve contra pai de altura automática, virou pixel; (2) os rótulos diretos do
+  burn-up eram cortados na borda do `viewBox` — margem direita de 64 para 132.
+  Lição: build verde não é conferência de layout.
+
+**Não feito (fora do pedido, mas anotado):** o CLAUDE.md exige alternância clara/escura
+e **ela ainda não existe** — `globals.css` define os tokens de `.dark`, mas nada aplica
+a classe. Os componentes novos já usam só tokens, então passam a funcionar assim que o
+alternador for implementado. Candidato a Bloco 8.

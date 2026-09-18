@@ -95,11 +95,55 @@ protótipo, ajustando apenas o que a interatividade real exigir:
 4. Formulário de Ação (artboard `F-FormularioAcao`) — inclui painel de histórico
    de alterações ao lado do formulário
 
+A tela **Dashboards** (`/dashboards`) não tem artboard no protótipo — foi desenhada
+depois, seguindo os mesmos tokens e o mesmo estilo (traço lateral, barra embutida
+na linha, sem card com sombra).
+
+## Regras de gráfico (tela Dashboards)
+
+Valem para qualquer visualização nova. Não são estéticas — cada uma evita um erro
+de leitura concreto.
+
+- **Sem biblioteca de charting.** Os gráficos são SVG inline ou `div` com largura
+  percentual, renderizados no servidor. Não adicionar dependência de gráfico sem
+  necessidade real.
+- **Um único eixo.** Nunca dois eixos Y no mesmo gráfico. Duas grandezas de escala
+  diferente viram dois gráficos ou small multiples com escala compartilhada.
+- **Magnitude usa uma cor só** (`accent`). Comparar volume não é questão de
+  identidade; pintar cada linha de uma cor sugere uma categoria que não existe.
+- **Cor de status é reservada.** `previsto` (azul), `realizado` (verde), `warn`
+  (atraso) e `textFaint` (não iniciado) significam sempre a mesma coisa em toda a
+  aplicação, e nunca são reaproveitadas como "série 4".
+- **Ordem da pilha por status é fixa:** `SEM_ACOES → CONCLUIDO → EM_ANDAMENTO →
+  NAO_INICIADO → ATRASADO`. Não é arbitrária: verde ao lado de laranja dá ΔE 6.6 em
+  protanopia (abaixo do piso de legibilidade); nesta ordem o pior par adjacente sobe
+  para ΔE 11.7. Se for mexer na ordem, revalidar.
+- **Identidade nunca fica só na cor.** Toda série tem legenda; até 4 séries também
+  levam rótulo direto. Todo gráfico vem acompanhado dos números (tabela ou rótulo).
+- **Os dois modos são validados separadamente.** O modo escuro não é inversão
+  automática — os tokens trocam juntos e o contraste é conferido nos dois.
+
 ## Estrutura de dados (ver SCHEMA.md para o schema Prisma completo)
 
 - `Projeto` — um item do plano de ação (equivale a uma linha do PLA-DEP)
 - `Acao` — pertence a um `Projeto`, tem datas Previsto/Realizado e status
 - `HistoricoAlteracao` — trilha de auditoria de mudanças em `Acao`
+
+## Catálogo de relatórios
+
+`src/lib/dashboard-catalogo.ts` é a **única fonte de verdade** sobre quais relatórios
+existem na tela `/dashboards`. O índice de navegação e as âncoras de seção são
+derivados dele — ao criar um relatório novo, declare-o lá primeiro; a página estoura
+de propósito se referenciar um id que não está no catálogo.
+
+Cada relatório declara a `pergunta` de negócio que responde. Relatório que não
+responde a uma pergunta que alguém realmente faz não entra.
+
+A agregação fica em módulos puros (`dashboard-dimensoes`, `dashboard-prazos`,
+`dashboard-temporal`, `dashboard-qualidade`, `dashboard-auditoria`), sem Prisma e
+sem Next, cada um com seu `.test.ts` — igual ao resto de `src/lib/`. Os relatórios
+partem das mesmas funções do painel consolidado (`montarLinhas`, `resumirAcoes`):
+painel e dashboard nunca podem somar diferente.
 
 ## Regras para o loop autônomo (autoloop.sh)
 
