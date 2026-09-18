@@ -13,7 +13,10 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "importar:pla-dep": "tsx scripts/importar-pla-dep.ts",
+    "importar:cro-dep": "tsx scripts/importar-cro-dep.ts",
+    "validar:importacao": "tsx scripts/validar-importacao.ts"
   },
   "dependencies": {
     "@clerk/localizations": "^4.17.1",
@@ -37,6 +40,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "xlsx": "^0.18.5"
   }
 }

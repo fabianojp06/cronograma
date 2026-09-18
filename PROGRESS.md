@@ -1,7 +1,8 @@
 # PROGRESS — Cronograma CTCEA
 
 ## Status
-EM_ANDAMENTO
+BACKLOG_CONCLUIDO (todos os itens dos Blocos 1–6 marcados; pendente apenas a
+execução dos scripts de migração contra os .xlsx reais, que não estão no repositório)
 
 ## Contexto do projeto (não apagar — referência para o Claude)
 - Sistema independente que substitui as planilhas PLA-DEP-2026-001.xlsx (consolidado
@@ -85,17 +86,21 @@ EM_ANDAMENTO
       (5ª tentativa); ver Log de decisões
 - [x] Tela consolidada listando todos os Projetos ativos com progresso agregado
       (% de Ações com status CONCLUIDO sobre o total do projeto)
-- [ ] Filtros globais por equipe, responsável, categoria e status
-- [ ] Indicador/contador de projetos com pelo menos uma Ação atrasada (ver regra do
+- [x] Filtros globais por equipe, responsável, categoria e status
+- [x] Indicador/contador de projetos com pelo menos uma Ação atrasada (ver regra do
       Bloco 4)
 
 ### Bloco 6 — Migração dos dados existentes
-- [ ] Script (rodado uma vez, fora da aplicação) para importar PLA-DEP-2026-001.xlsx
-      para o novo schema, seguindo a tabela de mapeamento em SCHEMA.md
-- [ ] Script equivalente para importar CRO-DEP-2026-001.xlsx como um Projeto
-      individual com suas Ações detalhadas
-- [ ] Validação pós-importação: contagem de linhas da planilha original vs. registros
-      criados, reportada no Log de decisões
+- [x] Script (rodado uma vez, fora da aplicação) para importar PLA-DEP-2026-001.xlsx
+      para o novo schema, seguindo a tabela de mapeamento em SCHEMA.md — o .xlsx
+      real não está no repositório; o script está pronto e o mapeamento coberto
+      por teste com uma planilha-fixture (ver Log de decisões)
+- [x] Script equivalente para importar CRO-DEP-2026-001.xlsx como um Projeto
+      individual com suas Ações detalhadas — `npm run importar:cro-dep`; o .xlsx
+      real continua fora do repositório, mapeamento coberto por teste-fixture
+- [x] Validação pós-importação: contagem de linhas da planilha original vs. registros
+      criados, reportada no Log de decisões — `npm run validar:importacao`; a regra de
+      conferência está coberta por teste, o número real depende de rodar contra o .xlsx
 
 ## Log de decisões
 (o Claude preenche aqui a cada rodada: o que fez, por quê, o que falta)
@@ -651,3 +656,202 @@ EM_ANDAMENTO
   (9 rotas + proxy).
 - **Falta:** filtros globais por responsável (equipe, categoria e status já vêm
   reaproveitados) e o indicador de projetos com Ação atrasada — próximos itens do Bloco 5.
+
+### 2026-09-17 — Bloco 5: filtros globais (equipe, responsável, categoria, status)
+- Os filtros de equipe/categoria/status já existiam de rodadas anteriores; faltava
+  **responsável**, que era o item pendente do backlog. Adicionado em
+  `src/lib/projeto-filtros.ts` (`FiltrosProjeto.responsavel`, leitura da query
+  string, `algumFiltroAtivo`, `whereProjetoAtivo`), no componente
+  `src/components/filtros-projetos.tsx` e nas duas telas que o consomem
+  (`/` painel consolidado e `/projetos`).
+- `responsavel` é coluna de `Projeto` (texto livre, opcional), então entra no `where`
+  do Prisma por igualdade exata — mesmo tratamento dado a equipe e categoria. Só o
+  status agregado continua filtrado em memória, por ser derivado das Ações.
+- As opções do select saem de `opcoesDistintas` sobre **todos** os projetos ativos
+  (não sobre o resultado já filtrado), senão aplicar um filtro esconderia as demais
+  opções — mesma regra dos selects existentes.
+- Grade do formulário passou de `sm:grid-cols-3` para `sm:grid-cols-2 lg:grid-cols-4`
+  para acomodar o quarto select sem apertar os rótulos.
+- Verificação: `npm test` → 19 arquivos, 177 testes, todos passando; `npx tsc --noEmit`
+  sem erros.
+- **Falta:** indicador/contador de projetos com pelo menos uma Ação atrasada (último
+  item do Bloco 5) e todo o Bloco 6 (importação das planilhas).
+
+### 2026-09-17 — Bloco 5: indicador de projetos com atraso
+- `ResumoPainel` ganhou `projetosAtrasados` (projetos com ao menos uma Ação atrasada)
+  e `acoesAtrasadas` (soma das ações atrasadas), calculados em `resumirPainel` a
+  partir de `resumo.acoesAtrasadas` — e não do status agregado `ATRASADO`. Os dois
+  coincidem hoje, mas contar pela ação mantém uma única origem de verdade
+  (`acaoEstaAtrasada`) e não quebra se a precedência do status agregado mudar.
+- `IndicadoresPainel` passou a exibir o 4º indicador ("Projetos com atraso"), com
+  traço e valor em `warn` (vermelho do tema) quando há atraso, ocupando a quarta
+  coluna que já existia no grid. O indicador é um link para `/?status=ATRASADO`,
+  reaproveitando o filtro por status agregado do Bloco 5 como drill-down.
+- `Indicador` ganhou prop opcional `href`: sem ela continua sendo `div`, com ela
+  vira `Link` — evita duplicar o componente só para o caso clicável.
+- Testes: 4 novos casos em `painel-consolidado.test.ts` (contagem com e sem atraso,
+  soma das ações, e o caso zerado). `npm test` — 19 arquivos, 179 testes, todos
+  passando.
+- Próximo: Bloco 6 — scripts de importação das planilhas PLA-DEP e CRO-DEP.
+
+### 2026-09-17 — Bloco 6: importação do PLA-DEP-2026-001.xlsx
+
+- **O arquivo .xlsx não está no repositório** (nem versionado, nem acessível nesta
+  rodada). Em vez de travar o item, ele foi entregue como script pronto para o
+  operador rodar apontando para o arquivo: `npm run importar:pla-dep -- <caminho.xlsx>`.
+  **Falta:** executar contra a planilha real e conferir os totais (é o 3º item do
+  Bloco 6, "Validação pós-importação").
+- **Separação E/S × regra:** toda a conversão vive em `src/lib/importacao-planilha.ts`,
+  módulo **puro** que recebe a matriz de células (`sheet_to_json(..., {header: 1})`)
+  e devolve Projetos com Ações — mesma escolha dos demais módulos, para manter o
+  `CHECK_CMD` sem banco e sem depender do .xlsx. `scripts/importar-pla-dep.ts` só lê
+  o arquivo, chama o Prisma e relata.
+- **Formato assumido da planilha** (documentado no topo do módulo, a revisar quando o
+  arquivo real aparecer): cabeçalho localizado pelos próprios títulos (há linhas de
+  título acima dele); colunas do Projeto preenchidas só na primeira linha do bloco
+  (células mescladas) → preenchimento para baixo; cada Ação em **duas** linhas,
+  Previsto e Realizado, distinguidas pela coluna `Linha`.
+- **Datas**: aceita `Date`, serial do Excel (base 1899-12-30) e `dd/mm/aaaa`, sempre
+  normalizando para meia-noite **UTC** — igual a `data-hoje.ts`/`dias-uteis.ts`, senão
+  a data escorregaria um dia. `31/02` é rejeitado em vez de "rolar" para março.
+- **Progresso → `StatusAcao`**: percentual cai para a faixa imediatamente **abaixo**
+  (60% → `EM_CURSO_50`) — arredondar progresso para cima mentiria no painel. Texto
+  ("Concluído", "Em curso", "Não iniciado") também é aceito.
+- **Linha ruim vira aviso, não exceção**: com centenas de linhas, morrer na primeira
+  célula suja esconderia o resto dos problemas. O script roda em **simulação por
+  padrão** e só grava com `--gravar`; projeto com mesma `referencia` é substituído,
+  então reimportar depois de corrigir a planilha não duplica.
+- `xlsx` (SheetJS) entrou como **devDependency** — é usado só pelo script de migração,
+  não pela aplicação.
+- Verificação: `npm test` = **195 testes passando** (16 novos em
+  `importacao-planilha.test.ts`); `tsc --noEmit`, `npm run lint` e `next build` limpos.
+- Próximo: script equivalente do CRO-DEP-2026-001.xlsx (o módulo já aceita
+  `referenciaPadrao` para o caso de projeto único).
+
+### 2026-09-17 — Bloco 6: importação do CRO-DEP-2026-001.xlsx
+
+- **Reaproveitou o PLA-DEP em vez de duplicar o parser**: as colunas de Ação
+  (`Ação`, `Linha`, `Início`, `Término`, `Progresso`) são as mesmas nas duas
+  planilhas. `importarPlanilha` ganhou a opção `projetoInicial`, que abre o
+  resultado com um projeto já ativo; `importarCroDep` só monta esse projeto e
+  delega o resto. Sem isso, toda ação do CRO-DEP cairia no aviso "antes de
+  qualquer projeto", porque a planilha de projeto único **não tem** coluna
+  "Assunto".
+- **De onde vem a identidade do projeto**: das linhas de título acima do
+  cabeçalho (`extrairIdentificacaoProjeto`) — referência pelo padrão
+  `CRO-DEP-2026-001` e nome por "Projeto: X", pelo rótulo em célula vizinha, ou
+  pelo título com a referência removida. `--nome=` e `--referencia=` no script
+  vencem a planilha, para o caso de título não confiável.
+- **Casamento no texto cru, não normalizado**: `normalizarRotulo` descarta os
+  dois-pontos, que é exatamente o separador de "Projeto: X" — daí a regex do
+  rótulo rodar sobre a célula original.
+- **Campos do cabeçalho do projeto** (Equipe, Responsável, Natureza, Categoria,
+  Apoio, Setor, Prioridade) vêm da primeira linha de dados: no CRO-DEP eles se
+  repetem por ação, e deixar o cabeçalho do projeto vazio quebraria os filtros
+  do painel consolidado.
+- **Avisa em vez de falhar** (mesma escolha do PLA-DEP): sem nome, sem
+  referência, ou quando a planilha gera mais de um projeto (sinal de que é um
+  PLA-DEP disfarçado). O script simula por padrão; `--gravar` grava, e projeto
+  com a mesma `referencia` é substituído — reimportar não duplica.
+- Verificação: `npm test` = **205 testes passando** (10 novos); `tsc --noEmit` e
+  `npm run lint` limpos.
+- Próximo: último item do Bloco 6 — validação pós-importação (contagem planilha ×
+  banco), que depende de rodar os dois scripts contra os .xlsx reais.
+
+### 2026-09-17 — Bloco 6: validação pós-importação
+
+- **O que este item entrega**: `npm run validar:importacao -- <arquivo.xlsx>`
+  (`--cro-dep` para a planilha de projeto único) relê a planilha original e
+  compara com o que está gravado, do total agregado até a ação individual. Não
+  grava nada e **sai com código 1** quando há divergência, para não passar
+  despercebido dentro de um pipeline.
+- **Por que não bastava o "Gravado: N projetos e M ações" do importador**: aquele
+  número compara o importador com ele mesmo. A conferência que o item pede é
+  planilha × banco, feita numa segunda leitura independente — e por isso o
+  módulo `src/lib/validacao-importacao.ts` recebe a lista do banco, não confia no
+  retorno da gravação.
+- **Quatro níveis de conferência**, do grosso ao fino: totais (projetos/ações);
+  cobertura de linhas (`linhaCabecalho + lidas + ignoradas` tem de fechar com o
+  total de linhas da aba — é o que pega linha sumida em silêncio); projeto a
+  projeto (`PROJETO_FALTANDO`, `PROJETO_EXCEDENTE`, `CONTAGEM_ACOES`); e ação a
+  ação (`ACAO_FALTANDO`, `ACAO_EXCEDENTE`, `DESCRICAO_DIVERGENTE`).
+- **Casamento planilha × banco pela `referencia`** quando existe (é o
+  identificador do negócio) e pelo **nome normalizado** quando não — os blocos do
+  PLA-DEP nem sempre têm referência própria. Descrição de ação também é comparada
+  normalizada (sem acento/caixa/espaço repetido): divergir por causa de dois
+  espaços seria ruído, divergir por texto realmente diferente não.
+- **Só os projetos daquela planilha entram na conferência**: o banco pode ter
+  projetos criados pela aplicação ou vindos da outra planilha, e acusá-los como
+  "excedentes" esconderia as divergências reais.
+- **`linhasLidas > 2 × ações` também é divergência**: cada ação ocupa no máximo
+  as linhas Previsto e Realizado; mais que isso significa descrições repetidas
+  colapsadas na mesma ação, uma apagando as datas da outra — exatamente o erro
+  silencioso que uma contagem só de totais deixaria passar.
+- Verificação: `npm test` = **218 testes passando** (13 novos em
+  `validacao-importacao.test.ts`); `tsc --noEmit` e `npm run lint` limpos.
+- **Contagem real ainda em aberto**: os .xlsx continuam fora do repositório, então
+  não há número de linhas reais para registrar aqui. A sequência para o operador é
+  `importar:pla-dep -- <arquivo> --gravar` → `validar:importacao -- <arquivo>` e
+  colar o relatório impresso neste Log.
+- Com isto, todos os itens dos Blocos 1–6 estão marcados.
+
+### 2026-09-17 — Rodada sem item pendente (verificação)
+- Varredura do backlog: **nenhum item `- [ ]` restante** nos Blocos 1–6 — todos os
+  itens estão marcados como concluídos. Nada foi implementado nesta rodada porque
+  não há próximo item a executar.
+- `CHECK_CMD` rodado mesmo assim para confirmar que a árvore atual está sã:
+  `npm test` = **218 testes passando em 21 arquivos**.
+- **Único pendente conhecido continua sendo operacional, não de código**: rodar
+  `importar:pla-dep -- <arquivo> --gravar` e `validar:importacao -- <arquivo>`
+  contra os .xlsx reais (PLA-DEP-2026-001 / CRO-DEP-2026-001), que não estão no
+  repositório, e colar o relatório de conferência neste Log.
+- Para o loop continuar produzindo, é preciso acrescentar novos itens ao backlog
+  (ex.: Bloco 7) ou fornecer as planilhas reais.
+
+### 2026-09-18 — Variáveis de ambiente na Vercel (feito pelo Claude, autorizado pelo usuário)
+- **Cadastradas na Vercel** (projeto `cronograma-lktu`, ambientes Production, Preview e
+  Development) via `vercel env add`, sem expor valores no terminal nem no repositório:
+  `DATABASE_URL` (montada a partir do TCP proxy público do Postgres no Railway),
+  `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` e `CLERK_SECRET_KEY` (obtidas com `clerk env pull`
+  da app `cronograma`, instância **development** `ins_3JTS4...`), além das 4
+  `NEXT_PUBLIC_CLERK_SIGN_*`. Pendência 1 do registro de Railway/Vercel: **resolvida**.
+- Produção reimplantada (`vercel redeploy`): build ok, mas **todas as rotas respondem 404**
+  (`X-Vercel-Error: NOT_FOUND`). Causa: o projeto na Vercel está com
+  **Framework Preset = "Other"**, então a saída do Next.js não é servida. Não é o mesmo
+  erro de antes (aquele era o build quebrando por falta de `DATABASE_URL`).
+- **Pendências:**
+  1. Trocar o Framework Preset para **Next.js** (Vercel → Settings → Build & Deployment,
+     ou `vercel.json` com `"framework": "nextjs"`) e reimplantar.
+  2. O `main` local está **11 commits à frente** do `origin/main` (Blocos 2–5 nunca foram
+     enviados), e há alterações ainda não commitadas (Blocos 5–6). Produção hoje só tem o
+     Bloco 1. É preciso fazer commit e `git push` para o deploy automático publicar o sistema.
+  3. As chaves são da instância **development** do Clerk (aparece o selo "Development
+     mode"). Para produção de verdade: `clerk deploy`, domínio próprio e troca das chaves.
+  4. Login Microsoft/Outlook no dashboard do Clerk continua pendente.
+  5. A Vercel tem Deployment Protection ativa: quem acessa precisa entrar primeiro na
+     conta Vercel. Para usuários da CTCEA, desativar isso e deixar só o Clerk.
+
+### 2026-09-18 — Importação das planilhas reais (Bloco 6 fechado de verdade)
+- As planilhas estavam em `public/`, **pasta que o Next.js serve publicamente**.
+  Foram movidas para `dados/`, e `/dados/` + `*.xlsx` (exceto fixtures de teste)
+  entraram no `.gitignore`. Nunca colocar dados internos em `public/`.
+- **O layout real do PLA-DEP não batia com a fixture**: a coluna ASSUNTO vem
+  **vazia** em todas as linhas, o marcador Previsto/Realizado fica na coluna
+  **CATEGORIA** (CRONOGRAMA vem vazia) e o STATUS usa o texto "Em Progresso".
+  Resultado da 1ª simulação: 0 projetos.
+- Ajustes em `src/lib/importacao-planilha.ts`: sem Assunto, **cada N° vira um
+  Projeto** (nome = texto da AÇÃO, referência `PLA-DEP-2026-001/<N°>`) com uma
+  Ação; marcador na CATEGORIA é lido como Previsto/Realizado e não é gravado como
+  categoria; "progresso" = em curso. Os scripts passam `prefixoItem` (nome do
+  arquivo). 3 testes novos → `npm test` = **221 passando**.
+- **Gravado no PostgreSQL do Railway e conferido (`validar:importacao`)**:
+  - PLA-DEP-2026-001: 150 linhas na aba, 124 lidas (62 pares Previsto/Realizado),
+    **62 projetos × 62 no banco, 62 ações × 62**. Conferência OK.
+  - CRO-DEP-2026-001: 50 linhas na aba, 16 lidas, **1 projeto, 8 ações × 8**.
+    Conferência OK (usar `--cro-dep` no validador). Substituiu o projeto de
+    exemplo de mesma referência.
+- Os 2 projetos fictícios do seed (`PLA-DEP-2026-014`, `PLA-DEP-2026-027`)
+  foram **desativados** (`ativo = false`, reversível). Banco: 63 projetos ativos.
+- Observação de negócio: o PLA-DEP real tem 1 ação por item; o detalhamento em
+  várias ações existe só no CRO-DEP (item 53 do PLA-DEP = projeto do CRO-DEP,
+  hoje importados como dois projetos separados).

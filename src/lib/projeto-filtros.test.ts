@@ -10,10 +10,19 @@ import {
 import type { StatusAgregado } from './projeto-resumo'
 
 describe('lerFiltros', () => {
-  it('lê equipe, categoria e status de URLSearchParams', () => {
+  it('lê equipe, responsável, categoria e status de URLSearchParams', () => {
     expect(
-      lerFiltros(new URLSearchParams('equipe=STI&categoria=Rede&status=ATRASADO')),
-    ).toEqual({ equipe: 'STI', categoria: 'Rede', status: 'ATRASADO' })
+      lerFiltros(
+        new URLSearchParams(
+          'equipe=STI&responsavel=Ana&categoria=Rede&status=ATRASADO',
+        ),
+      ),
+    ).toEqual({
+      equipe: 'STI',
+      responsavel: 'Ana',
+      categoria: 'Rede',
+      status: 'ATRASADO',
+    })
   })
 
   it('lê do objeto searchParams do Next e usa o primeiro valor repetido', () => {
@@ -22,7 +31,9 @@ describe('lerFiltros', () => {
 
   it('normaliza ausência e string vazia/espaços para null', () => {
     expect(lerFiltros({})).toEqual(FILTROS_VAZIOS)
-    expect(lerFiltros({ equipe: '', categoria: '   ' })).toEqual(FILTROS_VAZIOS)
+    expect(
+      lerFiltros({ equipe: '', responsavel: ' ', categoria: '   ' }),
+    ).toEqual(FILTROS_VAZIOS)
   })
 
   it('ignora status desconhecido em vez de quebrar a listagem', () => {
@@ -34,6 +45,7 @@ describe('algumFiltroAtivo', () => {
   it('é falso sem filtros e verdadeiro com qualquer um deles', () => {
     expect(algumFiltroAtivo(FILTROS_VAZIOS)).toBe(false)
     expect(algumFiltroAtivo({ ...FILTROS_VAZIOS, categoria: 'Rede' })).toBe(true)
+    expect(algumFiltroAtivo({ ...FILTROS_VAZIOS, responsavel: 'Ana' })).toBe(true)
   })
 })
 
@@ -43,9 +55,20 @@ describe('whereProjetoAtivo', () => {
   })
 
   it('inclui apenas os filtros preenchidos', () => {
-    expect(whereProjetoAtivo({ equipe: 'STI', categoria: null, status: 'CONCLUIDO' })).toEqual(
-      { ativo: true, equipe: 'STI' },
-    )
+    expect(
+      whereProjetoAtivo({
+        equipe: 'STI',
+        responsavel: null,
+        categoria: null,
+        status: 'CONCLUIDO',
+      }),
+    ).toEqual({ ativo: true, equipe: 'STI' })
+  })
+
+  it('filtra por responsável como coluna do banco', () => {
+    expect(
+      whereProjetoAtivo({ ...FILTROS_VAZIOS, responsavel: 'Ana' }),
+    ).toEqual({ ativo: true, responsavel: 'Ana' })
   })
 })
 

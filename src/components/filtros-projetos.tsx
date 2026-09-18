@@ -16,18 +16,20 @@ const classeRotulo = 'block text-sm font-medium text-textMuted'
 export function FiltrosProjetos({
   filtros,
   equipes,
+  responsaveis,
   categorias,
   acao = '/projetos',
 }: {
   filtros: FiltrosProjeto
   equipes: string[]
+  responsaveis: string[]
   categorias: string[]
   /** Rota que recebe o GET — a mesma tela que renderiza os filtros. */
   acao?: string
 }) {
   return (
     <form className="mt-6 border-l-2 border-accent pl-4" method="get" action={acao}>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className={classeRotulo} htmlFor="equipe">
             Equipe
@@ -42,6 +44,25 @@ export function FiltrosProjetos({
             {equipes.map((equipe) => (
               <option key={equipe} value={equipe}>
                 {equipe}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className={classeRotulo} htmlFor="responsavel">
+            Responsável
+          </label>
+          <select
+            className={classeSelect}
+            id="responsavel"
+            name="responsavel"
+            defaultValue={filtros.responsavel ?? ''}
+          >
+            <option value="">Todos</option>
+            {responsaveis.map((responsavel) => (
+              <option key={responsavel} value={responsavel}>
+                {responsavel}
               </option>
             ))}
           </select>

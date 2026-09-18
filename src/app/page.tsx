@@ -41,7 +41,7 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
     // filtrado — senão o filtro aplicado esconderia as demais opções.
     prisma.projeto.findMany({
       where: { ativo: true },
-      select: { equipe: true, categoria: true },
+      select: { equipe: true, responsavel: true, categoria: true },
     }),
   ])
 
@@ -76,6 +76,7 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
       <FiltrosProjetos
         filtros={filtros}
         equipes={opcoesDistintas(valores.map((v) => v.equipe))}
+        responsaveis={opcoesDistintas(valores.map((v) => v.responsavel))}
         categorias={opcoesDistintas(valores.map((v) => v.categoria))}
         acao="/"
       />

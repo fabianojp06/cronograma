@@ -17,6 +17,10 @@ export type ResumoPainel = {
    */
   percentualConcluido: number
   projetosConcluidos: number
+  /** Projetos com pelo menos uma Ação atrasada (regra em `acaoEstaAtrasada`). */
+  projetosAtrasados: number
+  /** Total de Ações atrasadas somadas de todos os projetos. */
+  acoesAtrasadas: number
 }
 
 export function resumirPainel(
@@ -32,5 +36,9 @@ export function resumirPainel(
     percentualConcluido:
       totalAcoes === 0 ? 0 : Math.round((acoesConcluidas / totalAcoes) * 100),
     projetosConcluidos: linhas.filter((l) => l.resumo.status === 'CONCLUIDO').length,
+    // Conta pelo número de ações atrasadas do projeto, e não pelo status
+    // agregado, para que os dois indicadores sigam a mesma origem de verdade.
+    projetosAtrasados: linhas.filter((l) => l.resumo.acoesAtrasadas > 0).length,
+    acoesAtrasadas: linhas.reduce((soma, l) => soma + l.resumo.acoesAtrasadas, 0),
   }
 }

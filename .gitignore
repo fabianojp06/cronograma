@@ -43,3 +43,11 @@ next-env.d.ts
 
 # prisma client gerado
 /src/generated
+
+.vercel
+.env*
+
+# planilhas originais (dados internos, nunca versionar nem servir em public/)
+/dados/
+*.xlsx
+!tests/**/*.xlsx

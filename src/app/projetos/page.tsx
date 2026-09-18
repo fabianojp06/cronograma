@@ -34,7 +34,7 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
     }),
     prisma.projeto.findMany({
       where: { ativo: true },
-      select: { equipe: true, categoria: true },
+      select: { equipe: true, responsavel: true, categoria: true },
     }),
   ])
 
@@ -64,6 +64,7 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
       <FiltrosProjetos
         filtros={filtros}
         equipes={opcoesDistintas(valores.map((v) => v.equipe))}
+        responsaveis={opcoesDistintas(valores.map((v) => v.responsavel))}
         categorias={opcoesDistintas(valores.map((v) => v.categoria))}
       />
 

@@ -7,12 +7,13 @@ function linha(
   totalAcoes: number,
   acoesConcluidas: number,
   status: StatusAgregado,
+  acoesAtrasadas = 0,
 ): { resumo: ResumoProjeto } {
   return {
     resumo: {
       totalAcoes,
       acoesConcluidas,
-      acoesAtrasadas: 0,
+      acoesAtrasadas,
       percentualConcluido:
         totalAcoes === 0 ? 0 : Math.round((acoesConcluidas / totalAcoes) * 100),
       status,
@@ -28,6 +29,8 @@ describe('resumirPainel', () => {
       acoesConcluidas: 0,
       percentualConcluido: 0,
       projetosConcluidos: 0,
+      projetosAtrasados: 0,
+      acoesAtrasadas: 0,
     })
   })
 
@@ -65,5 +68,23 @@ describe('resumirPainel', () => {
     ])
 
     expect(painel.projetosConcluidos).toBe(2)
+  })
+
+  it('conta projetos com pelo menos uma ação atrasada e soma as ações atrasadas', () => {
+    const painel = resumirPainel([
+      linha(4, 1, 'ATRASADO', 2),
+      linha(3, 0, 'ATRASADO', 1),
+      linha(5, 2, 'EM_ANDAMENTO'),
+    ])
+
+    expect(painel.projetosAtrasados).toBe(2)
+    expect(painel.acoesAtrasadas).toBe(3)
+  })
+
+  it('não conta como atrasado o projeto sem ações atrasadas', () => {
+    const painel = resumirPainel([linha(2, 2, 'CONCLUIDO'), linha(0, 0, 'SEM_ACOES')])
+
+    expect(painel.projetosAtrasados).toBe(0)
+    expect(painel.acoesAtrasadas).toBe(0)
   })
 })

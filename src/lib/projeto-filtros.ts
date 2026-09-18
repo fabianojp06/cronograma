@@ -1,22 +1,24 @@
 /**
  * Filtros da listagem de Projetos — módulo puro. Lê/escreve os filtros na query
- * string (`?equipe=STI&categoria=...&status=ATRASADO`) para que a tela seja
- * linkável e funcione sem JavaScript (form com method GET).
+ * string (`?equipe=STI&responsavel=...&categoria=...&status=ATRASADO`) para que
+ * a tela seja linkável e funcione sem JavaScript (form com method GET).
  *
- * Equipe e categoria são texto livre no schema, então são filtradas por
- * igualdade exata contra a lista de valores que existem no banco.
+ * Equipe, responsável e categoria são texto livre no schema, então são
+ * filtrados por igualdade exata contra a lista de valores que existem no banco.
  */
 
 import { STATUS_AGREGADOS, type StatusAgregado } from './projeto-resumo'
 
 export type FiltrosProjeto = {
   equipe: string | null
+  responsavel: string | null
   categoria: string | null
   status: StatusAgregado | null
 }
 
 export const FILTROS_VAZIOS: FiltrosProjeto = {
   equipe: null,
+  responsavel: null,
   categoria: null,
   status: null,
 }
@@ -48,6 +50,7 @@ export function lerFiltros(entrada: EntradaFiltros): FiltrosProjeto {
 
   return {
     equipe: lerParametro(entrada, 'equipe'),
+    responsavel: lerParametro(entrada, 'responsavel'),
     categoria: lerParametro(entrada, 'categoria'),
     // Status desconhecido é ignorado em vez de virar erro: a query string vem
     // do usuário e um valor inválido não deve quebrar a listagem.
@@ -56,14 +59,20 @@ export function lerFiltros(entrada: EntradaFiltros): FiltrosProjeto {
 }
 
 export function algumFiltroAtivo(filtros: FiltrosProjeto): boolean {
-  return filtros.equipe !== null || filtros.categoria !== null || filtros.status !== null
+  return (
+    filtros.equipe !== null ||
+    filtros.responsavel !== null ||
+    filtros.categoria !== null ||
+    filtros.status !== null
+  )
 }
 
-/** Filtros que o Prisma resolve no banco (equipe e categoria são colunas). */
+/** Filtros que o Prisma resolve no banco (equipe, responsável e categoria são colunas). */
 export function whereProjetoAtivo(filtros: FiltrosProjeto) {
   return {
     ativo: true,
     ...(filtros.equipe !== null ? { equipe: filtros.equipe } : {}),
+    ...(filtros.responsavel !== null ? { responsavel: filtros.responsavel } : {}),
     ...(filtros.categoria !== null ? { categoria: filtros.categoria } : {}),
   }
 }
