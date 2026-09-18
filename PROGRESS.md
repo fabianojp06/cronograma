@@ -78,11 +78,12 @@ EM_ANDAMENTO
       o componente não precisa renderizar tudo de uma vez — paginar por mês/trimestre)
 
 ### Bloco 5 — Dashboard consolidado (visão PLA-DEP)
-- [ ] Ler o protótipo aprovado em https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs
+- [x] Ler o protótipo aprovado em https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs
       (artboard `C-PainelOperacional`) antes de implementar — inclui alternância
       claro/escuro, indicadores por traço lateral, e link de cada linha para o
-      detalhe do projeto (Bloco 4)
-- [ ] Tela consolidada listando todos os Projetos ativos com progresso agregado
+      detalhe do projeto (Bloco 4) — **acesso negado** ao artifact nesta conta
+      (5ª tentativa); ver Log de decisões
+- [x] Tela consolidada listando todos os Projetos ativos com progresso agregado
       (% de Ações com status CONCLUIDO sobre o total do projeto)
 - [ ] Filtros globais por equipe, responsável, categoria e status
 - [ ] Indicador/contador de projetos com pelo menos uma Ação atrasada (ver regra do
@@ -618,3 +619,35 @@ EM_ANDAMENTO
   os 13 meses da planilha). `npm test`: 18 arquivos, 171 testes, todos passando;
   `next build` OK.
 - **Falta:** Bloco 5 — dashboard consolidado (visão PLA-DEP).
+
+### 2026-09-17 — Bloco 5: painel consolidado (leitura do protótipo + tela)
+
+- **Protótipo `C-PainelOperacional` continua inacessível.** Nova leitura do artifact
+  `WPxn8dThgUAmMPJHAPJzhs` pelo conector de documentos (não web fetch) voltou
+  `verdict: deny`, `reason: access` — 5ª tentativa, mesmo resultado dos Blocos 2 a 4.
+  **Ação necessária do usuário:** compartilhar o artifact com `fabianojp06@gmail.com`
+  ou colar o conteúdo do artboard. A tela foi construída a partir do CLAUDE.md
+  (indicadores por traço lateral, tokens de tema, Manrope nos títulos) e a
+  **fidelidade visual segue pendente de revisão**.
+- **Rota `/` virou o painel consolidado** (Server Component): antes era uma página
+  estática de "em construção". É a tela de entrada do sistema e já está protegida
+  pelo proxy do Clerk (`/` não está em `ROTAS_PUBLICAS`), então pode consultar o banco.
+- **Reuso deliberado de `ListaProjetos` e `FiltrosProjetos`** em vez de uma segunda
+  tabela: a regra de status agregado e a de atraso são as mesmas de `/projetos` e
+  duplicá-las garantiria divergência na primeira mudança. `FiltrosProjetos` ganhou a
+  prop opcional `acao` (default `/projetos`) para o form GET e o "Limpar filtros"
+  apontarem para a tela que os renderiza — no painel, `acao="/"`.
+- **Módulo puro novo `src/lib/painel-consolidado.ts`** (`resumirPainel`): calcula os
+  indicadores sobre as linhas **já resumidas** pela listagem, então o número do painel
+  e o da tabela não podem divergir. O progresso geral é **ponderado pelo total de
+  ações** (soma de concluídas / soma de ações), não a média dos percentuais por
+  projeto — senão um projeto de 1 ação pesaria igual a um de 40 (há teste cobrindo
+  exatamente esse caso, 5% vs. 50%).
+- `IndicadoresPainel` (`src/components/indicadores-painel.tsx`): projetos ativos,
+  ações, progresso geral — cada um com traço lateral colorido, sem card com sombra.
+  O contador de projetos com ação atrasada fica para o próximo item do Bloco 5.
+- Verificação: `npm test` = **176 testes passando** (5 novos em
+  `painel-consolidado.test.ts`); `tsc --noEmit`, `npm run lint` e `next build` limpos
+  (9 rotas + proxy).
+- **Falta:** filtros globais por responsável (equipe, categoria e status já vêm
+  reaproveitados) e o indicador de projetos com Ação atrasada — próximos itens do Bloco 5.

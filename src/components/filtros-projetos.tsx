@@ -17,13 +17,16 @@ export function FiltrosProjetos({
   filtros,
   equipes,
   categorias,
+  acao = '/projetos',
 }: {
   filtros: FiltrosProjeto
   equipes: string[]
   categorias: string[]
+  /** Rota que recebe o GET — a mesma tela que renderiza os filtros. */
+  acao?: string
 }) {
   return (
-    <form className="mt-6 border-l-2 border-accent pl-4" method="get" action="/projetos">
+    <form className="mt-6 border-l-2 border-accent pl-4" method="get" action={acao}>
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
           <label className={classeRotulo} htmlFor="equipe">
@@ -91,7 +94,7 @@ export function FiltrosProjetos({
           Filtrar
         </button>
         {algumFiltroAtivo(filtros) ? (
-          <Link className="text-sm text-textMuted hover:text-text" href="/projetos">
+          <Link className="text-sm text-textMuted hover:text-text" href={acao}>
             Limpar filtros
           </Link>
         ) : null}
