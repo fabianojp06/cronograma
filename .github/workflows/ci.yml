@@ -1,0 +1,56 @@
+# CI do Sistema Cronograma CTCEA — roda o mesmo que um desenvolvedor roda na
+# máquina dele, na mesma ordem: lint, testes, build.
+#
+# Existe porque os checks anteriores (Vercel e GitGuardian) conferem build e
+# segredos, mas não a suíte de testes: um PR podia entrar com teste quebrado
+# sem ninguém ver.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Um push novo cancela a execução anterior da mesma branch — não faz sentido
+# esperar CI de um commit que já foi substituído.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Lint, testes e build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` dispara o postinstall (`prisma generate`), que não precisa de
+      # DATABASE_URL — ver o comentário em prisma.config.ts.
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes
+        run: npm test
+
+      # O build é também o typecheck: `tsc --noEmit` sozinho falha porque
+      # `PageProps`/`LayoutProps` são tipos que o próprio `next build` gera.
+      #
+      # Os valores abaixo são descartáveis e servem só para o build completar —
+      # nada é implantado a partir daqui, e nenhuma conexão de banco é aberta
+      # (as páginas são todas dinâmicas, renderizadas sob demanda). Os segredos
+      # de verdade vivem na Vercel.
+      - name: Build (inclui typecheck)
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk
+          CLERK_SECRET_KEY: sk_test_valor_descartavel_de_ci

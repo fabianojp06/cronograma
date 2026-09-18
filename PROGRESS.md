@@ -930,3 +930,27 @@ sessão só levaria ao redirect do Clerk.
 e **ela ainda não existe** — `globals.css` define os tokens de `.dark`, mas nada aplica
 a classe. Os componentes novos já usam só tokens, então passam a funcionar assim que o
 alternador for implementado. Candidato a Bloco 8.
+
+### 2026-09-18 — CI de testes no GitHub Actions
+
+- Até aqui o repositório **não tinha CI rodando a suíte**: os únicos checks no PR
+  eram Vercel (build + deploy) e GitGuardian (segredos). Um PR podia entrar com
+  teste quebrado sem ninguém ver — justamente a rede de proteção do projeto.
+- `.github/workflows/ci.yml` roda, em push para `main` e em todo pull request, a
+  mesma sequência que um desenvolvedor roda localmente: `npm ci` → `npm run lint`
+  → `npm test` → `npm run build`.
+- **O build faz as vezes de typecheck.** `tsc --noEmit` sozinho falha no projeto
+  porque `PageProps`/`LayoutProps` são tipos gerados pelo próprio `next build`;
+  rodar o build cobre o typecheck sem passo extra.
+- O build recebe `DATABASE_URL` e chaves do Clerk **descartáveis**, só para
+  completar: nada é implantado a partir do CI e nenhuma conexão de banco é aberta
+  (todas as rotas são dinâmicas, renderizadas sob demanda). Os segredos reais
+  continuam só na Vercel.
+- `concurrency` com `cancel-in-progress`: push novo cancela a execução anterior da
+  mesma branch.
+- **Verificação**: a sequência inteira foi executada num clone limpo (`git ls-files`
+  → `npm ci` do zero), com o env exato do workflow — lint limpo, **288 testes
+  passando**, build completo com as 10 rotas. O YAML foi validado por parser.
+- Observação registrada no mesmo dia: o repositório está ligado a **dois projetos
+  Vercel** (`cronograma` / `prj_xVigz...` e `cronograma-lktu` / `prj_HxI1VBY...`,
+  este último o do CLAUDE.md). Cada push gera dois deploys — decidir qual manter.
