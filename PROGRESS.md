@@ -827,7 +827,12 @@ execução dos scripts de migração contra os .xlsx reais, que não estão no r
      Bloco 1. É preciso fazer commit e `git push` para o deploy automático publicar o sistema.
   3. As chaves são da instância **development** do Clerk (aparece o selo "Development
      mode"). Para produção de verdade: `clerk deploy`, domínio próprio e troca das chaves.
-  4. Login Microsoft/Outlook no dashboard do Clerk continua pendente.
+  4. Login Microsoft/Outlook: **conexão já habilitada** no dashboard do Clerk — o
+     usuário confirmou ter entrado com a conta Microsoft (2026-09-18). Em instância
+     **development** o Clerk usa credenciais OAuth compartilhadas dele, então funciona
+     sem app no Azure. O que resta é junto da pendência 3: ao promover a instância para
+     production, registrar um app no Azure AD da CTCEA e cadastrar Client ID/Secret
+     próprios em SSO Connections → Microsoft, senão o botão para de funcionar.
   5. A Vercel tem Deployment Protection ativa: quem acessa precisa entrar primeiro na
      conta Vercel. Para usuários da CTCEA, desativar isso e deixar só o Clerk.
 
