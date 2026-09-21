@@ -24,7 +24,13 @@ export type LinhaPriorizacao = PontoMatriz & {
  * "o que fazer primeiro" — por isso a posição aparece como número, e não só
  * como ordem implícita das linhas.
  */
-export function TabelaPriorizacao({ linhas }: { linhas: LinhaPriorizacao[] }) {
+export function TabelaPriorizacao({
+  linhas,
+  destaqueId = null,
+}: {
+  linhas: LinhaPriorizacao[]
+  destaqueId?: string | null
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-3xl border-collapse text-sm">
@@ -41,14 +47,18 @@ export function TabelaPriorizacao({ linhas }: { linhas: LinhaPriorizacao[] }) {
           </tr>
         </thead>
         <tbody>
-          {linhas.map((linha, indice) => {
+          {linhas.map((linha) => {
             const descricao = DESCRICAO_QUADRANTE[linha.quadrante]
+            const destacada = linha.id === destaqueId
             return (
-              <tr key={linha.id} className="border-b border-borderSoft bg-surface">
+              <tr
+                key={linha.id}
+                className={`border-b border-borderSoft ${destacada ? 'bg-borderSoft' : 'bg-surface'}`}
+              >
                 <td
                   className={`border-l-2 ${TRACO_QUADRANTE[linha.quadrante]} px-3 py-2.5 text-right tabular-nums text-textFaint`}
                 >
-                  {indice + 1}
+                  {linha.posicao}
                 </td>
                 <td className="px-3 py-2.5">
                   <Link
@@ -61,12 +71,20 @@ export function TabelaPriorizacao({ linhas }: { linhas: LinhaPriorizacao[] }) {
                     {linha.equipe ?? 'Sem equipe'}
                     {linha.responsavel ? ` · ${linha.responsavel}` : ''}
                   </span>
-                  <Link
-                    className="mt-1 inline-block text-xs text-textMuted hover:text-accent"
-                    href={`/priorizacao/${linha.id}`}
-                  >
-                    Reavaliar
-                  </Link>
+                  <span className="mt-1 flex gap-3 text-xs">
+                    <Link
+                      className="text-textMuted hover:text-accent"
+                      href={`/priorizacao?projeto=${linha.id}#matriz`}
+                    >
+                      Ver na matriz
+                    </Link>
+                    <Link
+                      className="text-textMuted hover:text-accent"
+                      href={`/priorizacao/${linha.id}`}
+                    >
+                      Reavaliar
+                    </Link>
+                  </span>
                 </td>
                 <td className="px-3 py-2.5 text-textMuted">
                   {descricao.numero}. {descricao.rotulo}

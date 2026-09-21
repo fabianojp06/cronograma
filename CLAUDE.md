@@ -149,6 +149,11 @@ de leitura concreto.
   os pontos seria redundante e gastaria em decoração as cores reservadas a status.
   O contraste do ponto sobre cada uma das quatro tintas foi validado em ≥ 3:1 nos
   dois modos — ao trocar uma tinta, revalidar.
+- **Ponto da matriz leva o número do ranking, não o nome.** Nome escrito no plano
+  se sobrepunha quando dois projetos tinham notas parecidas. O número é o mesmo
+  "#" da tabela e a legenda ao lado liga número → nome. Pontos que se tocam são
+  afastados em círculo, com um traço até a posição real. `?projeto=<id>` destaca
+  um projeto (os demais esmaecem); a tela `/priorizacao/[id]` usa o mesmo destaque.
 
 ## Estrutura de dados (ver SCHEMA.md para o schema Prisma completo)
 
