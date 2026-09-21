@@ -201,6 +201,28 @@ PRIORIDADE         = SE(Esforço = 0; Benefício × GUT; (Benefício × GUT) / E
   `matriz-calculo.test.ts` como teste de paridade. Se um deles quebrar, o cálculo
   deixou de ser o modelo aprovado.
 
+## Migrations em produção
+
+O `build` roda `scripts/migrar-producao.ts` antes do `next build`, e esse script
+aplica `prisma migrate deploy` **somente quando `VERCEL_ENV=production`**.
+
+A guarda não é zelo excessivo: a `DATABASE_URL` está cadastrada nos **três**
+ambientes da Vercel (Production, Preview e Development) apontando para o **mesmo**
+banco do Railway. Sem ela, o preview de um pull request aplicaria a migration em
+produção antes do merge, deixando o banco à frente do código no ar.
+
+- A decisão fica em `src/lib/migracao-deploy.ts`, coberta por teste — não é um
+  `&&` na linha do `build`.
+- **Fora da Vercel pula**: o CI roda `next build` com uma `DATABASE_URL`
+  descartável apontando para localhost; migrar ali derrubaria o pipeline.
+- **Produção sem `DATABASE_URL` falha o build**, em vez de publicar uma versão
+  que espera tabelas que ninguém criou.
+- **Falha da migration aborta o build** pelo mesmo motivo.
+- `PULAR_MIGRACAO=1` destrava um deploy sem mexer no código, em emergência.
+- Migrar vem **antes** de construir: se o build falhar depois, o banco fica à
+  frente do código, o que é seguro porque as migrations aqui são aditivas. O
+  inverso não seria.
+
 ## Regras para o loop autônomo (autoloop.sh)
 
 - Antes de cada rodada, o `PROGRESS.md` deste projeto (não um genérico) deve estar na
