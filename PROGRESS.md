@@ -126,6 +126,18 @@ não de código — ver as entradas de 2026-09-18 no Log de decisões.
       preferência for "Sistema"
 - [x] UI do Clerk (modal de login, UserButton) seguindo os mesmos tokens
 
+### Bloco 9 — Matriz de Priorização (Benefício x Esforço ponderado por GUT)
+- [x] Schema `AvaliacaoProjeto` (1:1 opcional com Projeto) e `PesoCriterio`, em
+      migration nova, sem tocar na anterior
+- [x] Catálogo dos dez critérios, escalas e quadrantes como fonte única
+- [x] Cálculo transcrito da planilha, com teste de paridade contra as três linhas
+      preenchidas do arquivo original
+- [x] Tela `/priorizacao` com plano Esforço × Benefício em quatro quadrantes e
+      ranking por prioridade
+- [x] Formulário de avaliação por projeto, com totais e quadrante recalculados
+- [x] Pesos ajustáveis por critério (`/priorizacao/pesos`), somando 100% por grupo
+- [x] Entrada "Priorização" no menu principal
+
 ## Log de decisões
 (o Claude preenche aqui a cada rodada: o que fez, por quê, o que falta)
 
@@ -1004,3 +1016,71 @@ batem com a tabela do CLAUDE.md (`#F5F7FA`→`#0B1418`, `#FFFFFF`→`#121C21`,
 **Ressalva honesta**: a UI do Clerk não pôde ser conferida em tela — exige chaves
 vivas e rede até o Clerk, que este ambiente não tem. O mapeamento de variáveis
 está tipado e compila; vale um olhar na tela de login depois do deploy.
+
+### 2026-09-21 — Bloco 9: Matriz de Priorização
+
+Nova tela a partir da planilha `Matriz de Priorização: Benefício x Esforço
+(Ponderado por GUT)` enviada pelo usuário.
+
+**O modelo, lido das fórmulas do arquivo (não do visual):**
+
+```
+TOTAL DE BENEFÍCIO = Σ (nota × peso)        5 critérios, escala 0/3/6/9
+TOTAL DE ESFORÇO   = Σ (nota × peso)        5 critérios, escala 0/3/6/9
+TOTAL GUT          = G × U × T              produto; cada fator de 1 a 5
+PRIORIDADE         = SE(Esforço = 0; Benefício × GUT; (Benefício × GUT) / Esforço)
+Quadrantes: X = Esforço, Y = Benefício, limiares X = 3 e Y = 4
+```
+
+**Decisões tomadas com o usuário** (as três estruturais foram perguntadas antes de
+qualquer código, porque errar nelas custaria migration refeita):
+1. A matriz avalia os **Projetos que já existem**, em relação 1:1 opcional — não
+   cria cadastro paralelo. Reaproveita nome, equipe e responsável, e o score
+   conversa com o campo `prioridade` que o Projeto já tinha.
+2. **Pesos ajustáveis**, guardados no banco, começando nos 20% da planilha.
+3. **Critérios fixos** no código, com os nomes exatos do arquivo.
+
+**Decisões técnicas que valem registro:**
+- **Os totais não são colunas.** São derivados a cada leitura, porque mudar um
+  peso precisa repontuar a carteira inteira na hora. Gravá-los daria dois valores
+  para a mesma verdade, e eles mudariam sozinhos.
+- **"Não avaliado" é a ausência do registro**, não uma linha de zeros. A planilha
+  precisava de 45 linhas zeradas por ser planilha; um banco não precisa.
+- **Pesos em inteiros** (20 = 20%): a regra é "o grupo soma 100", e em ponto
+  flutuante essa conferência falharia por arredondamento.
+- **Soma ponderada feita em inteiros** e só então dividida por 100. A planilha
+  guarda 5.400000000000001 por somar `nota × 0,2` em float; aqui 5,4 é exato.
+  Efeito colateral: a prioridade da linha 1 sai 140,63 e a planilha mostra 140,62
+  — a diferença é o erro da planilha, não fórmula diferente.
+- **Ambiguidades da planilha que precisaram de decisão**, ambas documentadas no
+  código: (a) as faixas de quadrante se tocam (0–3 e 3–6), então o limiar foi
+  atribuído ao lado "alto", que não subestima esforço; (b) a tabela de quadrantes
+  para em 6 de esforço e 8 de benefício, mas a escala vai a 9 — sem teto, um
+  projeto com esforço 9 ficaria sem quadrante.
+- **Quadrante é posição, não cor**: as quatro regiões têm tinta de fundo e os
+  pontos ficam todos em `accent`. Colorir os pontos seria redundante num 2×2 e
+  gastaria as cores reservadas a status. Contraste do ponto sobre cada tinta
+  validado em ≥ 3:1 nos dois modos.
+- **A matriz recomenda, não sobrescreve** `Projeto.prioridade`: a tabela mostra o
+  score calculado e a prioridade cadastrada lado a lado.
+
+**Verificação:**
+- `npm test` = **356 passando em 30 arquivos** (311 antes; +45). Inclui teste de
+  paridade com as três linhas preenchidas da planilha original — benefício,
+  esforço, GUT e prioridade batendo valor a valor.
+- `tsc --noEmit`, `npm run lint` e `next build` limpos; 13 rotas.
+- **Ponta a ponta num Postgres local descartável**: migration aplicada, os três
+  projetos da planilha gravados e relidos pela mesma consulta da página, com os
+  totais conferindo. Depois os pesos foram alterados (Compromissos a 60%) para
+  provar que o ranking realmente se reordena.
+- **Conferência visual** em navegador (harness Vite + Playwright, descartado
+  depois), nos dois temas. Pegou duas colisões de rótulo que o build não pegaria:
+  o nome do quadrante batia nas linhas de limiar, e o rótulo direto do ponto caía
+  sobre o ponto vizinho. Corrigido com rótulo de região no canto externo e rótulo
+  de ponto ao lado, com halo na cor da superfície.
+
+**Observação de negócio para o usuário:** o ranking e o quadrante **podem
+discordar**, e isso é propriedade do modelo, não defeito. Na conferência, um
+projeto de baixo benefício (quadrante 3) ficou em 1º no ranking porque o GUT alto
+domina a fórmula, enquanto um Quick Win legítimo ficou em 3º. Vale a CTCEA decidir
+se lê primeiro o quadrante ou o score — a tela mostra os dois.

@@ -33,19 +33,20 @@ model Projeto {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  acoes Acao[]
+  acoes     Acao[]
+  avaliacao AvaliacaoProjeto?
 
   @@index([ativo])
   @@index([equipe])
 }
 
 model Acao {
-  id               String     @id @default(cuid())
-  projetoId        String
-  projeto          Projeto    @relation(fields: [projetoId], references: [id], onDelete: Cascade)
-  numero           Int // sequencial dentro do projeto
-  descricao        String
-  status           StatusAcao @default(NAO_INICIADO)
+  id        String     @id @default(cuid())
+  projetoId String
+  projeto   Projeto    @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  numero    Int // sequencial dentro do projeto
+  descricao String
+  status    StatusAcao @default(NAO_INICIADO)
 
   previstoInicio   DateTime?
   previstoTermino  DateTime?
@@ -73,4 +74,57 @@ model HistoricoAlteracao {
   alteradoPor String? // login/nome de quem alterou, se aplicável
 
   @@index([acaoId, alteradoEm])
+}
+
+/// Avaliação de um Projeto na Matriz de Priorização (Benefício x Esforço
+/// ponderado por GUT). Relação 1:1 opcional — projeto sem avaliação
+/// simplesmente não tem registro aqui, e é isso que significa "não avaliado".
+/// A planilha original precisava de 45 linhas zeradas por ser planilha.
+///
+/// As notas dos 10 critérios usam a escala 0/3/6/9 da planilha; G, U e T usam
+/// a escala GUT clássica de 1 a 5. Os totais (benefício, esforço, GUT e
+/// prioridade) NÃO são colunas: são derivados das notas e dos pesos vigentes,
+/// em `matriz-calculo.ts`. Guardá-los daria dois valores para a mesma verdade,
+/// e eles mudariam sozinhos ao ajustar um peso.
+model AvaliacaoProjeto {
+  id        String  @id @default(cuid())
+  projetoId String  @unique
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  // Benefício — escala 0/3/6/9
+  beneficioCompromissos     Int @default(0)
+  beneficioValorTecnologico Int @default(0)
+  beneficioClima            Int @default(0)
+  beneficioGovernanca       Int @default(0)
+  beneficioEficiencia       Int @default(0)
+
+  // Esforço — escala 0/3/6/9
+  esforcoOrcamento        Int @default(0)
+  esforcoDuracao          Int @default(0)
+  esforcoCapacidadeEquipe Int @default(0)
+  esforcoResistencia      Int @default(0)
+  esforcoComplexidade     Int @default(0)
+
+  // GUT — escala 1 a 5
+  gravidade Int @default(1)
+  urgencia  Int @default(1)
+  tendencia Int @default(1)
+
+  observacao  String?
+  avaliadoPor String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Peso de um critério da matriz, em pontos percentuais inteiros (20 = 20%).
+///
+/// Inteiro e não decimal de propósito: a regra é "a soma do grupo dá 100",
+/// e com ponto flutuante essa conferência falharia por arredondamento.
+/// Uma linha por critério; critério sem linha usa o peso padrão do catálogo,
+/// então a tabela vazia equivale à configuração original da planilha.
+model PesoCriterio {
+  criterio  String   @id
+  peso      Int
+  updatedAt DateTime @updatedAt
 }

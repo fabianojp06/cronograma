@@ -111,9 +111,10 @@ protótipo, ajustando apenas o que a interatividade real exigir:
 4. Formulário de Ação (artboard `F-FormularioAcao`) — inclui painel de histórico
    de alterações ao lado do formulário
 
-A tela **Dashboards** (`/dashboards`) não tem artboard no protótipo — foi desenhada
-depois, seguindo os mesmos tokens e o mesmo estilo (traço lateral, barra embutida
-na linha, sem card com sombra).
+As telas **Dashboards** (`/dashboards`) e **Matriz de Priorização**
+(`/priorizacao`) não têm artboard no protótipo — foram desenhadas depois,
+seguindo os mesmos tokens e o mesmo estilo (traço lateral, barra embutida na
+linha, sem card com sombra).
 
 ## Regras de gráfico (tela Dashboards)
 
@@ -138,6 +139,12 @@ de leitura concreto.
   levam rótulo direto. Todo gráfico vem acompanhado dos números (tabela ou rótulo).
 - **Os dois modos são validados separadamente.** O modo escuro não é inversão
   automática — os tokens trocam juntos e o contraste é conferido nos dois.
+- **Quadrante é posição, não cor.** No plano da Matriz de Priorização as quatro
+  regiões têm tinta de FUNDO (`--quad-*` em globals.css), e os pontos ficam todos
+  na mesma cor. Num gráfico 2×2 quem identifica o quadrante é a posição; colorir
+  os pontos seria redundante e gastaria em decoração as cores reservadas a status.
+  O contraste do ponto sobre cada uma das quatro tintas foi validado em ≥ 3:1 nos
+  dois modos — ao trocar uma tinta, revalidar.
 
 ## Estrutura de dados (ver SCHEMA.md para o schema Prisma completo)
 
@@ -160,6 +167,39 @@ A agregação fica em módulos puros (`dashboard-dimensoes`, `dashboard-prazos`,
 sem Next, cada um com seu `.test.ts` — igual ao resto de `src/lib/`. Os relatórios
 partem das mesmas funções do painel consolidado (`montarLinhas`, `resumirAcoes`):
 painel e dashboard nunca podem somar diferente.
+
+## Matriz de Priorização (`/priorizacao`)
+
+Substitui a planilha `Matriz de Priorização: Benefício x Esforço (Ponderado por
+GUT)`. As fórmulas foram transcritas da planilha e **não devem ser "melhoradas"
+sem decisão do negócio** — são o modelo aprovado pela CTCEA:
+
+```
+TOTAL DE BENEFÍCIO = Σ (nota × peso)        5 critérios, escala 0/3/6/9
+TOTAL DE ESFORÇO   = Σ (nota × peso)        5 critérios, escala 0/3/6/9
+TOTAL GUT          = G × U × T              produto, cada fator de 1 a 5
+PRIORIDADE         = SE(Esforço = 0; Benefício × GUT; (Benefício × GUT) / Esforço)
+```
+
+- `src/lib/matriz-criterios.ts` é a **fonte única** dos dez critérios, das escalas
+  e dos quadrantes. Os `id` dos critérios são exatamente os nomes das colunas de
+  `AvaliacaoProjeto` — formulário, cálculo e gravação percorrem a mesma lista.
+- **O GUT é produto, não média.** A planilha exibe "33%" ao lado de G, U e T, mas
+  nenhuma fórmula dela usa esse número. Multiplicar é o que dá ao GUT sua
+  não-linearidade: 5×5×5 = 125 contra 3×3×3 = 27.
+- **Esforço zero não divide**: a planilha devolve só Benefício × GUT nesse caso.
+  A guarda foi reproduzida como está.
+- **Totais não são colunas do banco.** São derivados das notas e dos pesos
+  vigentes a cada leitura, porque mudar um peso tem de repontuar a carteira
+  inteira na hora. Guardá-los daria dois valores para a mesma verdade.
+- **Pesos** ficam em `PesoCriterio`, em pontos percentuais inteiros; cada grupo
+  precisa somar exatamente 100. Critério sem linha usa o padrão do catálogo, então
+  a tabela vazia equivale à configuração original da planilha.
+- **A matriz recomenda, não sobrescreve.** O campo `Projeto.prioridade` continua
+  sendo decisão humana; a tela mostra os dois lado a lado.
+- Os três projetos preenchidos da planilha original estão em
+  `matriz-calculo.test.ts` como teste de paridade. Se um deles quebrar, o cálculo
+  deixou de ser o modelo aprovado.
 
 ## Regras para o loop autônomo (autoloop.sh)
 
