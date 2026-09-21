@@ -1126,3 +1126,34 @@ tsc e lint limpos.
 **Efeito prático:** a migration da Matriz de Priorização será aplicada sozinha no
 próximo deploy de produção, e toda mudança de schema futura também — sem ninguém
 precisar lembrar.
+
+### 2026-09-21 — Migration aplicada em produção, e o projeto Vercel duplicado
+
+**A migration da Matriz de Priorização foi aplicada.** O deploy de produção do
+merge do PR #4 (`a7d92d5`) no projeto **`cronograma-lktu`** ficou `READY`. Isso é
+conclusivo, não suposição: com `VERCEL_ENV=production`, uma falha do
+`prisma migrate deploy` faria o script sair com código 1 e o deploy viraria
+`ERROR`. As tabelas `AvaliacaoProjeto` e `PesoCriterio` existem no Railway.
+
+**O projeto duplicado quebrou — e foi esta mudança que o quebrou.** O mesmo commit
+falhou no projeto **`cronograma`** (`prj_xVigz...`), com a mensagem da guarda:
+
+```
+[migração] VERCEL_ENV=production mas DATABASE_URL está vazia.
+Error: Command "npm run build" exited with 1
+```
+
+Esse projeto nunca teve variáveis cadastradas — elas foram só para o
+`cronograma-lktu`. Antes ele construía verde porque `next build` não toca no banco,
+mas **o app publicado ali já estava quebrado em runtime**: toda página que consulta
+o Prisma daria 500. A guarda não criou o problema; tornou visível um deploy de
+produção sem banco que passava despercebido desde o início.
+
+**Decisão do usuário: desconectar o duplicado** (Vercel → `cronograma` → Settings →
+Git → Disconnect). A guarda fica como está — foi ela que flagrou o problema, e
+afrouxá-la devolveria a cegueira. Registrado no CLAUDE.md que
+`prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO` é o único alvo de deploy.
+
+**Erro meu que vale registrar:** ao confirmar o deploy eu conferi apenas o
+`cronograma-lktu` e relatei o resultado como se fosse geral. Com dois projetos
+ligados ao mesmo repositório, conferir um só não basta.
