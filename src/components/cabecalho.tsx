@@ -11,6 +11,7 @@ const MENU = [
   { href: "/", rotulo: "Painel" },
   { href: "/projetos", rotulo: "Projetos" },
   { href: "/dashboards", rotulo: "Dashboards" },
+  { href: "/priorizacao", rotulo: "Priorização" },
 ] as const;
 
 /** Barra superior fixa: identidade do sistema, menu e sessão do usuário. */

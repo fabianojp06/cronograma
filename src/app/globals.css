@@ -15,6 +15,15 @@
   --on-accent: #FFFFFF;
   --warn: #E76F51;
   --table-head-bg: #FAFBFC;
+
+  /* Tintas dos quadrantes da Matriz de Priorização. São fundo de região, não
+     marca de dado: a identidade do quadrante vem da posição e do rótulo, e o
+     ponto continua numa cor só. Contraste do ponto sobre cada tinta validado
+     em >= 3:1 nos dois modos. */
+  --quad-quick-wins: #ECFDF5;
+  --quad-estrategicos: #FEF6EC;
+  --quad-viaveis: #EFF6FF;
+  --quad-descartar: #FDF0EC;
 }
 
 .dark {
@@ -29,6 +38,11 @@
   --on-accent: #0B1418;
   --warn: #F3866A;
   --table-head-bg: #0F1A1F;
+
+  --quad-quick-wins: #0F2A22;
+  --quad-estrategicos: #2A2013;
+  --quad-viaveis: #111E2E;
+  --quad-descartar: #2A1A16;
 }
 
 @theme inline {
@@ -43,6 +57,11 @@
   --color-onAccent: var(--on-accent);
   --color-warn: var(--warn);
   --color-tableHeadBg: var(--table-head-bg);
+
+  --color-quadQuickWins: var(--quad-quick-wins);
+  --color-quadEstrategicos: var(--quad-estrategicos);
+  --color-quadViaveis: var(--quad-viaveis);
+  --color-quadDescartar: var(--quad-descartar);
 
   /* Cores semânticas de status (ver CLAUDE.md) */
   --color-previsto: #2563EB;
