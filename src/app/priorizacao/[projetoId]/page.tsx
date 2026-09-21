@@ -5,7 +5,13 @@ import {
   FormularioAvaliacao,
   type ValoresAvaliacao,
 } from '@/components/formulario-avaliacao'
-import { calcularAvaliacao, formatarTotal, type Avaliacao } from '@/lib/matriz-calculo'
+import { MatrizQuadrantes, type PontoMatriz } from '@/components/matriz-quadrantes'
+import {
+  calcularAvaliacao,
+  formatarTotal,
+  ordenarPorPrioridade,
+  type Avaliacao,
+} from '@/lib/matriz-calculo'
 import { DESCRICAO_QUADRANTE } from '@/lib/matriz-criterios'
 import { montarPesos } from '@/lib/matriz-validacao'
 import { formatarDataBR } from '@/lib/formatacao'
@@ -18,7 +24,7 @@ export default async function AvaliarProjetoPage({
 }: PageProps<'/priorizacao/[projetoId]'>) {
   const { projetoId } = await params
 
-  const [projeto, linhasPeso] = await Promise.all([
+  const [projeto, linhasPeso, carteira] = await Promise.all([
     prisma.projeto.findFirst({
       where: { id: projetoId, ativo: true },
       select: {
@@ -31,11 +37,34 @@ export default async function AvaliarProjetoPage({
       },
     }),
     prisma.pesoCriterio.findMany({ select: { criterio: true, peso: true } }),
+    prisma.projeto.findMany({
+      where: { ativo: true, avaliacao: { isNot: null } },
+      select: { id: true, nome: true, avaliacao: true },
+    }),
   ])
 
   if (!projeto) notFound()
 
   const pesos = montarPesos(linhasPeso)
+
+  // A carteira inteira entra no plano para dar contexto; o projeto desta
+  // página é o destacado e os demais ficam esmaecidos.
+  const pontos: PontoMatriz[] = ordenarPorPrioridade(
+    carteira.map((p) => ({
+      projeto: p,
+      resultado: calcularAvaliacao(p.avaliacao as unknown as Avaliacao, pesos),
+    })),
+  ).map(({ projeto: p, resultado: r }, indice) => ({
+    id: p.id,
+    nome: p.nome,
+    posicao: indice + 1,
+    beneficio: r.beneficio,
+    esforco: r.esforco,
+    gut: r.gut,
+    prioridade: r.prioridade,
+    quadrante: r.quadrante,
+  }))
+  const posicaoNoRanking = pontos.find((p) => p.id === projeto.id)?.posicao ?? null
   const avaliacao = projeto.avaliacao
   const resultado =
     avaliacao === null
@@ -117,6 +146,20 @@ export default async function AvaliarProjetoPage({
         <p className="mt-4 text-xs text-textFaint">
           Última avaliação em {formatarDataBR(avaliacao.updatedAt)}.
         </p>
+      ) : null}
+
+      {posicaoNoRanking !== null ? (
+        <section className="mt-10 border-t border-border pt-8">
+          <h2 className="font-display text-lg font-extrabold">Posição na matriz</h2>
+          <p className="mt-1 text-sm text-textMuted">
+            Este projeto é o <strong className="text-text">{posicaoNoRanking}º</strong> de{' '}
+            {pontos.length} no ranking. Os demais projetos avaliados aparecem
+            esmaecidos, para comparação.
+          </p>
+          <div className="mt-4">
+            <MatrizQuadrantes pontos={pontos} destaqueId={projeto.id} />
+          </div>
+        </section>
       ) : null}
 
       <FormularioAvaliacao

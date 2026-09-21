@@ -30,7 +30,12 @@ export const metadata = { title: 'Matriz de Priorização — Cronograma CTCEA' 
  * calculados aqui a partir das notas e dos pesos vigentes, porque mudar um
  * peso tem de repontuar a carteira inteira na hora.
  */
-export default async function PriorizacaoPage() {
+export default async function PriorizacaoPage({
+  searchParams,
+}: PageProps<'/priorizacao'>) {
+  const { projeto: projetoParam } = await searchParams
+  const destaqueId = typeof projetoParam === 'string' && projetoParam !== '' ? projetoParam : null
+
   const [projetos, linhasPeso] = await Promise.all([
     prisma.projeto.findMany({
       where: { ativo: true },
@@ -57,8 +62,9 @@ export default async function PriorizacaoPage() {
       projeto,
       resultado: calcularAvaliacao(projeto.avaliacao as unknown as Avaliacao, pesos),
     })),
-  ).map(({ projeto, resultado }) => ({
+  ).map(({ projeto, resultado }, indice) => ({
     id: projeto.id,
+    posicao: indice + 1,
     nome: projeto.nome,
     equipe: projeto.equipe,
     responsavel: projeto.responsavel,
@@ -69,6 +75,7 @@ export default async function PriorizacaoPage() {
   const pontos: PontoMatriz[] = linhas.map((linha) => ({
     id: linha.id,
     nome: linha.nome,
+    posicao: linha.posicao,
     beneficio: linha.beneficio,
     esforco: linha.esforco,
     gut: linha.gut,
@@ -133,15 +140,20 @@ export default async function PriorizacaoPage() {
             })}
           </div>
 
-          <section className="mt-10 border-t border-border pt-8">
+          <section id="matriz" className="mt-10 scroll-mt-20 border-t border-border pt-8">
             <h2 className="font-display text-lg font-extrabold">
               Posicionamento dos projetos
             </h2>
             <p className="mt-1 text-sm text-textMuted">
-              Onde cada projeto cai no plano Esforço × Benefício.
+              Onde cada projeto cai no plano Esforço × Benefício. O número do ponto é
+              o mesmo “#” do ranking abaixo.
             </p>
             <div className="mt-4">
-              <MatrizQuadrantes pontos={pontos} />
+              <MatrizQuadrantes
+                pontos={pontos}
+                destaqueId={destaqueId}
+                hrefDestaque={(id) => (id ? `/priorizacao?projeto=${id}#matriz` : '/priorizacao#matriz')}
+              />
             </div>
           </section>
 
@@ -155,7 +167,7 @@ export default async function PriorizacaoPage() {
               recomenda, não sobrescreve.
             </p>
             <div className="mt-4">
-              <TabelaPriorizacao linhas={linhas} />
+              <TabelaPriorizacao linhas={linhas} destaqueId={destaqueId} />
             </div>
           </section>
         </>
