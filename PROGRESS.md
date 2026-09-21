@@ -1084,3 +1084,45 @@ discordar**, e isso é propriedade do modelo, não defeito. Na conferência, um
 projeto de baixo benefício (quadrante 3) ficou em 1º no ranking porque o GUT alto
 domina a fórmula, enquanto um Quick Win legítimo ficou em 3º. Vale a CTCEA decidir
 se lê primeiro o quadrante ou o score — a tela mostra os dois.
+
+### 2026-09-21 — Migration de produção no pipeline, com guarda de ambiente
+
+**Problema.** A migration da Matriz de Priorização entrou no `main`, mas o banco do
+Railway não tinha as tabelas — `/priorizacao` quebraria no ambiente publicado até
+alguém lembrar de rodar `npm run db:deploy`. Tentei aplicar daqui e **não consegui**:
+a leitura da connection string de produção foi bloqueada pelo classificador de
+segurança da sessão (Credential Materialization), e os CLIs do Railway e da Vercel
+não existem neste ambiente. O usuário optou por resolver no pipeline.
+
+**A armadilha que a solução precisou evitar.** A `DATABASE_URL` está cadastrada nos
+**três** ambientes da Vercel apontando para o **mesmo** banco do Railway. Um
+`prisma migrate deploy && next build` solto teria rodado também nos previews — o
+preview de um PR aplicaria a migration em produção **antes do merge**.
+
+**Solução.** `build` passou a ser `tsx scripts/migrar-producao.ts && next build`. A
+decisão fica em `src/lib/migracao-deploy.ts`, módulo puro com 10 testes:
+
+| Situação | Resultado |
+|---|---|
+| `VERCEL_ENV=production` com banco | aplica |
+| `VERCEL_ENV=preview` ou `development` | pula (é o mesmo banco de produção) |
+| Sem `VERCEL_ENV` (local/CI) | pula |
+| `PULAR_MIGRACAO` definida | pula (escape de emergência) |
+| Produção sem `DATABASE_URL` | **erro**, build abortado |
+| Migration falha | **erro**, build abortado |
+
+Migrar vem **antes** de construir: se o build falhar depois, o banco fica à frente
+do código, o que é seguro porque as migrations aqui são aditivas. Publicar código
+que espera tabelas inexistentes não seria.
+
+**Verificação** — os nove caminhos foram exercitados de verdade, não só no teste
+unitário: os quatro de "pular", o erro sem `DATABASE_URL` (código de saída 1),
+a aplicação real contra um Postgres local (as 5 tabelas criadas do zero), a
+re-execução idempotente ("No pending migrations to apply"), o build abortando com
+banco inalcançável (código 1), e o build completo em modo CI pulando a migration e
+gerando as 13 rotas. `npm test` = **366 passando em 31 arquivos** (356 antes);
+tsc e lint limpos.
+
+**Efeito prático:** a migration da Matriz de Priorização será aplicada sozinha no
+próximo deploy de produção, e toda mudança de schema futura também — sem ninguém
+precisar lembrar.
