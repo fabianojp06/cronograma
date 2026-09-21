@@ -26,7 +26,11 @@ PLA-DEP) e um **drill-down por projeto** (modelo CRO-DEP).
 
 ## Infraestrutura
 
-- Deploy: Vercel — Project ID `prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO`
+- Deploy: Vercel — Project ID `prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO` (projeto
+  `cronograma-lktu`). **É o único alvo de deploy.** Existiu um projeto duplicado
+  `cronograma` (`prj_xVigzFjO4V2v01bJG3KgESToQ0TV`) ligado ao mesmo repositório,
+  sem variáveis de ambiente; foi desconectado em 21/09/2026. Se um segundo deploy
+  voltar a aparecer por push, é ele de novo.
 - Banco de dados: Railway (PostgreSQL) — Project ID `28445ef3-95ee-44bd-bfba-b5af383d8057`
 - Autenticação: Clerk — Instance ID `ins_3JTS4qDnU1wKm8mPloItwq6KxYJ`, com login social via Microsoft/Outlook (Azure AD OAuth)
 
