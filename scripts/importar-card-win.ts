@@ -17,6 +17,7 @@ import { createRequire } from 'node:module'
 import { prisma } from '../src/lib/prisma'
 import {
   lerAba,
+  chaveDeComparacao,
   prepararImportacao,
   type AbaSemana,
   type CardLido,
@@ -27,11 +28,33 @@ import { StatusWin } from '../src/generated/prisma/enums'
 const require = createRequire(import.meta.url)
 
 const argumentos = process.argv.slice(2)
-const arquivo = argumentos.find((a) => !a.startsWith('--'))
 const gravar = argumentos.includes('--gravar')
-const semanaPedida = (() => {
-  const i = argumentos.indexOf('--semana')
-  return i >= 0 ? Number(argumentos[i + 1]) : null
+
+/**
+ * Lê os argumentos posicionalmente, pulando os sinalizadores **e** o valor que
+ * `--semana` consome. Um `find(a => !a.startsWith('--'))` ingênuo pegaria o
+ * "39" de `--semana 39` como se fosse o nome do arquivo.
+ */
+const { arquivo, semanaPedida } = (() => {
+  let arquivo: string | undefined
+  let semanaPedida: number | null = null
+
+  for (let i = 0; i < argumentos.length; i += 1) {
+    const atual = argumentos[i]
+    if (atual === '--semana') {
+      const valor = Number(argumentos[i + 1])
+      if (!Number.isInteger(valor)) {
+        console.error('--semana precisa de um número inteiro. Ex.: --semana 39')
+        process.exit(1)
+      }
+      semanaPedida = valor
+      i += 1
+      continue
+    }
+    if (atual.startsWith('--')) continue
+    arquivo ??= atual
+  }
+  return { arquivo, semanaPedida }
 })()
 
 if (!arquivo) {
@@ -144,10 +167,46 @@ async function gravarNoBanco() {
     select: { id: true },
   })
 
-  // Importar de novo não pode duplicar: a semana é reescrita.
+  // Importar de novo não pode duplicar nem desfazer promoção.
+  //
+  // Um WIN já promovido não é recriado: recriá-lo devolveria ao card algo que
+  // já virou item do plano de ação, e a promoção seguinte criaria um Projeto
+  // duplicado. E os WINs que ficam sem nenhuma aparição depois da limpeza são
+  // apagados, senão cada reimportação deixaria órfãos acumulando no banco.
+  const registrosAntigos = await prisma.winSemana.findMany({
+    where: { cardId: card.id },
+    select: { winId: true },
+  })
   await prisma.winSemana.deleteMany({ where: { cardId: card.id } })
 
+  const orfaos = await prisma.win.findMany({
+    where: {
+      id: { in: registrosAntigos.map((r) => r.winId) },
+      registros: { none: {} },
+      promovidoEm: null,
+    },
+    select: { id: true },
+  })
+  if (orfaos.length > 0) {
+    await prisma.win.deleteMany({ where: { id: { in: orfaos.map((o) => o.id) } } })
+    console.log(`  (${orfaos.length} WIN(s) órfão(s) da importação anterior removido(s))`)
+  }
+
+  const jaPromovidos = await prisma.win.findMany({
+    where: { colaboradorId: colaborador.id, promovidoEm: { not: null } },
+    select: { descricao: true },
+  })
+  const chavesPromovidas = new Set(
+    jaPromovidos.map((w) => chaveDeComparacao(w.descricao)),
+  )
+
+  let pulados = 0
   for (const [indice, win] of importacao.wins.entries()) {
+    if (chavesPromovidas.has(chaveDeComparacao(win.descricao))) {
+      console.log(`  (WIN 0${win.ordem} já foi promovido antes; não será recriado)`)
+      pulados += 1
+      continue
+    }
     const original = cardOriginal.wins[indice]
     const criado = await prisma.win.create({
       data: {
@@ -169,7 +228,7 @@ async function gravarNoBanco() {
     })
   }
 
-  console.log(`\nGravado: 1 card, ${importacao.wins.length} WINs.`)
+  console.log(`\nGravado: 1 card, ${importacao.wins.length - pulados} WINs.`)
 }
 
 gravarNoBanco()

@@ -136,3 +136,24 @@ export function validarPromocao(
   }
   return { ok: true }
 }
+
+/** Semana de uma aparição, no calendário da CTCEA. */
+export type AparicaoEmSemana = { ano: number; semana: number }
+
+/**
+ * Aparições contadas **até uma semana**, inclusive.
+ *
+ * Existe porque o card é navegável: ao abrir a semana 37, o contador precisa
+ * dizer o que era verdade na semana 37, não o total de hoje. Sem isto, uma
+ * semana antiga exibiria "está na 3ª semana" e o alerta de promoção para um WIN
+ * que ali estava na primeira aparição — contando o futuro como se fosse passado.
+ */
+export function contarAparicoesAte(
+  aparicoesAnteriores: number,
+  aparicoes: readonly AparicaoEmSemana[],
+  ate: AparicaoEmSemana,
+): number {
+  const ateChave = ate.ano * 100 + ate.semana
+  const dentro = aparicoes.filter((a) => a.ano * 100 + a.semana <= ateChave).length
+  return Math.max(0, aparicoesAnteriores) + dentro
+}

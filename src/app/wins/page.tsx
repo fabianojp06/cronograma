@@ -18,7 +18,7 @@ import {
   semanaSeguinte,
   type SemanaCtcea,
 } from '@/lib/semana-ctcea'
-import { deveSerPromovido, totalDeAparicoes } from '@/lib/win-promocao'
+import { contarAparicoesAte, deveSerPromovido } from '@/lib/win-promocao'
 import { ROTULO_STATUS_WIN } from '@/lib/win-validacao'
 
 export const metadata = { title: 'Card WIN — Cronograma CTCEA' }
@@ -100,7 +100,11 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
                 aparicoesAnteriores: true,
                 promovidoEm: true,
                 encerradoEm: true,
-                _count: { select: { registros: true } },
+                // As semanas de cada aparição, e não a contagem global: o
+                // contador precisa refletir a semana que está sendo exibida.
+                registros: {
+                  select: { card: { select: { ano: true, semana: true } } },
+                },
               },
             },
           },
@@ -137,7 +141,25 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
     }),
   ])
 
-  const linhas: LinhaWin[] = (cardAtual?.registros ?? []).map((registro) => ({
+  const registrosDoCard = cardAtual?.registros ?? []
+  type RegistroDoCard = (typeof registrosDoCard)[number]
+
+  /** Contagem congelada na semana exibida — ver `contarAparicoesAte`. */
+  const aparicoesNaSemana = (registro: RegistroDoCard) =>
+    contarAparicoesAte(
+      registro.win.aparicoesAnteriores,
+      registro.win.registros.map((r) => r.card),
+      semana,
+    )
+
+  const contavelDe = (registro: RegistroDoCard) => ({
+    aparicoesAnteriores: 0,
+    registros: aparicoesNaSemana(registro),
+    promovidoEm: registro.win.promovidoEm,
+    encerradoEm: registro.win.encerradoEm,
+  })
+
+  const linhas: LinhaWin[] = registrosDoCard.map((registro) => ({
     registroId: registro.id,
     winId: registro.win.id,
     ordem: registro.ordem,
@@ -145,25 +167,17 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
     suporte: registro.win.suporte,
     prazoIso: registro.prazo === null ? null : iso(registro.prazo),
     status: registro.status,
-    aparicoes: totalDeAparicoes({
-      aparicoesAnteriores: registro.win.aparicoesAnteriores,
-      registros: registro.win._count.registros,
-      promovidoEm: registro.win.promovidoEm,
-      encerradoEm: registro.win.encerradoEm,
-    }),
-    aparicoesAnteriores: registro.win.aparicoesAnteriores,
-    registros: registro.win._count.registros,
+    aparicoes: aparicoesNaSemana(registro),
+    // O componente recebe a contagem já resolvida para a semana exibida, e por
+    // isso não precisa somar nada de novo.
+    aparicoesAnteriores: 0,
+    registros: aparicoesNaSemana(registro),
     promovidoEm: registro.win.promovidoEm?.toISOString() ?? null,
     encerradoEm: registro.win.encerradoEm?.toISOString() ?? null,
   }))
 
-  const paraPromover = (cardAtual?.registros ?? []).filter((registro) =>
-    deveSerPromovido({
-      aparicoesAnteriores: registro.win.aparicoesAnteriores,
-      registros: registro.win._count.registros,
-      promovidoEm: registro.win.promovidoEm,
-      encerradoEm: registro.win.encerradoEm,
-    }),
+  const paraPromover = registrosDoCard.filter((registro) =>
+    deveSerPromovido(contavelDe(registro)),
   )
 
   const linkSemana = (alvo: SemanaCtcea) => `/wins?ano=${alvo.ano}&semana=${alvo.semana}`

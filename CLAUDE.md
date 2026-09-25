@@ -233,8 +233,10 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
 - **O bloco "semana anterior" é consulta, nunca cópia.** Era a duplicação manual
   dele que fazia a planilha divergir de si mesma (a aba S37 repetia o bloco da
   S36 em vez de trazer os WINs atuais dela).
-- **Limite de 3 por semana, rígido** — garantido pelo `@@unique([cardId, ordem])`
-  no banco, não só pela tela. É o método: obrigar a escolher é o valor do card.
+- **Limite de 3 por semana, rígido**, garantido em duas camadas no banco, não
+  só pela tela: `@@unique([cardId, ordem])` impede duas linhas na mesma posição,
+  e a CHECK `WinSemana_ordem_entre_1_e_3` limita a posição a 1–3. A unicidade
+  sozinha não bastava — ela não limita o *valor* de `ordem`.
 - **A regra das 3 semanas conta aparições, não semanas consecutivas.** A planilha
   não tem a semana 34; quem não preenche o card numa semana não deveria zerar o
   contador, seria premiar o esquecimento que a regra quer pegar.

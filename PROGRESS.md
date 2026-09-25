@@ -1224,3 +1224,64 @@ a semana 34 não existe; e a maioria dos status da S37/S38 está em branco.
 **Fase 2 (não feita):** visão de equipe para a daily ("Compartilhamento dos
 Cards" da aba Agenda) e os dois relatórios no catálogo do dashboard — taxa de
 conclusão semanal e WINs reincidentes.
+
+### 2026-09-25 — Bloco 10: code review da fase 1 (8 achados, todos corrigidos)
+
+Revisão pedida pelo usuário antes de abrir o PR. Encontrou 8 problemas; todos
+foram corrigidos e **provados contra banco**, não só relidos.
+
+**1. Falha de segurança (a mais grave).** No ramo "reaproveitar um WIN que veio
+repetindo", `salvarWin` fazia `win.update({ where: { id: winExistente } })` com o
+id vindo direto do formulário e sem escopo de dono — ao contrário de todos os
+outros caminhos de escrita do arquivo. Um POST forjado reescreveria o WIN de
+outro colaborador e o penduraria no card de quem enviou. Corrigido com checagem
+prévia de propriedade e `where` com `colaboradorId`.
+
+**2. `lerSemana` aceitava lixo.** `Number(null)` é 0, então um POST sem os campos
+passava como "semana 0 do ano 0" e criava `CardSemanal` que nenhuma tela abre de
+novo. Agora exige os campos como texto, valida faixa de ano e passa por
+`ehSemanaValida`.
+
+**3. Área da GIA gravada como equipe.** A promoção escrevia `Colaborador.area`
+(AGP/APD/ACT) em `Projeto.equipe` (STI/GIA/GRH) — vocabulários diferentes, o que
+inventaria equipes no relatório "por equipe" do dashboard. A área passou para o
+comentário e a equipe fica em branco.
+
+**4. Contador mentia em semanas passadas.** A contagem vinha do total global do
+WIN, então abrir a semana 37 mostrava "está na 3ª semana" e o alerta de promoção
+para um WIN que ali estava na primeira aparição. Nasceu
+`contarAparicoesAte(anteriores, aparições, até)`, que congela a contagem na
+semana exibida, com 6 testes.
+
+**5. Reimportação acumulava lixo e podia duplicar projeto.** O script apagava só
+os `WinSemana` e sempre recriava os `Win`: órfãos acumulavam e um WIN já
+promovido voltava ao card, permitindo uma segunda promoção e um `Projeto`
+duplicado. Agora remove órfãos e pula WIN já promovido. Verificado: após duas
+importações da mesma semana, `orfaos=0` e `projetos=1`.
+
+**6. `vincularColaborador` podia estourar.** Sem try/catch e sem checar vínculo
+existente, um usuário cujo colaborador foi desativado veria o formulário de novo
+e o `updateMany` bateria no índice único de `clerkUserId` (P2002), com a exceção
+saindo da Server Action.
+
+**7. Argumentos do script.** `find(a => !a.startsWith('--'))` pegava o "39" de
+`--semana 39` como nome do arquivo, e `--semana` sem valor virava `NaN` que o
+`??` não pega.
+
+**8. Eu afirmei algo que não era verdade.** Disse — na conversa, no commit e no
+CLAUDE.md — que o limite de 3 era garantido pelo banco via
+`@@unique([cardId, ordem])`. A unicidade impede duas linhas na mesma posição mas
+**não limita o valor** de `ordem`: nada impedia as posições 4, 5, 6. Em vez de só
+corrigir o texto, a afirmação foi tornada verdadeira com a migration
+`20260925130000_limite_wins_por_semana`, que adiciona
+`CHECK (ordem BETWEEN 1 AND 3)`. Migration separada de propósito, porque a
+anterior já pode ter sido aplicada em alguma máquina.
+
+**Verificação das correções**, num Postgres local: escrita cruzada entre
+colaboradores bloqueada; ordem 4 e ordem 0 rejeitadas pelo banco e ordem 3 aceita;
+contador devolvendo 1/2/3 nas semanas 37/38/39; promoção deixando `equipe` nula;
+unicidade de `clerkUserId` confirmada; script aceitando `--semana` antes do
+arquivo e reclamando quando vem sem valor.
+
+`npm test` = **461 passando em 35 arquivos** (455 antes; +6 do contador por
+semana). `tsc`, `lint` e `build` limpos.

@@ -5,7 +5,11 @@ import { revalidatePath } from 'next/cache'
 
 import { prisma } from '@/lib/prisma'
 import { proximoNumero } from '@/lib/acao-validacao'
-import type { SemanaCtcea } from '@/lib/semana-ctcea'
+import { ehSemanaValida, type SemanaCtcea } from '@/lib/semana-ctcea'
+
+/** Faixa de anos aceita — protege contra ano absurdo vindo de POST forjado. */
+const ANO_MINIMO = 2020
+const ANO_MAXIMO = 2100
 import {
   validarPromocao,
   type DestinoPromocao,
@@ -33,12 +37,26 @@ export type EstadoCard = {
   erroGeral?: string
 }
 
-/** Lê ano/semana de campos ocultos do formulário. */
+/**
+ * Lê ano/semana de campos ocultos do formulário.
+ *
+ * Confere que os campos existem como texto antes de converter: `Number(null)`
+ * é 0, então um POST sem os campos passaria como a "semana 0 do ano 0" e
+ * criaria um `CardSemanal` que nenhuma tela consegue abrir de novo. E valida
+ * contra o calendário — semana 99 não existe.
+ */
 function lerSemana(formData: FormData): SemanaCtcea | null {
-  const ano = Number(formData.get('ano'))
-  const semana = Number(formData.get('semana'))
+  const anoBruto = formData.get('ano')
+  const semanaBruta = formData.get('semana')
+  if (typeof anoBruto !== 'string' || typeof semanaBruta !== 'string') return null
+
+  const ano = Number(anoBruto)
+  const semana = Number(semanaBruta)
   if (!Number.isInteger(ano) || !Number.isInteger(semana)) return null
-  return { ano, semana }
+  if (ano < ANO_MINIMO || ano > ANO_MAXIMO) return null
+
+  const candidata = { ano, semana }
+  return ehSemanaValida(candidata) ? candidata : null
 }
 
 /**
@@ -73,8 +91,10 @@ async function garantirCard(colaboradorId: string, semana: SemanaCtcea, area: st
  * Cria um WIN novo na semana, ou acrescenta um WIN já existente (que veio
  * repetindo) à semana atual.
  *
- * O limite de 3 é verificado aqui e garantido pelo banco (`@@unique([cardId,
- * ordem])`): a tela não é a única porta.
+ * O limite de 3 é verificado aqui e garantido pelo banco por duas vias:
+ * `@@unique([cardId, ordem])` impede duas linhas na mesma posição, e a CHECK
+ * `WinSemana_ordem_entre_1_e_3` limita a posição a 1–3. A unicidade sozinha
+ * não bastaria: ela não limita o valor de `ordem`.
  */
 export async function salvarWin(
   _anterior: EstadoWin,
@@ -140,11 +160,22 @@ export async function salvarWin(
     // que carrega o contador da regra das 3 semanas.
     const winExistente = formData.get('winId')
 
+    // O `winId` vem do formulário, então precisa ser conferido contra o dono
+    // antes de qualquer escrita: sem isto, um POST forjado reescreveria o WIN
+    // de outro colaborador e o penduraria no card de quem enviou.
+    if (typeof winExistente === 'string' && winExistente !== '') {
+      const doDono = await prisma.win.findFirst({
+        where: { id: winExistente, colaboradorId: colaborador.id },
+        select: { id: true },
+      })
+      if (!doDono) return { erroGeral: 'WIN não encontrado.' }
+    }
+
     await prisma.$transaction(async (tx) => {
       let winId: string
       if (typeof winExistente === 'string' && winExistente !== '') {
         const win = await tx.win.update({
-          where: { id: winExistente },
+          where: { id: winExistente, colaboradorId: colaborador.id },
           data: {
             descricao: validacao.dados.descricao,
             suporte: validacao.dados.suporte,
@@ -250,8 +281,13 @@ export async function promoverWin(
     const validacao = validarPromocao(win, pedido)
     if (!validacao.ok) return { erroGeral: MENSAGEM_ERRO_PROMOCAO[validacao.erro] }
 
+    // `Colaborador.area` é a área da GIA (AGP/APD/ACT) e NÃO é o mesmo
+    // vocabulário de `Projeto.equipe` (STI/GIA/GRH). Gravar uma na outra
+    // inventaria equipes no relatório "por equipe" do dashboard, então a área
+    // vai para o comentário e a equipe fica em branco para alguém preencher.
     const comentario =
       `Promovido do Card WIN de ${colaborador.nome} pela regra das 3 semanas.` +
+      (colaborador.area ? ` Área: ${colaborador.area}.` : '') +
       (win.suporte ? ` Suporte: ${win.suporte}.` : '')
 
     const resultado = await prisma.$transaction(async (tx) => {
@@ -260,7 +296,6 @@ export async function promoverWin(
           data: {
             nome: win.descricao,
             responsavel: colaborador.nome,
-            equipe: colaborador.area,
             comentario,
           },
           select: { id: true },
@@ -360,12 +395,27 @@ export async function vincularColaborador(formData: FormData): Promise<void> {
   const colaboradorId = formData.get('colaboradorId')
   if (typeof colaboradorId !== 'string' || colaboradorId === '') return
 
-  // Só vincula colaborador que ainda não tem dono: duas contas apontando para
-  // a mesma pessoa embaralhariam os cards.
-  await prisma.colaborador.updateMany({
-    where: { id: colaboradorId, clerkUserId: null, ativo: true },
-    data: { clerkUserId: userId },
-  })
+  try {
+    // Uma conta só pode estar em um colaborador: `clerkUserId` é único no
+    // banco, e sem esta checagem um usuário cujo colaborador foi desativado
+    // veria o formulário de novo e o `updateMany` estouraria com P2002 —
+    // exceção não tratada saindo de uma Server Action.
+    const jaVinculado = await prisma.colaborador.findFirst({
+      where: { clerkUserId: userId },
+      select: { id: true },
+    })
+    if (jaVinculado) return
+
+    // Só vincula colaborador que ainda não tem dono: duas contas apontando
+    // para a mesma pessoa embaralhariam os cards.
+    await prisma.colaborador.updateMany({
+      where: { id: colaboradorId, clerkUserId: null, ativo: true },
+      data: { clerkUserId: userId },
+    })
+  } catch (erro) {
+    console.error('Falha ao vincular colaborador', erro)
+    return
+  }
 
   revalidatePath('/wins')
 }

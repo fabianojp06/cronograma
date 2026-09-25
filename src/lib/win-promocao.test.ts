@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   APARICOES_PARA_PROMOVER,
+  contarAparicoesAte,
   aparicoesRestantes,
   deveSerPromovido,
   mensagemDaSituacao,
@@ -157,5 +158,49 @@ describe('validarPromocao', () => {
 
   it('permite promover antes da terceira semana — o contador lembra, não impede', () => {
     expect(validarPromocao(aberto, { destino: 'PROJETO', projetoId: null }).ok).toBe(true)
+  })
+})
+
+describe('contarAparicoesAte — contador da semana exibida', () => {
+  const aparicoes = [
+    { ano: 2026, semana: 37 },
+    { ano: 2026, semana: 38 },
+    { ano: 2026, semana: 39 },
+  ]
+
+  it('congela a contagem na semana que está sendo vista', () => {
+    // Abrir a S37 precisa mostrar o que era verdade lá, não o total de hoje:
+    // senão uma semana antiga exibiria "3ª semana" e o alerta de promoção
+    // para um WIN que ali estava na primeira aparição.
+    expect(contarAparicoesAte(0, aparicoes, { ano: 2026, semana: 37 })).toBe(1)
+    expect(contarAparicoesAte(0, aparicoes, { ano: 2026, semana: 38 })).toBe(2)
+    expect(contarAparicoesAte(0, aparicoes, { ano: 2026, semana: 39 })).toBe(3)
+  })
+
+  it('inclui a própria semana', () => {
+    expect(contarAparicoesAte(0, [{ ano: 2026, semana: 39 }], { ano: 2026, semana: 39 })).toBe(1)
+  })
+
+  it('soma as aparições anteriores ao sistema', () => {
+    expect(contarAparicoesAte(2, aparicoes, { ano: 2026, semana: 37 })).toBe(3)
+  })
+
+  it('compara ano antes de semana, sem confundir a virada', () => {
+    const cruzando = [
+      { ano: 2026, semana: 52 },
+      { ano: 2027, semana: 1 },
+    ]
+    expect(contarAparicoesAte(0, cruzando, { ano: 2026, semana: 52 })).toBe(1)
+    expect(contarAparicoesAte(0, cruzando, { ano: 2027, semana: 1 })).toBe(2)
+    // A semana 1 de 2027 vem DEPOIS da 52 de 2026, embora o número seja menor.
+    expect(contarAparicoesAte(0, [{ ano: 2027, semana: 1 }], { ano: 2026, semana: 52 })).toBe(0)
+  })
+
+  it('é zero quando não há aparição até ali', () => {
+    expect(contarAparicoesAte(0, aparicoes, { ano: 2026, semana: 36 })).toBe(0)
+  })
+
+  it('trata aparicoesAnteriores negativo como zero', () => {
+    expect(contarAparicoesAte(-5, aparicoes, { ano: 2026, semana: 39 })).toBe(3)
   })
 })
