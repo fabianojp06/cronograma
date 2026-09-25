@@ -244,6 +244,7 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
             <PromoverWin
               key={registro.win.id}
               winId={registro.win.id}
+              semana={semana}
               descricao={registro.win.descricao}
               projetos={projetos}
             />
@@ -285,7 +286,7 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
                 {linha.winId && linha.promovidoEm === null ? (
                   <>
                     <span className="text-xs text-textFaint">·</span>
-                    <EncerrarWin winId={linha.winId} ordem={linha.ordem} />
+                    <EncerrarWin winId={linha.winId} ordem={linha.ordem} semana={semana} />
                   </>
                 ) : null}
               </div>

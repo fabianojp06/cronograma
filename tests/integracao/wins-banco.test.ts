@@ -24,6 +24,7 @@ const {
   promoverWin,
   removerWinDaSemana,
   encerrarWin,
+  vincularColaborador,
 } = await import('@/app/wins/acoes-win')
 const { contarAparicoesAte, deveSerPromovido } = await import('@/lib/win-promocao')
 const { periodoDaSemana } = await import('@/lib/semana-ctcea')
@@ -168,19 +169,32 @@ describe('promover tira o WIN do card sem perder a contagem', () => {
 
     const fd = new FormData()
     fd.set('winId', win.id)
+    fd.set('ano', String(SEMANAS[2].ano))
+    fd.set('semana', String(SEMANAS[2].semana))
     fd.set('destino', 'PROJETO')
     const resultado = await promoverWin({}, fd)
     expect(resultado.erroGeral).toBeUndefined()
     expect(resultado.promovido?.projetoId).toBeTruthy()
 
-    // A vaga no card é liberada...
-    expect(await prisma.winSemana.count()).toBe(0)
-    // ...mas as três aparições continuam contadas.
+    // A vaga da semana da promoção é liberada...
+    expect(
+      await prisma.winSemana.count({ where: { card: { semana: SEMANAS[2].semana } } }),
+    ).toBe(0)
+    // ...e as semanas anteriores continuam intactas: elas são o registro do
+    // que foi de fato comprometido, não rascunho a limpar.
+    const restantes = await prisma.winSemana.findMany({
+      select: { card: { select: { semana: true } } },
+    })
+    expect(restantes.map((r) => r.card.semana).sort()).toEqual([
+      SEMANAS[0].semana,
+      SEMANAS[1].semana,
+    ])
     const depois = await prisma.win.findUniqueOrThrow({
       where: { id: win.id },
       select: { aparicoesAnteriores: true, promovidoEm: true, projetoId: true },
     })
-    expect(depois.aparicoesAnteriores).toBe(3)
+    // Sem inflar o contador: as aparições continuam nas próprias linhas.
+    expect(depois.aparicoesAnteriores).toBe(0)
     expect(depois.promovidoEm).not.toBeNull()
     expect(depois.projetoId).toBeTruthy()
   })
@@ -197,6 +211,8 @@ describe('promover tira o WIN do card sem perder a contagem', () => {
 
     const fd = new FormData()
     fd.set('winId', win.id)
+    fd.set('ano', String(SEMANAS[0].ano))
+    fd.set('semana', String(SEMANAS[0].semana))
     fd.set('destino', 'ACAO')
     fd.set('projetoId', projeto.id)
     const resultado = await promoverWin({}, fd)
@@ -208,6 +224,7 @@ describe('promover tira o WIN do card sem perder a contagem', () => {
     })
     expect(acao.numero).toBe(8)
     expect(await prisma.winSemana.count()).toBe(0)
+    // Só havia a aparição da S37, e era dela que o WIN saiu.
   })
 })
 
@@ -265,6 +282,8 @@ describe('encerrar é o que faz a mensagem do limite ser verdade', () => {
 
     const fd = new FormData()
     fd.set('winId', win.id)
+    fd.set('ano', String(SEMANAS[0].ano))
+    fd.set('semana', String(SEMANAS[0].semana))
     await encerrarWin(fd)
 
     const depois = await prisma.win.findUniqueOrThrow({
@@ -280,10 +299,93 @@ describe('encerrar é o que faz a mensagem do limite ser verdade', () => {
     const win = await prisma.win.findFirstOrThrow({ select: { id: true } })
     const encerrar = new FormData()
     encerrar.set('winId', win.id)
+    encerrar.set('ano', String(SEMANAS[0].ano))
+    encerrar.set('semana', String(SEMANAS[0].semana))
     await encerrarWin(encerrar)
 
     const fd = formulario(1)
     fd.set('winId', win.id)
     expect(await repetirWin({}, fd)).toEqual({ erroGeral: 'WIN não encontrado ou já encerrado.' })
+  })
+})
+
+describe('nem promover nem encerrar reescrevem o passado', () => {
+  it('encerrar na S39 preserva as aparições da S37 e da S38', async () => {
+    await salvarWin({}, formulario(0))
+    const win = await prisma.win.findFirstOrThrow({ select: { id: true } })
+    await repetir(1, win.id)
+    await repetir(2, win.id)
+
+    const fd = new FormData()
+    fd.set('winId', win.id)
+    fd.set('ano', String(SEMANAS[2].ano))
+    fd.set('semana', String(SEMANAS[2].semana))
+    await encerrarWin(fd)
+
+    // A vaga da S39 sai; o que foi comprometido na S37 e na S38 continua lá.
+    const restantes = await prisma.winSemana.findMany({
+      select: { card: { select: { semana: true } } },
+    })
+    expect(restantes.map((r) => r.card.semana).sort()).toEqual([
+      SEMANAS[0].semana,
+      SEMANAS[1].semana,
+    ])
+    const depois = await prisma.win.findUniqueOrThrow({
+      where: { id: win.id },
+      select: { encerradoEm: true },
+    })
+    expect(depois.encerradoEm).not.toBeNull()
+  })
+})
+
+describe('vincular colaborador não pode virar beco sem saída', () => {
+  it('avisa quando o colaborador escolhido já foi tomado por outra conta', async () => {
+    // A lista é montada quando a página renderiza; entre aquilo e o envio,
+    // outra pessoa pode ter escolhido o mesmo nome.
+    const livre = await prisma.colaborador.create({
+      data: { nome: 'Ainda sem conta' },
+      select: { id: true },
+    })
+    await prisma.colaborador.update({
+      where: { id: livre.id },
+      data: { clerkUserId: 'user_mais_rapido' },
+    })
+
+    usuarioAtual.userId = 'user_novo'
+    const fd = new FormData()
+    fd.set('colaboradorId', livre.id)
+    const resultado = await vincularColaborador({}, fd)
+
+    expect(resultado.erroGeral).toContain('não está mais disponível')
+  })
+
+  it('avisa quando o colaborador foi desativado', async () => {
+    const inativo = await prisma.colaborador.create({
+      data: { nome: 'Saiu da equipe', ativo: false },
+      select: { id: true },
+    })
+
+    usuarioAtual.userId = 'user_novo'
+    const fd = new FormData()
+    fd.set('colaboradorId', inativo.id)
+    expect((await vincularColaborador({}, fd)).erroGeral).toContain('não está mais disponível')
+  })
+
+  it('vincula de verdade quando o colaborador está livre', async () => {
+    const livre = await prisma.colaborador.create({
+      data: { nome: 'Disponível' },
+      select: { id: true },
+    })
+
+    usuarioAtual.userId = 'user_novo'
+    const fd = new FormData()
+    fd.set('colaboradorId', livre.id)
+    expect(await vincularColaborador({}, fd)).toEqual({})
+
+    const depois = await prisma.colaborador.findUniqueOrThrow({
+      where: { id: livre.id },
+      select: { clerkUserId: true },
+    })
+    expect(depois.clerkUserId).toBe('user_novo')
   })
 })

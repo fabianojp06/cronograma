@@ -249,14 +249,23 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
 - **Promoção escolhe o destino na hora**: projeto novo ou ação dentro de projeto
   existente. Nem todo WIN vira projeto — "Finalização da documentação do módulo
   de integração" é parte do SGO, e forçar projeto novo fragmentaria a carteira.
-- **Promover tira o WIN do card**, como manda o rodapé da planilha, e **soma as
-  aparições em `aparicoesAnteriores` antes de apagar os registros**. Apagar
-  direto zeraria a contagem de um WIN que de fato se repetiu três semanas — e é
-  essa contagem que os relatórios de recorrência leem.
+- **Promover e encerrar tiram o WIN só da semana em que a ação aconteceu.** As
+  aparições anteriores são o registro do que foi de fato comprometido naquelas
+  semanas — é delas que vivem o bloco "semana anterior" e a contagem de
+  recorrência. Apagá-las reescreveria o passado para arrumar o presente, e por
+  isso as duas ações recebem `ano`/`semana` no formulário.
+- **`aparicoesAnteriores` nunca é incrementado pelo sistema.** Ele significa
+  "aparições anteriores ao sistema", vindas da importação. Somar as aparições
+  vivas nele para poder apagá-las daria dois lugares para a mesma verdade.
 - **Tirar da semana e encerrar são coisas diferentes.** Tirar libera a vaga e o
   WIN pode voltar somando aparições; encerrar (`Win.encerradoEm`) diz que ele
   não volta. Tirar a última aparição de um WIN que nunca foi promovido apaga
   também o `Win`: o que sobraria é uma linha que nenhuma tela alcança.
+- **Retry de numeração envolve a transação inteira** (`refazerNaColisao`), nunca
+  o `create` por dentro dela. No Postgres a violação de constraint aborta a
+  transação: a consulta seguinte falha com "current transaction is aborted"
+  (P2039 pelo Prisma), não com P2002. Um laço por dentro troca uma colisão
+  recuperável pela falha da operação inteira — o contrário do que se quer.
 - `Colaborador.nome` é a mesma grafia de `Projeto.responsavel`: é ele que vai
   para lá na promoção, e é o que mantém o relatório por responsável somando certo.
 

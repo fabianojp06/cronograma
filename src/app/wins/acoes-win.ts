@@ -4,11 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
 import { prisma } from '@/lib/prisma'
-import {
-  ehColisaoDeNumero,
-  proximoNumero,
-  TENTATIVAS_NUMERO,
-} from '@/lib/acao-validacao'
+import { proximoNumero, refazerNaColisao } from '@/lib/acao-validacao'
 import { ehSemanaValida, type SemanaCtcea } from '@/lib/semana-ctcea'
 
 /** Faixa de anos aceita — protege contra ano absurdo vindo de POST forjado. */
@@ -269,6 +265,11 @@ export async function promoverWin(
     return { erroGeral: 'WIN não identificado. Recarregue a página.' }
   }
 
+  // A semana diz de qual card o WIN sai. Sem ela não daria para tirá-lo de uma
+  // semana sem apagar as outras — que são o histórico.
+  const semana = lerSemana(formData)
+  if (!semana) return { erroGeral: 'Semana não identificada. Recarregue a página.' }
+
   const destinoBruto = String(formData.get('destino') ?? '')
   const projetoEscolhido = String(formData.get('projetoId') ?? '').trim()
   const pedido: PedidoPromocao = {
@@ -300,87 +301,86 @@ export async function promoverWin(
       (colaborador.area ? ` Área: ${colaborador.area}.` : '') +
       (win.suporte ? ` Suporte: ${win.suporte}.` : '')
 
-    const resultado = await prisma.$transaction(async (tx) => {
-      /**
-       * Tira o WIN do card, como manda o rodapé da planilha ("após 3 semanas,
-       * o WIN é retirado e vira item do plano de ação").
-       *
-       * As aparições são **somadas em `aparicoesAnteriores` antes** de apagar
-       * os registros. Apagar direto zeraria a contagem de um WIN que de fato
-       * se repetiu por três semanas, e é essa contagem que os relatórios de
-       * recorrência leem. O campo já significa "aparições que o sistema não
-       * guarda linha a linha" — é exatamente este caso.
-       */
-      const tirarDoCard = async () => {
-        const registros = await tx.winSemana.findMany({
-          where: { winId: win.id },
-          select: { id: true },
-        })
-        if (registros.length > 0) {
+    // `refazerNaColisao` envolve a transação INTEIRA, e não o `create` por
+    // dentro dela. No Postgres a violação de constraint aborta a transação: a
+    // consulta seguinte falharia com "current transaction is aborted", não com
+    // P2002, e um laço por dentro transformaria uma colisão recuperável na
+    // falha da promoção inteira. Refeita de fora, a tentativa começa numa
+    // transação limpa e já enxerga a linha concorrente.
+    const resultado = await refazerNaColisao(() =>
+      prisma.$transaction(async (tx) => {
+        /**
+         * Tira o WIN do card **da semana em que a promoção aconteceu**, como
+         * manda o rodapé da planilha ("após 3 semanas, o WIN é retirado").
+         *
+         * Só dessa semana: as aparições anteriores registram o que foi de fato
+         * comprometido nas semanas passadas, e é delas que vivem o bloco
+         * "semana anterior" e a contagem de recorrência. Apagá-las reescreveria
+         * o passado para arrumar o presente.
+         */
+        const tirarDoCard = () =>
+          tx.winSemana.deleteMany({
+            where: {
+              winId: win.id,
+              card: {
+                colaboradorId: colaborador.id,
+                ano: semana.ano,
+                semana: semana.semana,
+              },
+            },
+          })
+
+        if (pedido.destino === 'PROJETO') {
+          const projeto = await tx.projeto.create({
+            data: {
+              nome: win.descricao,
+              responsavel: colaborador.nome,
+              comentario,
+            },
+            select: { id: true },
+          })
           await tx.win.update({
             where: { id: win.id },
-            data: { aparicoesAnteriores: { increment: registros.length } },
+            data: { promovidoEm: new Date(), projetoId: projeto.id },
           })
-          await tx.winSemana.deleteMany({ where: { winId: win.id } })
+          await tirarDoCard()
+          return { projetoId: projeto.id, acaoId: null }
         }
-      }
 
-      if (pedido.destino === 'PROJETO') {
-        const projeto = await tx.projeto.create({
-          data: {
-            nome: win.descricao,
-            responsavel: colaborador.nome,
-            comentario,
-          },
+        const projeto = await tx.projeto.findFirst({
+          where: { id: pedido.projetoId!, ativo: true },
           select: { id: true },
         })
-        await tx.win.update({
-          where: { id: win.id },
-          data: { promovidoEm: new Date(), projetoId: projeto.id },
-        })
-        await tirarDoCard()
-        return { projetoId: projeto.id, acaoId: null }
-      }
+        if (!projeto) throw new Error('PROJETO_INEXISTENTE')
 
-      const projeto = await tx.projeto.findFirst({
-        where: { id: pedido.projetoId!, ativo: true },
-        select: { id: true },
-      })
-      if (!projeto) throw new Error('PROJETO_INEXISTENTE')
-
-      // Mesmo laço de `criarAcao`: entre ler o maior número e gravar, outra
-      // criação pode tomá-lo. A constraint `@@unique([projetoId, numero])` é a
-      // autoridade, e na colisão o número é recalculado. Sem isto a promoção
-      // estouraria com P2002 e o WIN ficaria sem o item do plano de ação.
-      let acao: { id: string } | null = null
-      for (let tentativa = 0; tentativa < TENTATIVAS_NUMERO; tentativa += 1) {
+        // Lê o maior número e grava. Se outra criação tomar o número nesse
+        // intervalo, `@@unique([projetoId, numero])` rejeita e a transação
+        // inteira é refeita pelo `refazerNaColisao` acima.
         const ultima = await tx.acao.findFirst({
           where: { projetoId: projeto.id },
           orderBy: { numero: 'desc' },
           select: { numero: true },
         })
-        try {
-          acao = await tx.acao.create({
-            data: {
-              projetoId: projeto.id,
-              numero: proximoNumero(ultima?.numero),
-              descricao: win.descricao,
-            },
-            select: { id: true },
-          })
-          break
-        } catch (erro) {
-          if (!ehColisaoDeNumero(erro)) throw erro
-        }
-      }
-      if (!acao) throw new Error('NUMERACAO_ESGOTADA')
-      await tx.win.update({
-        where: { id: win.id },
-        data: { promovidoEm: new Date(), projetoId: projeto.id, acaoId: acao.id },
-      })
-      await tirarDoCard()
-      return { projetoId: projeto.id, acaoId: acao.id }
-    })
+        const acao = await tx.acao.create({
+          data: {
+            projetoId: projeto.id,
+            numero: proximoNumero(ultima?.numero),
+            descricao: win.descricao,
+          },
+          select: { id: true },
+        })
+        await tx.win.update({
+          where: { id: win.id },
+          data: { promovidoEm: new Date(), projetoId: projeto.id, acaoId: acao.id },
+        })
+        await tirarDoCard()
+        return { projetoId: projeto.id, acaoId: acao.id }
+      }),
+    )
+
+    if (!resultado) {
+      return { erroGeral: 'Não foi possível numerar a ação. Tente novamente.' }
+    }
 
     revalidatePath('/wins')
     revalidatePath('/projetos')
@@ -436,12 +436,19 @@ export async function salvarCard(
 }
 
 /** Vincula a conta logada a um colaborador — feito uma vez por pessoa. */
-export async function vincularColaborador(formData: FormData): Promise<void> {
+export type EstadoVinculo = { erroGeral?: string }
+
+export async function vincularColaborador(
+  _anterior: EstadoVinculo,
+  formData: FormData,
+): Promise<EstadoVinculo> {
   const { userId } = await auth()
-  if (!userId) return
+  if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
 
   const colaboradorId = formData.get('colaboradorId')
-  if (typeof colaboradorId !== 'string' || colaboradorId === '') return
+  if (typeof colaboradorId !== 'string' || colaboradorId === '') {
+    return { erroGeral: 'Escolha seu nome na lista.' }
+  }
 
   try {
     // Uma conta só pode estar em um colaborador: `clerkUserId` é único no
@@ -452,20 +459,37 @@ export async function vincularColaborador(formData: FormData): Promise<void> {
       where: { clerkUserId: userId },
       select: { id: true },
     })
-    if (jaVinculado) return
+    if (jaVinculado) {
+      revalidatePath('/wins')
+      return {}
+    }
 
     // Só vincula colaborador que ainda não tem dono: duas contas apontando
     // para a mesma pessoa embaralhariam os cards.
-    await prisma.colaborador.updateMany({
+    //
+    // O `count` precisa ser conferido. A lista foi montada quando a página
+    // renderizou, e entre aquilo e o envio o colaborador pode ter sido tomado
+    // por outra conta ou desativado. Ignorando o `count`, o `updateMany` não
+    // faz nada e o usuário volta para o mesmo "Quem é você?" sem erro e sem
+    // saída — um beco sem aviso nenhum.
+    const { count } = await prisma.colaborador.updateMany({
       where: { id: colaboradorId, clerkUserId: null, ativo: true },
       data: { clerkUserId: userId },
     })
+    if (count === 0) {
+      return {
+        erroGeral:
+          'Esse colaborador não está mais disponível — pode ter sido vinculado a ' +
+          'outra conta ou desativado. Atualize a página e escolha de novo.',
+      }
+    }
   } catch (erro) {
     console.error('Falha ao vincular colaborador', erro)
-    return
+    return { erroGeral: 'Não foi possível vincular. Tente novamente.' }
   }
 
   revalidatePath('/wins')
+  return {}
 }
 
 export type EstadoRepeticao = { erroGeral?: string }
@@ -538,7 +562,11 @@ export async function repetirWin(
  *
  * Existe para que a mensagem do limite ("conclua, encerre ou tire um deles")
  * corresponda a algo real, e para que `Win.encerradoEm` deixe de ser um campo
- * que nada escreve. Encerrar também o tira da semana, liberando a vaga.
+ * que nada escreve.
+ *
+ * Libera a vaga **só da semana informada**, pela mesma razão da promoção: as
+ * aparições anteriores são o que foi de fato comprometido naquelas semanas.
+ * Encerrar um WIN na S39 não pode apagá-lo dos cards da S37 e da S38.
  */
 export async function encerrarWin(formData: FormData): Promise<void> {
   const { userId } = await auth()
@@ -546,6 +574,9 @@ export async function encerrarWin(formData: FormData): Promise<void> {
 
   const winId = formData.get('winId')
   if (typeof winId !== 'string' || winId === '') return
+
+  const semana = lerSemana(formData)
+  if (!semana) return
 
   try {
     const colaborador = await colaboradorDoUsuario(userId)
@@ -559,7 +590,16 @@ export async function encerrarWin(formData: FormData): Promise<void> {
 
     await prisma.$transaction([
       prisma.win.update({ where: { id: win.id }, data: { encerradoEm: new Date() } }),
-      prisma.winSemana.deleteMany({ where: { winId: win.id } }),
+      prisma.winSemana.deleteMany({
+        where: {
+          winId: win.id,
+          card: {
+            colaboradorId: colaborador.id,
+            ano: semana.ano,
+            semana: semana.semana,
+          },
+        },
+      }),
     ])
   } catch (erro) {
     console.error('Falha ao encerrar WIN', erro)

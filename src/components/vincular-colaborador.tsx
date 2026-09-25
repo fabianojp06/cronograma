@@ -1,4 +1,8 @@
-import { vincularColaborador } from '@/app/wins/acoes-win'
+'use client'
+
+import { useActionState } from 'react'
+
+import { vincularColaborador, type EstadoVinculo } from '@/app/wins/acoes-win'
 
 export type ColaboradorLivre = { id: string; nome: string }
 
@@ -10,6 +14,8 @@ export type ColaboradorLivre = { id: string; nome: string }
  * saberia de quem é o item.
  */
 export function VincularColaborador({ livres }: { livres: ColaboradorLivre[] }) {
+  const [estado, acao] = useActionState<EstadoVinculo, FormData>(vincularColaborador, {})
+
   return (
     <div className="mt-8 border-l-2 border-previsto bg-surface p-4">
       <h2 className="font-display text-base font-extrabold">Quem é você?</h2>
@@ -24,7 +30,7 @@ export function VincularColaborador({ livres }: { livres: ColaboradorLivre[] }) 
           nome antes de usar o card.
         </p>
       ) : (
-        <form action={vincularColaborador} className="mt-4 flex flex-wrap items-end gap-3">
+        <form action={acao} className="mt-4 flex flex-wrap items-end gap-3">
           <div>
             <label className="block text-xs text-textMuted" htmlFor="colaboradorId">
               Colaborador
@@ -49,6 +55,9 @@ export function VincularColaborador({ livres }: { livres: ColaboradorLivre[] }) 
           >
             Vincular
           </button>
+          {estado.erroGeral ? (
+            <p className="w-full text-sm text-warn">{estado.erroGeral}</p>
+          ) : null}
         </form>
       )}
     </div>

@@ -27,7 +27,6 @@ export type EstadoFormularioAcao = {
   erroGeral?: string
 }
 
-/** Número máximo de tentativas quando duas criações concorrem pelo mesmo número. */
 /**
  * Cria uma Ação vinculada a um Projeto (artboard `F-FormularioAcao`).
  *

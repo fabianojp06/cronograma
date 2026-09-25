@@ -1366,3 +1366,52 @@ não só o arquivo que eu tinha acabado de escrever.
 
 `npm test` = **474 passando em 35 arquivos** (461 antes; +13 dos achados 4, 8 e
 9). `npm run test:integracao` = **12 passando**. `tsc`, `lint` e `build` limpos.
+
+### Terceira rodada de code-review na Fase 1 (25/09/2026)
+
+Três achados. O primeiro é um defeito que **eu introduzi na rodada 2**.
+
+**1. O retry de P2002 que eu adicionei não funcionava.** Coloquei o laço de
+nova tentativa *dentro* do `$transaction` de `promoverWin`, copiado de
+`criarAcao` — que roda **fora** de transação. No Postgres a violação de
+constraint aborta a transação inteira: a consulta seguinte falha com "current
+transaction is aborted", não com P2002. O laço por dentro, portanto, nunca
+renumerava; ele trocava uma colisão recuperável pela falha da promoção inteira,
+o oposto do que o comentário que escrevi prometia.
+
+Provado antes de mexer, num Postgres descartável: depois de uma colisão dentro
+da transação, o `findFirst` seguinte falha com **P2039**. O laço virou
+`refazerNaColisao`, em `src/lib/acao-validacao.ts`, envolvendo a transação
+inteira — com quatro testes unitários, porque concorrência real não é
+determinística mas a semântica do retry é.
+
+**2. `encerrarWin` apagava o histórico.** Apagava *todos* os `WinSemana` do WIN,
+não só o da semana corrente: encerrar na S39 sumia com o WIN dos cards da S37 e
+da S38. Isso levou a rever também a decisão que eu tinha tomado na rodada 2 —
+promover somava as aparições em `aparicoesAnteriores` e apagava os registros.
+**Estava errado pelo mesmo motivo**, e o CLAUDE.md foi corrigido: as duas ações
+agora recebem `ano`/`semana` e tiram o WIN **só daquela semana**. As aparições
+anteriores registram o que foi de fato comprometido; apagá-las é reescrever o
+passado para arrumar o presente. `aparicoesAnteriores` volta a significar uma
+coisa só: aparições anteriores ao sistema, vindas da importação.
+
+**3. `vincularColaborador` ignorava o `count` do `updateMany`.** A lista de
+nomes é montada quando a página renderiza; se entre aquilo e o envio o
+colaborador fosse tomado por outra conta ou desativado, o update não fazia nada
+e o usuário voltava ao mesmo "Quem é você?" sem erro e sem saída. Agora a ação
+devolve estado e o componente mostra a mensagem.
+
+Também: o docstring de `TENTATIVAS_NUMERO` ficou órfão em `acoes-acao.ts` quando
+movi a constante, empilhado sobre o doc de `criarAcao`. Removido.
+
+**Erro de processo nesta rodada:** rodei `npx prettier --write` nos arquivos que
+toquei. O projeto não usa prettier (sem config, fora do `package.json`), e o
+padrão da ferramenta trocou aspas simples por duplas e adicionou ponto-e-vírgula
+no arquivo inteiro — 565 linhas alteradas onde a correção mexia em ~200. Revertí
+os quatro arquivos para o HEAD e refiz as edições à mão. Formatador não se roda
+num projeto que não o adotou.
+
+`npm test` = **478 passando em 35 arquivos** (474 antes; +4 de `refazerNaColisao`).
+`npm run test:integracao` = **16 passando** (12 antes; +4 dos achados 2 e 3, entre
+eles a prova de que encerrar na S39 preserva as aparições da S37 e da S38).
+`tsc`, `lint` e `build` limpos.

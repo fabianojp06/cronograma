@@ -18,10 +18,12 @@ export type ProjetoOpcao = { id: string; nome: string }
  */
 export function PromoverWin({
   winId,
+  semana,
   descricao,
   projetos,
 }: {
   winId: string
+  semana: { ano: number; semana: number }
   descricao: string
   projetos: ProjetoOpcao[]
 }) {
@@ -43,6 +45,8 @@ export function PromoverWin({
   return (
     <form action={acao} className="border-l-2 border-warn bg-surface p-4">
       <input type="hidden" name="winId" value={winId} />
+      <input type="hidden" name="ano" value={semana.ano} />
+      <input type="hidden" name="semana" value={semana.semana} />
       <p className="text-sm font-medium text-warn">
         Este WIN já vem se repetindo há 3 semanas.
       </p>
