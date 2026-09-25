@@ -1613,3 +1613,43 @@ página e compara a ordem dos ids literais com a do catálogo.
 
 `npm test` = **526 passando em 38 arquivos** (524 antes).
 `npm run test:integracao` = **50 passando** (48 antes).
+
+### Bloco 12 — Administração de colaboradores (25/09/2026)
+
+Fechando a lacuna que eu vinha sinalizando desde o auto-cadastro: não havia como
+desativar alguém nem corrigir um nome digitado errado, e isso era edição direta
+no banco.
+
+**O risco desta tela não é renomear — é o que renomear arrasta.**
+`Colaborador.nome` é copiado para `Projeto.responsavel` a cada promoção de WIN.
+Renomear só de um lado parte a pessoa em duas no relatório por responsável: o
+mesmo defeito que o auto-cadastro veio evitar, chegando pela outra ponta.
+
+Por isso a renomeação **oferece** levar a mudança para os projetos, mostrando
+quantos serão afetados antes de decidir. É escolha e não automatismo porque as
+duas intenções são legítimas: corrigir digitação quer levar junto; alguém que
+mudou de sobrenome pode não querer reescrever o histórico. O `comentario` da
+promoção, que também cita o nome em prosa, fica como está — é registro do que
+aconteceu na época.
+
+Outras decisões:
+
+- **Conflito de nome usa `chaveDoNome`**, a mesma regra do cadastro e do
+  importador. Igualdade exata deixaria criar "Fabiano Jose" ao lado de "Fabiano
+  José". Corrigir só acento ou caixa do próprio nome é permitido — é o caso de
+  uso principal.
+- **Desativar não apaga nada e não solta o `clerkUserId`.** Soltar deixaria a
+  conta se cadastrar de novo com outro nome, deixando o histórico órfão.
+- **Ninguém desativa a si mesmo**: cairia na tela "Quem é você?" sem conseguir
+  se escolher, porque a lista só oferece ativos e sem dono.
+- **Sem sistema de papéis.** Qualquer conta autenticada administra, coerente com
+  a decisão do auto-cadastro. Inventar papéis para uma equipe deste tamanho
+  seria infraestrutura sem demanda — e, se um dia precisar, o lugar é o Clerk.
+
+`npm test` = **535 passando em 39 arquivos** (526 antes).
+`npm run test:integracao` = **60 passando** (50 antes), incluindo a propagação do
+nome para os projetos, a recusa de colisão sem acento e a preservação do
+histórico ao desativar.
+
+**Ainda não existe** trilha de auditoria para `Colaborador` — `HistoricoAlteracao`
+é de `Acao`. Quem desativou quem, e quando, não fica registrado.

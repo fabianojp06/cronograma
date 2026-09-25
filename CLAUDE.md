@@ -316,6 +316,36 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
   `Projeto.responsavel` numa promoção); avisa a divergência e deixa a decisão
   para quem roda.
 
+### Administração de colaboradores (`/colaboradores`)
+
+Desativar, reativar e corrigir nome. Não há sistema de papéis: qualquer conta
+autenticada administra, coerente com o auto-cadastro — o Clerk já decide quem
+entra, e inventar papéis para três pessoas seria infraestrutura sem demanda.
+
+- **Renomear oferece levar o nome para `Projeto.responsavel`**, e a tela mostra
+  quantos projetos serão afetados antes de decidir. `Colaborador.nome` é copiado
+  para lá a cada promoção; renomear só de um lado parte a pessoa em duas no
+  relatório por responsável — o mesmo defeito que o auto-cadastro evita, vindo
+  pela outra ponta. A propagação é **escolha**, não automática: corrigir
+  digitação quer levar junto, mudar de sobrenome talvez não queira reescrever o
+  histórico.
+- **O `comentario` da promoção não é reescrito.** Ele também cita o nome
+  ("Promovido do Card WIN de Fulano…"), mas em prosa e como registro do que
+  aconteceu na época.
+- **Conflito de nome usa `chaveDoNome`**, a mesma regra do cadastro e do
+  importador: igualdade exata deixaria criar "Fabiano Jose" ao lado de "Fabiano
+  José". Trocar só acento ou caixa do **próprio** nome é permitido — é a
+  correção que a tela existe para fazer.
+- **Desativar não apaga nada.** Cards e WINs seguem no histórico e a tela de
+  equipe continua mostrando o que a pessoa comprometeu; o que muda é sair da
+  lista de "quem falta" e da lista de vínculo.
+- **Desativar não solta o `clerkUserId`.** Soltar deixaria a conta se cadastrar
+  de novo com outro nome, e o histórico dela ficaria órfão. Reativar devolve o
+  acesso exatamente como era.
+- **Ninguém desativa a si mesmo**: cairia na tela "Quem é você?" sem conseguir
+  se escolher (a lista só oferece ativos e sem dono) e ficaria sem acesso ao
+  próprio card até alguém mexer no banco.
+
 ### O calendário de semanas (`semana-ctcea.ts`)
 
 **Não é a semana ISO.** A semana começa no **domingo**, e a semana 1 de 2026
