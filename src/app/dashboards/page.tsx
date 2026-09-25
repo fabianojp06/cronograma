@@ -20,6 +20,14 @@ import {
 } from '@/lib/dashboard-auditoria'
 import { RELATORIOS, type Relatorio } from '@/lib/dashboard-catalogo'
 import {
+  janelaDeSemanas,
+  taxaDeConclusao,
+  winsReincidentes,
+} from '@/lib/dashboard-wins'
+import { GraficoWinsSemana } from '@/components/grafico-wins-semana'
+import { ROTULO_SITUACAO } from '@/lib/win-promocao'
+import { semanaDe, rotuloSemana } from '@/lib/semana-ctcea'
+import {
   DIMENSOES,
   ROTULO_DIMENSAO,
   agruparPorDimensao,
@@ -72,7 +80,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
   const filtros = lerFiltros(await searchParams)
   const hoje = inicioDeHojeUTC()
 
-  const [projetos, valores, historico] = await Promise.all([
+  const [projetos, valores, registrosWin, winsTodos, historico] = await Promise.all([
     prisma.projeto.findMany({
       where: whereProjetoAtivo(filtros),
       orderBy: [{ prioridade: 'asc' }, { nome: 'asc' }],
@@ -107,6 +115,29 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
     // A auditoria NÃO segue os filtros da carteira: a pergunta é "o que mudou
     // no sistema", e recortá-la por equipe esconderia justamente o que se quer
     // fiscalizar. Limitada às últimas alterações para não crescer sem teto.
+    // Os relatórios de Card WIN NÃO seguem os filtros da carteira: equipe,
+    // natureza e prioridade são dimensões de `Projeto`, e um WIN não tem
+    // nenhuma delas. Mexer num filtro deixaria estes números parados, o que
+    // leria como bug.
+    prisma.winSemana.findMany({
+      select: {
+        status: true,
+        desfecho: true,
+        card: { select: { ano: true, semana: true } },
+      },
+    }),
+    prisma.win.findMany({
+      select: {
+        id: true,
+        descricao: true,
+        aparicoesAnteriores: true,
+        promovidoEm: true,
+        encerradoEm: true,
+        projetoId: true,
+        colaborador: { select: { nome: true } },
+        registros: { select: { card: { select: { ano: true, semana: true } } } },
+      },
+    }),
     prisma.historicoAlteracao.findMany({
       orderBy: { alteradoEm: 'desc' },
       take: 500,
@@ -130,6 +161,30 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
   ])
 
   const linhas = filtrarPorStatus(montarLinhas(projetos, hoje), filtros)
+
+  const semanaAtual = semanaDe(hoje)
+  const conclusaoSemanal = taxaDeConclusao(
+    registrosWin.map((r) => ({
+      ano: r.card.ano,
+      semana: r.card.semana,
+      status: r.status,
+      desfecho: r.desfecho,
+    })),
+    janelaDeSemanas(semanaAtual, 12),
+    semanaAtual,
+  )
+  const reincidentes = winsReincidentes(
+    winsTodos.map((w) => ({
+      winId: w.id,
+      descricao: w.descricao,
+      colaborador: w.colaborador.nome,
+      aparicoesAnteriores: w.aparicoesAnteriores,
+      promovidoEm: w.promovidoEm,
+      encerradoEm: w.encerradoEm,
+      projetoId: w.projetoId,
+      aparicoes: w.registros.map((r) => r.card),
+    })),
+  )
   const resumoPorId = new Map(linhas.map((linha) => [linha.id, linha.resumo]))
   const visiveis = projetos.filter((projeto) => resumoPorId.has(projeto.id))
 
@@ -201,7 +256,9 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
       <h1 className="mt-2 font-display text-2xl font-extrabold">Dashboards</h1>
       <p className="mt-2 max-w-3xl text-sm text-textMuted">
         Relatórios sobre a carteira de projetos. Os filtros abaixo valem para todas as
-        seções, exceto as de auditoria, que sempre olham o sistema inteiro.
+        seções, exceto as de <strong className="font-medium">Card WIN</strong> e as de
+        auditoria, que sempre olham o sistema inteiro — equipe, natureza e prioridade
+        são dimensões de projeto, e um WIN não tem nenhuma delas.
       </p>
 
       <FiltrosProjetos
@@ -526,6 +583,124 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
                         <span className="block text-xs text-textFaint">
                           {formatarDataBR(linha.ultimaEm)}
                         </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DashboardSecao>
+
+        <DashboardSecao relatorio={rel('wins-conclusao')}>
+          {conclusaoSemanal.every((s) => s.total === 0) ? (
+            <SemDados>Nenhum WIN registrado nas últimas 12 semanas.</SemDados>
+          ) : (
+            <>
+              <GraficoWinsSemana semanas={conclusaoSemanal} />
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-2xl border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
+                      <th className="px-3 py-2 font-semibold">Semana</th>
+                      <th className="px-3 py-2 text-right font-semibold">WINs</th>
+                      <th className="px-3 py-2 text-right font-semibold">Concluídos</th>
+                      <th className="px-3 py-2 text-right font-semibold">Promovidos</th>
+                      <th className="px-3 py-2 text-right font-semibold">Taxa</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {conclusaoSemanal.map((semana) => (
+                      <tr
+                        key={`${semana.semana.ano}-${semana.semana.semana}`}
+                        className="border-b border-borderSoft bg-surface"
+                      >
+                        <td className="px-3 py-2 tabular-nums">
+                          {semana.rotulo}
+                          {semana.emCurso ? (
+                            <span className="ml-2 text-xs text-textFaint">em curso</span>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">{semana.total}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{semana.feitos}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {semana.promovidos}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {semana.taxa === null ? (
+                            <span className="text-textFaint">
+                              {semana.motivoSemTaxa === 'TODOS_PROMOVIDOS'
+                                ? 'todos promovidos'
+                                : '—'}
+                            </span>
+                          ) : (
+                            `${Math.round(semana.taxa * 100)}%`
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </DashboardSecao>
+
+        <DashboardSecao relatorio={rel('wins-reincidentes')}>
+          {reincidentes.length === 0 ? (
+            <SemDados>Nenhum WIN apareceu em mais de uma semana.</SemDados>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-2xl border-collapse text-sm">
+                <thead>
+                  <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
+                    <th className="px-3 py-2 font-semibold">WIN</th>
+                    <th className="px-3 py-2 font-semibold">Quem</th>
+                    <th className="px-3 py-2 font-semibold">Período</th>
+                    <th className="px-3 py-2 font-semibold">Aparições</th>
+                    <th className="px-3 py-2 font-semibold">Situação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reincidentes.map((win) => (
+                    <tr key={win.winId} className="border-b border-borderSoft bg-surface">
+                      <td
+                        className={`border-l-2 px-3 py-2.5 ${
+                          win.situacao === 'DEVE_PROMOVER'
+                            ? 'border-warn'
+                            : win.situacao === 'PROMOVIDO'
+                              ? 'border-realizado'
+                              : 'border-borderSoft'
+                        }`}
+                      >
+                        {win.projetoId ? (
+                          <Link className="hover:text-accent" href={`/projetos/${win.projetoId}`}>
+                            {win.descricao}
+                          </Link>
+                        ) : (
+                          win.descricao
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">{win.colaborador}</td>
+                      <td className="px-3 py-2.5 text-xs text-textMuted">
+                        {win.primeiraSemana === null
+                          ? 'antes do sistema'
+                          : `${rotuloSemana(win.primeiraSemana)} → ${rotuloSemana(win.ultimaSemana!)}`}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className="tabular-nums">{win.aparicoes}</span>
+                        <span
+                          aria-hidden
+                          className="ml-2 inline-flex h-1.5 w-16 overflow-hidden rounded-full bg-borderSoft align-middle"
+                        >
+                          <span
+                            className={win.aparicoes >= 3 ? 'bg-warn' : 'bg-previsto'}
+                            style={{ width: `${Math.min(100, (win.aparicoes / 3) * 100)}%` }}
+                          />
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-textMuted">
+                        {ROTULO_SITUACAO[win.situacao]}
                       </td>
                     </tr>
                   ))}

@@ -249,11 +249,29 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
 - **Promoção escolhe o destino na hora**: projeto novo ou ação dentro de projeto
   existente. Nem todo WIN vira projeto — "Finalização da documentação do módulo
   de integração" é parte do SGO, e forçar projeto novo fragmentaria a carteira.
-- **Promover e encerrar tiram o WIN só da semana em que a ação aconteceu.** As
-  aparições anteriores são o registro do que foi de fato comprometido naquelas
-  semanas — é delas que vivem o bloco "semana anterior" e a contagem de
-  recorrência. Apagá-las reescreveria o passado para arrumar o presente, e por
-  isso as duas ações recebem `ano`/`semana` no formulário.
+- **O desfecho pertence à APARIÇÃO, não ao WIN** (`WinSemana.desfecho`:
+  `NO_CARD` | `PROMOVIDO` | `ENCERRADO`). Um WIN promovido na semana 39
+  continua tendo acontecido nas semanas 37 e 38 — ler o desfecho de
+  `Win.promovidoEm` o tiraria do denominador de todas as semanas anteriores.
+- **Promover e encerrar MARCAM a aparição da semana da ação; não apagam.**
+  Apagar destruía o histórico que os relatórios leem: a semana em que a equipe
+  promoveu tudo ficava vazia, e cada WIN promovido perdia uma aparição. As duas
+  ações recebem `ano`/`semana` no formulário e só mexem naquela semana.
+- **A vaga no card é liberada por índice único PARCIAL**, não pela ausência da
+  linha: `WinSemana_cardId_ordem_no_card` vale só onde `desfecho = NO_CARD`.
+  Assim `ordem` continua `NOT NULL` e nenhum call site precisa lidar com nulo.
+  O Prisma não expressa índice parcial — ele vive em SQL na migration, mesmo
+  caminho da CHECK de `ordem`.
+- **Ocupação e duplicata são consultas diferentes.** "Que posições estão
+  ocupadas?" filtra `desfecho: NO_CARD`; "este WIN já esteve neste card?" olha
+  TODAS as linhas, porque `@@unique([cardId, winId])` vale para todas.
+  Confundi-las troca a mensagem amigável por um P2002 cru.
+- **Encerrar pergunta o desfecho**: "Concluí" grava `FEITO`, "Abandonei" grava
+  `NAO_FEITO`. Sem a pergunta o WIN encerrado guardava o status que por acaso
+  tinha — quase sempre PENDENTE — e a taxa de conclusão o contava como fracasso.
+- **O importador filtra por desfecho.** `deleteMany` sem filtro destruiria as
+  aparições promovidas e encerradas a cada reimportação, e a varredura de órfãos
+  precisa checar `encerradoEm` além de `promovidoEm`.
 - **`aparicoesAnteriores` nunca é incrementado pelo sistema.** Ele significa
   "aparições anteriores ao sistema", vindas da importação. Somar as aparições
   vivas nele para poder apagá-las daria dois lugares para a mesma verdade.
@@ -304,6 +322,33 @@ de 2027.
 A divergência entre o ano do calendário e o ano civil acontece **nos dois
 sentidos**: 30/12/2025 já é a semana 1 de 2026, e 27/12/2026 já é a semana 1 de
 2027 (a semana 52 de 2026 termina em 26/12). Os quatro casos estão no teste.
+
+## Relatórios do Card WIN
+
+- **Visão de equipe (`/wins/equipe`)** — o "Compartilhamento dos Cards" da aba
+  Agenda, para a daily. **Somente leitura**: editar card alheio é decisão de
+  produto que ninguém tomou. Não filtra colaborador ativo na consulta, porque a
+  tela navega por semanas passadas e esconder quem saiu reescreveria o que
+  aconteceu; a lista de *quem falta* é que só considera os ativos.
+- **`semWins` pergunta "tem WIN?", não "tem card?"** — salvar só o cabeçalho já
+  cria a linha do `CardSemanal`, então o critério ingênuo esconderia quem digitou
+  a área e mais nada, que é justamente quem a reunião precisa ver.
+- **Os relatórios de WIN ficam fora dos filtros da tela `/dashboards`**, junto
+  com a auditoria: equipe, natureza e prioridade são dimensões de `Projeto`, e um
+  WIN não tem nenhuma delas. Mexer num filtro deixaria os números parados, o que
+  leria como bug — daí o grupo próprio `WINS` e a ressalva no cabeçalho.
+- **Promovido é categoria própria na taxa de conclusão**, fora do denominador:
+  não é concluir nem falhar, o trabalho mudou de lugar. E os baldes de status só
+  valem para o que não foi promovido — a linha promovida guarda o status que
+  tinha, e contá-la nos dois somaria mais que o total.
+- **`taxa: null` carrega o motivo** (`SEM_WINS` ou `TODOS_PROMOVIDOS`): sem isso,
+  a semana em que o funil funcionou melhor renderiza igual a uma de recesso.
+- **A janela é densa e atravessa o ano por `semanaAnterior`**, nunca por
+  `semana - 1`: `ano`/`semana` são duas colunas inteiras e nenhum intervalo
+  contínuo sai de um `gte`.
+- **Hachura significa uma coisa só.** `PROMOVIDO` é hachura sobre `realizado`
+  (textura, não cor — `accent` é reservado a magnitude); a semana em curso é
+  contorno tracejado. As duas coincidiriam na última barra.
 
 ### Testes que precisam de banco
 

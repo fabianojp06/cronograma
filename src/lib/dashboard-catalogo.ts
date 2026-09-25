@@ -17,6 +17,7 @@ export const GRUPOS_RELATORIO = [
   'PRAZOS',
   'TEMPO',
   'QUALIDADE',
+  'WINS',
   'AUDITORIA',
 ] as const
 
@@ -28,6 +29,7 @@ export const ROTULO_GRUPO: Record<GrupoRelatorio, string> = {
   PRAZOS: 'Prazos',
   TEMPO: 'Evolução no tempo',
   QUALIDADE: 'Qualidade do cadastro',
+  WINS: 'Card WIN',
   AUDITORIA: 'Auditoria',
 }
 
@@ -124,6 +126,19 @@ export const RELATORIOS: readonly Relatorio[] = [
     titulo: 'Replanejamentos',
     pergunta: 'Quais ações tiveram a data prevista empurrada, e quantas vezes?',
     grupo: 'AUDITORIA',
+  },
+  {
+    id: 'wins-conclusao',
+    titulo: 'Conclusão dos WINs por semana',
+    pergunta: 'Dos WINs comprometidos em cada semana, quantos foram concluídos?',
+    grupo: 'WINS',
+  },
+  {
+    id: 'wins-reincidentes',
+    titulo: 'WINs reincidentes',
+    pergunta:
+      'Que assuntos se repetem semana após semana, e quais já viraram plano de ação?',
+    grupo: 'WINS',
   },
   {
     id: 'alteracoes-recentes',

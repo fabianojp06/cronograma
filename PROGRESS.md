@@ -1507,3 +1507,72 @@ este teste, com a mensagem certa, porque a planilha de prova não tinha prazo.
 `npm test` = **494 passando em 36 arquivos** (490 antes; +4 de `encontrarPorNome`).
 `npm run test:integracao` = **29 passando** (26 antes; +3 do vínculo desativado).
 `tsc`, `lint` e `build` limpos.
+
+### Bloco 11 — Card WIN, fase 2 (25/09/2026)
+
+Três entregas: visão de equipe para a daily, taxa de conclusão semanal e WINs
+reincidentes. O plano passou por **três rodadas de code-review antes de virar
+código** — 20 achados, e é o que mais vale registrar deste bloco.
+
+**A revisão do plano encontrou um erro de modelagem que nenhuma revisão de
+código teria pego barato.** A fase 1 apagava o `WinSemana` ao promover ou
+encerrar. Isso não incomodava ninguém enquanto não havia relatório; com eles, a
+semana em que a equipe promoveu tudo apareceria vazia e cada WIN promovido
+perderia uma aparição. Duas tentativas de remendo (`ordem = null`, depois
+somar em `aparicoesAnteriores`) criaram mais problemas do que resolveram —
+sintoma de estar sobrecarregando um campo com significado que ele não carrega.
+
+O desenho que resolveu: **o desfecho pertence à aparição**, não ao WIN. Um WIN
+promovido na S39 continua tendo acontecido na S37 e na S38. Daí
+`WinSemana.desfecho` e a vaga liberada por índice único **parcial**, com `ordem`
+continuando `NOT NULL` — nenhum call site precisou lidar com nulo, e o risco do
+`?? 0` recriar erro de contagem de vaga sumiu junto.
+
+Duas decisões de negócio que a revisão expôs como ausentes, decididas com o
+usuário:
+
+- **Promovido é categoria própria**, fora do denominador da taxa: nem concluído
+  nem falho. Contá-lo como fracasso ensinaria a equipe a evitar a promoção, que
+  é o método funcionando.
+- **Encerrar passa a perguntar o desfecho.** A ação existia sem perguntar, e o
+  próprio docstring dela admitia a ambiguidade. Sem a pergunta, o WIN encerrado
+  guardava o status que por acaso tinha e a taxa o contava como fracasso.
+
+Outros achados corrigidos antes de escrever a primeira linha: `encerradoEm`
+faltava na consulta da tela de equipe (WIN encerrado seria marcado "deve
+promover"); filtrar colaborador ativo apagaria retroativamente os cards de quem
+saiu; `contarAparicoesAte` e `totalDeAparicoes` somam `aparicoesAnteriores` cada
+um, então o consumidor passa zero; `ano`/`semana` são duas colunas e nenhum
+intervalo contínuo sai de um `gte` na virada de ano; os relatórios de WIN não
+respondem aos filtros da página; a última barra é a semana em curso e sem marca
+lê como queda a zero; hachura estava significando duas coisas; `semCard` errava
+o critério, porque salvar só o cabeçalho já cria a linha do card.
+
+E um que era perda de dados: **o importador apagava todos os `WinSemana` do
+card**, sem filtro, e ignorava `encerradoEm` na varredura de órfãos —
+reimportar uma semana destruiria exatamente o histórico que a migration existe
+para preservar.
+
+**Verificação**, contra Postgres descartável:
+
+- o índice parcial existe no banco, com o `WHERE` correto;
+- depois de promover, a **mesma posição** aceita um WIN novo — o risco central
+  da migration;
+- o limite de 3 não conta linhas que saíram do card;
+- repetir um WIN que saiu dá mensagem, não P2002;
+- encerrar sem desfecho, ou com desfecho forjado, recusa **sem** deixar o WIN
+  meio encerrado;
+- reimportar preserva a aparição promovida;
+- a contagem da tela de equipe bate com a da tela individual;
+- promovido sai do denominador e não é contado duas vezes;
+- semana toda promovida não se confunde com semana de recesso.
+
+`npm test` = **524 passando em 38 arquivos** (505 antes).
+`npm run test:integracao` = **48 passando** (36 antes).
+`tsc`, `lint` e `build` limpos.
+
+**A lição do bloco:** revisar o plano saiu muito mais barato que revisar a
+implementação. Três rodadas sobre um documento acharam um erro de modelagem,
+duas decisões de negócio ausentes e uma perda de dados — tudo antes de existir
+código para refazer. Quando o custo de errar é migration mais reescrita de
+teste, o documento é o lugar certo para errar.
