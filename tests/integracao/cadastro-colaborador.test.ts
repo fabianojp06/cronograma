@@ -159,3 +159,47 @@ describe('a jornada completa de quem chega num sistema zerado', () => {
     expect(registro.card).toEqual(semana)
   })
 })
+
+describe('vínculo com colaborador desativado não pode ser silencioso', () => {
+  // A página só procura colaborador com `ativo: true`, então quem está
+  // vinculado a um desativado cai de novo na tela "Quem é você?". Um retorno
+  // silencioso aqui faria o botão não responder nada — o mesmo beco sem saída
+  // que estas ações vieram remover.
+  it('avisa em vez de não fazer nada ao tentar cadastrar de novo', async () => {
+    await prisma.colaborador.create({
+      data: { nome: 'Fabiano José', clerkUserId: 'user_novo', ativo: false },
+    })
+
+    const r = await cadastrarColaborador({}, formulario('Fabiano José'))
+    expect(r.erroGeral).toContain('desativado')
+  })
+
+  it('avisa também no caminho de escolher da lista', async () => {
+    const { vincularColaborador } = await import('@/app/wins/acoes-win')
+    await prisma.colaborador.create({
+      data: { nome: 'Fabiano José', clerkUserId: 'user_novo', ativo: false },
+    })
+    const livre = await prisma.colaborador.create({
+      data: { nome: 'Outra Pessoa' },
+      select: { id: true },
+    })
+
+    const fd = new FormData()
+    fd.set('colaboradorId', livre.id)
+    const r = await vincularColaborador({}, fd)
+    expect(r.erroGeral).toContain('desativado')
+    // E não rouba o colaborador livre no caminho.
+    const outro = await prisma.colaborador.findUniqueOrThrow({
+      where: { id: livre.id },
+      select: { clerkUserId: true },
+    })
+    expect(outro.clerkUserId).toBeNull()
+  })
+
+  it('segue em silêncio quando o vínculo está bom — não é erro', async () => {
+    await prisma.colaborador.create({
+      data: { nome: 'Fabiano José', clerkUserId: 'user_novo' },
+    })
+    expect(await cadastrarColaborador({}, formulario('Qualquer Nome'))).toEqual({})
+  })
+})

@@ -63,3 +63,23 @@ export function chaveDoNome(nome: string): string {
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
 }
+
+/**
+ * Acha, entre os já cadastrados, quem é a mesma pessoa que `nome`.
+ *
+ * Existe para que **os dois caminhos usem a mesma regra de identidade**: o
+ * auto-cadastro da tela e o `scripts/importar-card-win.ts`. Enquanto o script
+ * casava por igualdade exata de `nome`, a proteção era unidirecional — a tela
+ * reconhecia o que o importador tinha criado, mas não o contrário. Quem se
+ * cadastrasse como "Fabiano Jose" num banco zerado (sem `Projeto`, logo sem
+ * sugestão de grafia) ganhava uma segunda linha quando a planilha com
+ * "Fabiano José" fosse importada: os cards iam para a linha nova, a conta do
+ * Clerk ficava na antiga, e o relatório por responsável contava duas pessoas.
+ */
+export function encontrarPorNome<T extends { nome: string }>(
+  cadastrados: readonly T[],
+  nome: string,
+): T | undefined {
+  const chave = chaveDoNome(nome)
+  return cadastrados.find((c) => chaveDoNome(c.nome) === chave)
+}

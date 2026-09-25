@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   chaveDoNome,
+  encontrarPorNome,
   normalizarNome,
   validarNomeColaborador,
 } from './colaborador-validacao'
@@ -57,5 +58,31 @@ describe('chaveDoNome', () => {
 
   it('não confunde pessoas diferentes', () => {
     expect(chaveDoNome('Fabiano José')).not.toBe(chaveDoNome('Fabiano Júnior'))
+  })
+})
+
+describe('encontrarPorNome', () => {
+  const cadastrados = [
+    { id: 'a', nome: 'Fabiano José' },
+    { id: 'b', nome: 'Márcia Gonçalves' },
+  ]
+
+  it('acha a pessoa mesmo com grafia diferente', () => {
+    // O cenário real: alguém se cadastra sem acento num banco zerado, e depois
+    // a planilha chega com a grafia certa.
+    expect(encontrarPorNome(cadastrados, 'fabiano  jose')?.id).toBe('a')
+    expect(encontrarPorNome(cadastrados, 'MARCIA GONCALVES')?.id).toBe('b')
+  })
+
+  it('devolve undefined para quem não está cadastrado', () => {
+    expect(encontrarPorNome(cadastrados, 'Outra Pessoa')).toBeUndefined()
+  })
+
+  it('não confunde nomes parecidos', () => {
+    expect(encontrarPorNome(cadastrados, 'Fabiano Júnior')).toBeUndefined()
+  })
+
+  it('aguenta lista vazia', () => {
+    expect(encontrarPorNome([], 'Qualquer Um')).toBeUndefined()
   })
 })

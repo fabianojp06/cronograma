@@ -278,6 +278,16 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
   O cadastro **reconhece a pessoa que o importador já criou**, comparando sem
   acento nem caixa (`chaveDoNome`): sem isso, digitar "fabiano jose" esbarraria
   no índice único de `nome` e devolveria erro de banco em vez de vincular.
+- **A identidade por nome é uma regra só, nos dois sentidos** (`encontrarPorNome`),
+  usada pela tela **e** por `scripts/importar-card-win.ts`. Enquanto o script
+  casava por igualdade exata, a proteção era unidirecional: quem se cadastrasse
+  como "Fabiano Jose" num banco zerado — sem `Projeto`, logo sem sugestão de
+  grafia — ganhava uma segunda linha quando a planilha com "Fabiano José" fosse
+  importada. Os cards iam para a linha nova, a conta do Clerk ficava na antiga,
+  e o relatório por responsável contava duas pessoas. O importador **não
+  renomeia** o cadastro existente (o nome pode já ter ido para
+  `Projeto.responsavel` numa promoção); avisa a divergência e deixa a decisão
+  para quem roda.
 
 ### O calendário de semanas (`semana-ctcea.ts`)
 

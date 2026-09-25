@@ -1465,3 +1465,45 @@ termina com o `WinSemana` na semana certa, sob o nome certo.
 
 **Ainda não resolvido:** não existe tela para desativar colaborador nem para
 corrigir um nome cadastrado errado. Hoje isso é edição direta no banco.
+
+### Code-review do auto-cadastro (25/09/2026)
+
+Dois achados, os dois meus, os dois do mesmo commit.
+
+**1. Beco sem saída para quem está vinculado a colaborador desativado.** O
+atalho `if (jaVinculado) return {}` não olhava `ativo`. Como a página só busca
+colaborador com `ativo: true`, essa é a **única** situação em que o ramo é
+alcançável — e nela o botão não fazia nada nem avisava nada. Exatamente o beco
+que este commit veio remover, reintroduzido três linhas adiante. A conferência
+virou `conferirVinculoExistente`, usada pelos dois caminhos (escolher da lista e
+cadastrar), porque os dois tinham o mesmo atalho.
+
+**2. A proteção contra grafias divergentes era unidirecional.** A tela
+reconhecia quem o importador tinha criado, mas `scripts/importar-card-win.ts`
+fazia `upsert` por igualdade exata de `nome`. Quem se cadastrasse como "Fabiano
+Jose" num banco zerado — onde não há `Projeto`, logo nenhuma sugestão de grafia
+— ganhava uma segunda linha `Colaborador` quando a planilha com "Fabiano José"
+fosse importada.
+
+Provado nos dois sentidos, com o importador **real** rodando contra Postgres e
+uma planilha mínima construída para o teste:
+
+- código **antigo**: `2 colaboradores` — "Fabiano Jose [clerk=user_clerk]" e
+  "Fabiano José [clerk=null]", com o card importado sob o segundo. A conta do
+  usuário ficava órfã e o relatório por responsável passava a contar dois.
+- código **novo**: `1 colaborador`, card sob a conta certa, `area` atualizada
+  pela planilha, e a divergência de grafia avisada na saída do script.
+
+A regra de identidade virou `encontrarPorNome`, em `src/lib`, usada pela tela e
+pelo script — antes eram duas cópias da mesma decisão em arquivos diferentes, e
+foi exatamente por isso que uma delas ficou para trás. O importador **não
+renomeia** o cadastro existente: o nome pode já ter ido para
+`Projeto.responsavel` numa promoção, então ele avisa e deixa a decisão para quem
+roda.
+
+Incidental: o guard do `--ano` (achado 5 da 2ª rodada) disparou sozinho durante
+este teste, com a mensagem certa, porque a planilha de prova não tinha prazo.
+
+`npm test` = **494 passando em 36 arquivos** (490 antes; +4 de `encontrarPorNome`).
+`npm run test:integracao` = **29 passando** (26 antes; +3 do vínculo desativado).
+`tsc`, `lint` e `build` limpos.
