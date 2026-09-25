@@ -23,6 +23,7 @@ import {
   type CardLido,
 } from '../src/lib/importacao-card-win'
 import { semanaDe } from '../src/lib/semana-ctcea'
+import { encontrarPorNome } from '../src/lib/colaborador-validacao'
 import { StatusWin } from '../src/generated/prisma/enums'
 
 const require = createRequire(import.meta.url)
@@ -167,12 +168,40 @@ async function gravarNoBanco() {
     process.exit(1)
   }
 
-  const colaborador = await prisma.colaborador.upsert({
-    where: { nome: nomeColaborador },
-    create: { nome: nomeColaborador, area: cardOriginal.area },
-    update: { area: cardOriginal.area },
-    select: { id: true },
+  // Reconhece a pessoa pela MESMA chave que o auto-cadastro da tela usa (sem
+  // acento nem caixa), e não por igualdade exata de `nome`.
+  //
+  // Com igualdade exata a proteção seria unidirecional: a tela reconheceria o
+  // que o importador criou, mas não o contrário. Quem se cadastrasse como
+  // "Fabiano Jose" num banco zerado — onde não há `Projeto` ainda, logo nenhuma
+  // sugestão de grafia — ganharia uma SEGUNDA linha `Colaborador` quando a
+  // planilha com "Fabiano José" fosse importada: os cards iriam para a linha
+  // nova, a conta do Clerk ficaria na antiga, e o relatório por responsável
+  // passaria a contar duas pessoas.
+  const cadastrados = await prisma.colaborador.findMany({
+    select: { id: true, nome: true },
   })
+  const existente = encontrarPorNome(cadastrados, nomeColaborador)
+
+  if (existente && existente.nome !== nomeColaborador) {
+    // Não renomeia por conta própria: o nome pode já ter ido para
+    // `Projeto.responsavel` numa promoção. Avisa para um humano decidir.
+    console.log(
+      `  (atenção: a planilha diz "${nomeColaborador}" e o cadastro diz ` +
+        `"${existente.nome}" — é a mesma pessoa, o cadastro foi mantido)`,
+    )
+  }
+
+  const colaborador = existente
+    ? await prisma.colaborador.update({
+        where: { id: existente.id },
+        data: { area: cardOriginal.area },
+        select: { id: true },
+      })
+    : await prisma.colaborador.create({
+        data: { nome: nomeColaborador, area: cardOriginal.area },
+        select: { id: true },
+      })
 
   const card = await prisma.cardSemanal.upsert({
     where: {

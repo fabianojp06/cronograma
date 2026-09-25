@@ -17,6 +17,11 @@ import {
   MENSAGEM_ERRO_PROMOCAO,
 } from '@/lib/win-promocao'
 import {
+  encontrarPorNome,
+  MENSAGEM_ERRO_NOME,
+  validarNomeColaborador,
+} from '@/lib/colaborador-validacao'
+import {
   podeAdicionarWin,
   proximaOrdemLivre,
   validarCard,
@@ -436,6 +441,33 @@ export async function salvarCard(
 }
 
 /** Vincula a conta logada a um colaborador — feito uma vez por pessoa. */
+const MENSAGEM_DESATIVADO =
+  'Sua conta está vinculada a um colaborador desativado. ' +
+  'Peça para reativarem antes de usar o card.'
+
+/**
+ * O que fazer quando a conta já está vinculada a algum colaborador.
+ *
+ * Devolve `null` quando não há nada a dizer (o vínculo está bom e a página vai
+ * seguir sozinha). O caso desativado precisa de mensagem: a página só procura
+ * colaborador com `ativo: true`, então quem está vinculado a um desativado cai
+ * de novo na tela "Quem é você?", e um retorno silencioso aqui faria o botão
+ * não responder nada — o mesmo beco sem saída que estas ações vieram remover.
+ */
+async function conferirVinculoExistente(
+  userId: string,
+): Promise<{ erroGeral?: string } | null> {
+  const jaVinculado = await prisma.colaborador.findFirst({
+    where: { clerkUserId: userId },
+    select: { id: true, ativo: true },
+  })
+  if (!jaVinculado) return null
+  if (!jaVinculado.ativo) return { erroGeral: MENSAGEM_DESATIVADO }
+
+  revalidatePath('/wins')
+  return {}
+}
+
 export type EstadoVinculo = { erroGeral?: string }
 
 export async function vincularColaborador(
@@ -455,14 +487,8 @@ export async function vincularColaborador(
     // banco, e sem esta checagem um usuário cujo colaborador foi desativado
     // veria o formulário de novo e o `updateMany` estouraria com P2002 —
     // exceção não tratada saindo de uma Server Action.
-    const jaVinculado = await prisma.colaborador.findFirst({
-      where: { clerkUserId: userId },
-      select: { id: true },
-    })
-    if (jaVinculado) {
-      revalidatePath('/wins')
-      return {}
-    }
+    const vinculo = await conferirVinculoExistente(userId)
+    if (vinculo) return vinculo
 
     // Só vincula colaborador que ainda não tem dono: duas contas apontando
     // para a mesma pessoa embaralhariam os cards.
@@ -607,4 +633,75 @@ export async function encerrarWin(formData: FormData): Promise<void> {
   }
 
   revalidatePath('/wins')
+}
+
+export type EstadoCadastroColaborador = { erroGeral?: string }
+
+/**
+ * Cadastra o próprio nome como colaborador e já vincula a conta.
+ *
+ * Sem isto o sistema tinha uma porta trancada: a única coisa que criava um
+ * `Colaborador` era o script de importação, então num banco recém-migrado a
+ * lista de nomes vinha vazia e ninguém conseguia passar da tela "Quem é você?"
+ * — nem para cadastrar o primeiro WIN.
+ *
+ * Deixar cada um se cadastrar é seguro aqui porque o Clerk já decide quem
+ * consegue entrar, e o cadastro é restrito: quem chega nesta tela é alguém da
+ * CTCEA que já passou pela autenticação.
+ */
+export async function cadastrarColaborador(
+  _anterior: EstadoCadastroColaborador,
+  formData: FormData,
+): Promise<EstadoCadastroColaborador> {
+  const { userId } = await auth()
+  if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
+
+  const validacao = validarNomeColaborador(formData.get('nome'))
+  if (!validacao.ok) return { erroGeral: MENSAGEM_ERRO_NOME[validacao.erro] }
+  const { nome } = validacao
+
+  try {
+    // Uma conta só pode estar em um colaborador — `clerkUserId` é único.
+    const vinculo = await conferirVinculoExistente(userId)
+    if (vinculo) return vinculo
+
+    // `nome` é único no banco, e o importador pode já ter criado esta pessoa.
+    // Comparar por chave (sem acento nem caixa) evita que "fabiano jose"
+    // esbarre no índice único do "Fabiano José" que já existe — o que daria
+    // um erro de banco no lugar de simplesmente reconhecer a pessoa.
+    const existentes = await prisma.colaborador.findMany({
+      select: { id: true, nome: true, clerkUserId: true, ativo: true },
+    })
+    const mesmaPessoa = encontrarPorNome(existentes, nome)
+
+    if (mesmaPessoa) {
+      if (mesmaPessoa.clerkUserId !== null) {
+        return { erroGeral: `"${mesmaPessoa.nome}" já está vinculado a outra conta.` }
+      }
+      if (!mesmaPessoa.ativo) {
+        return {
+          erroGeral:
+            `"${mesmaPessoa.nome}" está desativado. Peça para reativarem antes de usar o card.`,
+        }
+      }
+      // Vincula o cadastro que já existia, em vez de criar um duplicado.
+      const { count } = await prisma.colaborador.updateMany({
+        where: { id: mesmaPessoa.id, clerkUserId: null, ativo: true },
+        data: { clerkUserId: userId },
+      })
+      if (count === 0) {
+        return { erroGeral: 'Esse nome acabou de ser vinculado a outra conta. Tente de novo.' }
+      }
+      revalidatePath('/wins')
+      return {}
+    }
+
+    await prisma.colaborador.create({ data: { nome, clerkUserId: userId } })
+  } catch (erro) {
+    console.error('Falha ao cadastrar colaborador', erro)
+    return { erroGeral: 'Não foi possível cadastrar. Tente novamente.' }
+  }
+
+  revalidatePath('/wins')
+  return {}
 }

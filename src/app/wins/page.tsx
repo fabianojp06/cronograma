@@ -60,15 +60,29 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
         })
 
   if (!colaborador) {
-    const livres = await prisma.colaborador.findMany({
-      where: { clerkUserId: null, ativo: true },
-      orderBy: { nome: 'asc' },
-      select: { id: true, nome: true },
-    })
+    // As sugestões vêm dos responsáveis que o plano de ação já conhece: é a
+    // mesma grafia que volta para lá quando um WIN é promovido, e divergir
+    // partiria a pessoa em duas no relatório por responsável.
+    const [livres, responsaveis] = await Promise.all([
+      prisma.colaborador.findMany({
+        where: { clerkUserId: null, ativo: true },
+        orderBy: { nome: 'asc' },
+        select: { id: true, nome: true },
+      }),
+      prisma.projeto.findMany({
+        where: { ativo: true, responsavel: { not: null } },
+        distinct: ['responsavel'],
+        orderBy: { responsavel: 'asc' },
+        select: { responsavel: true },
+      }),
+    ])
+    const sugestoes = responsaveis
+      .map((p) => p.responsavel)
+      .filter((n): n is string => n !== null && n.trim() !== '')
     return (
       <main className="mx-auto w-full max-w-4xl px-6 py-12">
         <h1 className="font-display text-2xl font-extrabold">Card WIN</h1>
-        <VincularColaborador livres={livres} />
+        <VincularColaborador livres={livres} sugestoes={sugestoes} />
       </main>
     )
   }

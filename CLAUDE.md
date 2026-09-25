@@ -268,6 +268,26 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
   recuperável pela falha da operação inteira — o contrário do que se quer.
 - `Colaborador.nome` é a mesma grafia de `Projeto.responsavel`: é ele que vai
   para lá na promoção, e é o que mantém o relatório por responsável somando certo.
+  Por isso o cadastro sugere os `responsavel` que já existem — duas grafias da
+  mesma pessoa viram dois responsáveis no painel, sem erro nenhum aparecer.
+- **Quem entra e não está na lista cadastra o próprio nome** (`cadastrarColaborador`).
+  Sem isso o sistema tinha uma porta trancada: a única coisa que criava um
+  `Colaborador` era o script de importação, então num banco recém-migrado
+  ninguém passava da tela "Quem é você?" — nem para cadastrar o primeiro WIN.
+  Auto-cadastro é seguro aqui porque o Clerk já decide quem entra.
+  O cadastro **reconhece a pessoa que o importador já criou**, comparando sem
+  acento nem caixa (`chaveDoNome`): sem isso, digitar "fabiano jose" esbarraria
+  no índice único de `nome` e devolveria erro de banco em vez de vincular.
+- **A identidade por nome é uma regra só, nos dois sentidos** (`encontrarPorNome`),
+  usada pela tela **e** por `scripts/importar-card-win.ts`. Enquanto o script
+  casava por igualdade exata, a proteção era unidirecional: quem se cadastrasse
+  como "Fabiano Jose" num banco zerado — sem `Projeto`, logo sem sugestão de
+  grafia — ganhava uma segunda linha quando a planilha com "Fabiano José" fosse
+  importada. Os cards iam para a linha nova, a conta do Clerk ficava na antiga,
+  e o relatório por responsável contava duas pessoas. O importador **não
+  renomeia** o cadastro existente (o nome pode já ter ido para
+  `Projeto.responsavel` numa promoção); avisa a divergência e deixa a decisão
+  para quem roda.
 
 ### O calendário de semanas (`semana-ctcea.ts`)
 
