@@ -4,26 +4,38 @@ Documento de trabalho, revisado depois do code-review (8 achados). Sai do
 repositório quando a fase 2 for entregue; o que sobrar vira registro no
 PROGRESS.md e regra no CLAUDE.md.
 
-## Correção de premissa
+## Correção de premissa (2 rodadas de revisão)
 
-A primeira versão deste plano afirmava que a fase 2 é só leitura e **não teria
-migration**. Estava errado, e a revisão mostrou por quê.
+A primeira versão deste plano dizia que a fase 2 é só leitura e **não teria
+migration**. A primeira revisão derrubou isso; a segunda mostrou que a correção
+resolvia só metade.
 
-Promover e encerrar **apagam** o `WinSemana` da semana da ação. Consequência:
+### Rodada 1 — apagar destrói o histórico
 
-- a semana em que a equipe concluiu e promoveu tudo aparece vazia ou 0% na taxa
-  de conclusão — o relatório pune justamente a semana boa;
-- todo WIN promovido entra em "reincidentes" com uma aparição a menos, e os
-  promovidos na segunda aparição somem do corte.
+Promover e encerrar **apagavam** o `WinSemana` da semana da ação. A semana em
+que a equipe promoveu tudo ficava vazia, e cada WIN promovido perdia uma
+aparição em "reincidentes". Reconstruir por `Win.promovidoEm` não serve: o campo
+guarda quando a ação rodou, não a semana em que o WIN estava no card.
 
-Reconstruir a semana a partir de `Win.promovidoEm` **não funciona**: esse campo
-guarda quando a ação foi executada, não a semana em que o WIN estava no card.
-Quem promove olhando uma semana passada grava um timestamp de hoje.
+### Rodada 2 — a linha viva ainda contava como fracasso
 
-O erro é o mecanismo, não o escopo. A 3ª rodada de revisão da fase 1 corrigiu o
-escopo (apagar só a semana da ação, não todas) mas manteve o apagamento.
+Manter a linha com `ordem = null` resolve a semana vazia, mas **nem
+`promoverWin` nem `encerrarWin` escrevem `WinSemana.status`** (conferido: zero
+ocorrências no corpo das duas). O WIN promovido mantém PENDENTE, e a semana em
+que tudo deu certo ainda aparece com taxa 0%.
 
-### Migration `wins_ordem_opcional`
+Isso não era bug de código, era pergunta de negócio sem resposta. Decidido com o
+usuário:
+
+- **Promovido é categoria própria**, fora do cálculo da taxa. Nem feito (o
+  trabalho não acabou, mudou de lugar) nem não feito (contar como fracasso
+  ensinaria a equipe a evitar a promoção, que é o método funcionando).
+- **Encerrar passa a perguntar**: "concluí" grava `FEITO`, "abandonei" grava
+  `NAO_FEITO`. Hoje a ação não pergunta e o docstring dela admite a ambiguidade
+  ("concluído de vez, ou abandonado"). Resolver na origem é melhor do que um
+  pedaço do gráfico permanentemente sem resposta.
+
+## Migration `wins_ordem_opcional`
 
 ```prisma
 model WinSemana {
@@ -38,36 +50,64 @@ ALTER TABLE "WinSemana" ADD CONSTRAINT "WinSemana_ordem_entre_1_e_3"
   CHECK ("ordem" IS NULL OR "ordem" BETWEEN 1 AND 3);
 ```
 
-`ordem IS NULL` passa a significar **"saiu do card, mas aconteceu"**.
+`ordem IS NULL` significa **"saiu do card, mas aconteceu"**. A vaga continua
+liberada porque nulos não colidem em índice único no Postgres. O CHECK é
+recriado explícito: `NULL BETWEEN 1 AND 3` já passaria, mas depender dessa
+sutileza é deixar uma armadilha para a próxima pessoa. Migration **nova**, sem
+editar as duas existentes.
 
-- **A vaga continua liberada:** no Postgres nulos não colidem em índice único,
-  então `@@unique([cardId, ordem])` aceita vários nulos no mesmo card.
-- O CHECK é recriado explícito. `NULL BETWEEN 1 AND 3` já passaria (avalia para
-  NULL, e CHECK só reprova em FALSE), mas depender disso é depender de uma
-  sutileza de SQL que a próxima pessoa não tem por que conhecer.
-- Migration **nova**, nunca editando as duas existentes.
+### Dois tipos, não um tipo com nulo solto
+
+`ordem Int?` quebra todos os pontos que hoje assumem número —
+`card-win.tsx:36/73/80/255`, `page.tsx:189/297/332` — e um `where` do Prisma
+**não estreita o tipo selecionado**. A tentação é resolver com `!` ou `?? 0`, e
+`?? 0` reintroduz exatamente o erro de contagem de vaga que este plano chama de
+risco central.
+
+A saída é separar os dois conceitos no tipo:
+
+```ts
+/** Linha que está no card agora — sempre tem posição. */
+export type RegistroNoCard = { ordem: number; /* … */ }
+/** Linha histórica — saiu do card, `ordem` é nula. */
+export type RegistroHistorico = { ordem: number | null; /* … */ }
+
+/** Estreita na fronteira da consulta, uma vez, em vez de `!` espalhado. */
+export function apenasNoCard<T extends { ordem: number | null }>(
+  registros: readonly T[],
+): (T & { ordem: number })[]
+```
+
+A UI do card consome `RegistroNoCard` e nunca vê nulo; os relatórios consomem o
+histórico completo.
 
 ### Mudanças nas ações da fase 1
 
-`promoverWin` e `encerrarWin`: onde hoje há `deleteMany`, passa a haver
-`updateMany({ data: { ordem: null } })` com o mesmo `where`.
+| ação | hoje | passa a ser |
+|---|---|---|
+| `promoverWin` | `deleteMany` | `updateMany({ ordem: null })` |
+| `encerrarWin` | `deleteMany` | `updateMany({ ordem: null, status })`, com o status vindo da escolha |
+| `removerWinDaSemana` | `deleteMany` | **continua apagando** |
 
-`removerWinDaSemana` **continua apagando**. Tirar da semana é dizer "isto não
-deveria estar aqui" — correção de engano, não fato consumado. Manter a linha
-inflaria a contagem de aparições com WINs que ninguém chegou a perseguir.
+`removerWinDaSemana` apaga porque tirar da semana é dizer "isto não deveria
+estar aqui" — correção de engano, não fato consumado. Manter a linha inflaria a
+contagem com WINs que ninguém chegou a perseguir.
 
-`proximaOrdemLivre` e `podeAdicionarWin` recebem só as ordens não nulas. A
-consulta de ocupação passa a filtrar `ordem: { not: null }` — **é o ponto onde
-esta mudança mais provavelmente quebra algo**, porque uma omissão aqui deixaria
-o limite de 3 contando linhas que já saíram do card.
+**`encerrarWin` ganha um parâmetro de desfecho**, e a tela passa a oferecer dois
+botões ("Concluí" / "Abandonei") em vez de um.
 
-`/wins` e o bloco "semana anterior" também filtram `ordem: { not: null }`: um
-WIN promovido não volta a aparecer no card.
+### O ponto onde isto mais provavelmente quebra
 
-Os 29 testes de integração existentes cobrem essas ações e têm de continuar
-passando **sem alteração de expectativa** — exceto os que hoje afirmam
-`winSemana.count() === 0` após promover, que passam a afirmar
-`ordem === null` com a linha viva.
+A consulta de ocupação (`proximaOrdemLivre`, `podeAdicionarWin`) passa a filtrar
+`ordem: { not: null }`. **Mas essa mesma consulta serve de guarda de duplicata
+em `repetirWin`**, que compara `winId`. Filtrar os nulos ali cega a guarda, e
+como existe `@@unique([cardId, winId])`, repetir um WIN já promovido no mesmo
+card trocaria a mensagem amigável por um P2002 cru.
+
+As duas perguntas são diferentes e passam a ser consultas diferentes:
+
+- *"que posições estão ocupadas?"* → só `ordem: { not: null }`
+- *"este WIN já está neste card?"* → **todas** as linhas, inclusive as nulas
 
 ## O que a fase 1 deixou gravado
 
@@ -163,8 +203,16 @@ export type CardDaEquipe = {
 
 export function montarEquipe(cards: CardLido[], semana: SemanaCtcea): CardDaEquipe[]
 
-/** Colaboradores ATIVOS sem card na semana — numa daily, é o dado mais acionável. */
-export function semCard(
+/**
+ * Colaboradores ATIVOS **sem nenhum WIN** na semana — numa daily, o dado mais
+ * acionável.
+ *
+ * O critério é não ter WIN, e não "não ter `CardSemanal`": `garantirCard` e
+ * `salvarCard` criam a linha do card só por salvar o cabeçalho, e ela sobrevive
+ * à remoção dos WINs. Quem digitou a área e mais nada tem card, zero WINs, e
+ * sumiria da lista de quem falta — justamente quem a daily precisa ver.
+ */
+export function semWins(
   ativos: { id: string; nome: string }[],
   cards: CardDaEquipe[],
 ): { id: string; nome: string }[]
@@ -229,7 +277,8 @@ export type ConclusaoSemanal = {
   naoFeitos: number
   emAndamento: number
   pendentes: number
-  taxa: number | null
+  promovidos: number    // categoria própria, fora do cálculo da taxa
+  taxa: number | null   // feitos / (total - promovidos); null se denominador 0
   emCurso: boolean      // a semana ainda não terminou
 }
 
@@ -251,19 +300,28 @@ export function taxaDeConclusao(
   `null`/`0` evita. Renderizada hachurada, com rótulo "em curso".
 - Os WINs com `ordem = null` **contam**: saíram do card, mas aconteceram
   naquela semana.
+- **`promovidos` fica fora da taxa.** `taxa = feitos / (total - promovidos)`,
+  e `null` quando esse denominador é zero. Promover não é concluir nem falhar:
+  o trabalho mudou de lugar. Incluí-lo no denominador puniria a semana em que o
+  método funcionou.
 
 ### Visualização
 
 Barras empilhadas, uma por semana, taxa em rótulo. Ordem da pilha:
 
 ```
-FEITO (realizado/verde) → EM_ANDAMENTO (previsto/azul)
-→ PENDENTE (textFaint) → NAO_FEITO (warn/laranja)
+FEITO (realizado/verde) → PROMOVIDO (hachura sobre realizado)
+→ EM_ANDAMENTO (previsto/azul) → PENDENTE (textFaint) → NAO_FEITO (warn/laranja)
 ```
 
+`PROMOVIDO` distingue-se por **textura, não por cor**: hachura sobre
+`realizado`. Usar `accent` gastaria em status uma cor que o CLAUDE.md reserva a
+magnitude. Parentesco visual com o verde é correto aqui — promover é desfecho
+bom — e a textura evita inventar uma sexta cor num gráfico que já tem quatro.
+
 **Revalidar em CVD antes de entregar.** A ordem do painel foi validada para
-*aquele* conjunto de cinco status; este tem quatro e o par adjacente verde/azul
-não foi medido. Se o pior par ficar abaixo do piso, a ordem muda.
+*aquele* conjunto de cinco status; este é outro conjunto e nenhum par adjacente
+aqui foi medido. Se o pior par ficar abaixo do piso, a ordem muda.
 
 ## Entrega 3 — WINs reincidentes (`/dashboards#wins-reincidentes`)
 
@@ -296,6 +354,11 @@ export function winsReincidentes(
 
 - Conta **todas** as linhas `WinSemana`, inclusive `ordem = null` — é o que
   torna a contagem dos promovidos correta.
+- **Soma `Win.aparicoesAnteriores`.** Contar só as linhas subconta exatamente os
+  WINs importados que já vinham se repetindo: cairiam abaixo do corte de 2 e
+  sumiriam do relatório que existe para encontrá-los. `primeiraSemana` fica
+  `null` quando só há aparições anteriores, e a tabela mostra "antes do sistema"
+  em vez de inventar uma data.
 - Ordenação em três níveis: `aparicoes` desc, `ultimaSemana` desc, `descricao`.
   Os dois primeiros empatam muito, e ordem instável faz a tabela dançar.
 - **Inclui promovidos e encerrados**, marcados pela `situacao`. O promovido é o
@@ -311,7 +374,7 @@ embutida mostrando aparições contra o limite de 3.
 
 ## Testes
 
-- `wins-equipe.test.ts` — montagem, ordenação, `semCard` só com ativos, card de
+- `wins-equipe.test.ts` — montagem, ordenação, `semWins` só com ativos, incluindo quem tem card só de cabeçalho, card de
   colaborador inativo preservado no histórico, WIN encerrado **não** marcado
   como "deve promover", e o contrato do `aparicoesAnteriores: 0`.
 - `dashboard-wins.test.ts` — `taxa === null` em semana vazia contra `taxa === 0`
@@ -321,6 +384,19 @@ embutida mostrando aparições contra o limite de 3.
 - Integração: a migration aplicada; promover deixando `ordem = null` com a linha
   viva; a vaga liberada aceitando um WIN novo na mesma posição; o limite de 3
   **não** contando linhas com `ordem = null`; e os 29 testes existentes passando.
+
+### Os testes existentes que mudam de expectativa
+
+O impacto nos 29 é maior do que "um ou outro `count`". Mudam, no mínimo:
+
+- `wins-banco.test.ts:185-190` — o array `restantes` do teste de promoção;
+- `wins-banco.test.ts:294` e `:326-333` — os dois testes de `encerrar`, que
+  hoje afirmam `winSemana.count() === 0`;
+- todo teste que construa `WinSemana` assumindo `ordem` não nula.
+
+Cada um passa a afirmar a **linha viva com `ordem = null`**, que é a mudança de
+contrato. Reescrever essas expectativas é parte da entrega, não efeito
+colateral — e nenhuma pode ser afrouxada só para passar.
 
 ## Riscos
 
