@@ -210,6 +210,52 @@ PRIORIDADE         = SE(Esforço = 0; Benefício × GUT; (Benefício × GUT) / E
   `matriz-calculo.test.ts` como teste de paridade. Se um deles quebrar, o cálculo
   deixou de ser o modelo aprovado.
 
+## Card WIN Semanal (`/wins`)
+
+Integra a planilha `CARD WIN Semanal` — o compromisso semanal individual da GIA
+(*What's Important Now*). **Não é uma planilha concorrente do plano de ação: é o
+funil de entrada dele.** A própria planilha diz isso no rodapé de toda aba:
+
+> "Caso um mesmo WIN se repetir por 3 semanas, já na terceira semana ele deve ser
+> cadastrado no Plano de Ação (PLA-DEP-2026-001) e retirado do Card WIN."
+
+```
+Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | Acao
+                (ano/semana)    (ordem 1-3,   (identidade     (promoção)
+                                 prazo,        que atravessa
+                                 status)       semanas)
+```
+
+- **`Win` é a identidade; `WinSemana` é a aparição.** É o que permite contar
+  repetições sem comparar texto. Na planilha o mesmo item aparecia como
+  "… relatórios orçamentários", "… orçamentários ()" e "… orçamentários () -
+  SGO": qualquer contagem por string erraria.
+- **O bloco "semana anterior" é consulta, nunca cópia.** Era a duplicação manual
+  dele que fazia a planilha divergir de si mesma (a aba S37 repetia o bloco da
+  S36 em vez de trazer os WINs atuais dela).
+- **Limite de 3 por semana, rígido** — garantido pelo `@@unique([cardId, ordem])`
+  no banco, não só pela tela. É o método: obrigar a escolher é o valor do card.
+- **A regra das 3 semanas conta aparições, não semanas consecutivas.** A planilha
+  não tem a semana 34; quem não preenche o card numa semana não deveria zerar o
+  contador, seria premiar o esquecimento que a regra quer pegar.
+- **Promoção escolhe o destino na hora**: projeto novo ou ação dentro de projeto
+  existente. Nem todo WIN vira projeto — "Finalização da documentação do módulo
+  de integração" é parte do SGO, e forçar projeto novo fragmentaria a carteira.
+- `Colaborador.nome` é a mesma grafia de `Projeto.responsavel`: é ele que vai
+  para lá na promoção, e é o que mantém o relatório por responsável somando certo.
+
+### O calendário de semanas (`semana-ctcea.ts`)
+
+**Não é a semana ISO.** A semana começa no **domingo**, e a semana 1 de 2026
+começa em **28/12/2025** — regra: o domingo igual ou anterior a 1º de janeiro.
+`getISOWeek` daria números diferentes e desalinharia o histórico da equipe em
+silêncio. As 52 semanas da aba `Referências` estão transcritas em
+`semana-ctcea.test.ts` como teste de paridade, uma a uma.
+
+A planilha lista 53 linhas, mas o `XLOOKUP` dela só varre as semanas 1 a 52 — a
+53ª é sobra da fórmula que se estende sozinha, e por esta regra já é a semana 1
+de 2027.
+
 ## Migrations em produção
 
 O `build` roda `scripts/migrar-producao.ts` antes do `next build`, e esse script

@@ -35,6 +35,7 @@ model Projeto {
 
   acoes     Acao[]
   avaliacao AvaliacaoProjeto?
+  wins      Win[]
 
   @@index([ativo])
   @@index([equipe])
@@ -58,6 +59,7 @@ model Acao {
   updatedAt DateTime @updatedAt
 
   historico HistoricoAlteracao[]
+  wins      Win[]
 
   @@unique([projetoId, numero])
   @@index([projetoId])
@@ -127,4 +129,131 @@ model PesoCriterio {
   criterio  String   @id
   peso      Int
   updatedAt DateTime @updatedAt
+}
+
+/// Status de um WIN numa semana. A planilha usa FEITO / NÃO FEITO / EM
+/// ANDAMENTO e deixa a célula **vazia** com frequência — vazio vira PENDENTE
+/// aqui, para que "ninguém preencheu" seja um estado nomeado e não um buraco.
+enum StatusWin {
+  PENDENTE
+  EM_ANDAMENTO
+  FEITO
+  NAO_FEITO
+}
+
+/// Pessoa dona de um Card WIN.
+///
+/// `nome` é a mesma grafia usada em `Projeto.responsavel`: é ele que será
+/// gravado lá quando um WIN virar item do plano de ação, e é o que mantém o
+/// relatório "por responsável" do dashboard somando certo. Por isso é único —
+/// a lista fechada existe justamente para "Fabiano Garcia" e "Fabiano" não
+/// virarem duas pessoas.
+///
+/// `clerkUserId` é opcional de propósito: um colaborador pode ter card antes
+/// de ter conta, e a aba Referências da planilha já listava quatro pessoas.
+model Colaborador {
+  id          String  @id @default(cuid())
+  nome        String  @unique
+  clerkUserId String? @unique
+  /// Área da GIA — AGP, APD ou ACT. Serve de padrão ao abrir um card novo.
+  area        String?
+  ativo       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards CardSemanal[]
+  wins  Win[]
+
+  @@index([ativo])
+}
+
+/// O Card WIN de um colaborador numa semana — o cabeçalho da aba da planilha.
+///
+/// Não guarda o bloco "WINs da semana anterior": ele é **derivado** dos
+/// registros da semana anterior. Era a duplicação manual desse bloco que fazia
+/// a planilha divergir de si mesma (a aba S37 repetia o bloco da S36 em vez de
+/// trazer os WINs atuais dela).
+model CardSemanal {
+  id            String      @id @default(cuid())
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+
+  /// Ano e semana do calendário da CTCEA (ver `semana-ctcea.ts`) — NÃO é ISO.
+  ano    Int
+  semana Int
+
+  area         String?
+  atividade    String?
+  alertaRiscos String?
+  pedidoAjuda  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  registros WinSemana[]
+
+  @@unique([colaboradorId, ano, semana])
+  @@index([ano, semana])
+}
+
+/// O compromisso em si, com identidade que **atravessa semanas**.
+///
+/// É esta identidade que permite contar repetições sem comparar texto. Na
+/// planilha o mesmo item aparecia como "… relatórios orçamentários", depois
+/// "… relatórios orçamentários ()" e depois "… relatórios orçamentários () -
+/// SGO": qualquer contagem por string erraria.
+model Win {
+  id            String      @id @default(cuid())
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+
+  descricao String
+  suporte   String?
+
+  /// Aparições que existiram fora do sistema, semeadas na importação da
+  /// planilha. Sem isto, um WIN que já vinha de três semanas recomeçaria do
+  /// zero e escaparia da promoção justamente no momento em que ela é devida.
+  aparicoesAnteriores Int @default(0)
+
+  /// Preenchidos quando o WIN é promovido ao plano de ação. Exatamente um dos
+  /// dois fica preenchido — projeto novo ou ação dentro de projeto existente.
+  promovidoEm DateTime?
+  projetoId   String?
+  projeto     Projeto?  @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+  acaoId      String?
+  acao        Acao?     @relation(fields: [acaoId], references: [id], onDelete: SetNull)
+
+  /// Encerrado sem promoção (concluído ou abandonado).
+  encerradoEm DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  registros WinSemana[]
+
+  @@index([colaboradorId])
+  @@index([promovidoEm])
+}
+
+/// A aparição de um WIN numa semana: prazo, status e posição no card.
+model WinSemana {
+  id     String      @id @default(cuid())
+  winId  String
+  win    Win         @relation(fields: [winId], references: [id], onDelete: Cascade)
+  cardId String
+  card   CardSemanal @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  /// 1 a 3 — o limite do método, garantido também no banco pela unicidade.
+  ordem  Int
+  prazo  DateTime?
+  status StatusWin @default(PENDENTE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cardId, ordem])
+  /// O mesmo WIN não aparece duas vezes no mesmo card.
+  @@unique([cardId, winId])
+  @@index([winId])
 }

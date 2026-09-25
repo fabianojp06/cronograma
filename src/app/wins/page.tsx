@@ -1,0 +1,284 @@
+import Link from 'next/link'
+import { auth } from '@clerk/nextjs/server'
+
+import { CardWin, type LinhaWin } from '@/components/card-win'
+import { PromoverWin } from '@/components/promover-win'
+import { VincularColaborador } from '@/components/vincular-colaborador'
+import { removerWinDaSemana } from '@/app/wins/acoes-win'
+import { inicioDeHojeUTC } from '@/lib/data-hoje'
+import { formatarDataBR } from '@/lib/formatacao'
+import { prisma } from '@/lib/prisma'
+import {
+  chaveSemana,
+  ehSemanaValida,
+  periodoDaSemana,
+  rotuloSemana,
+  semanaAnterior,
+  semanaDe,
+  semanaSeguinte,
+  type SemanaCtcea,
+} from '@/lib/semana-ctcea'
+import { deveSerPromovido, totalDeAparicoes } from '@/lib/win-promocao'
+import { ROTULO_STATUS_WIN } from '@/lib/win-validacao'
+
+export const metadata = { title: 'Card WIN — Cronograma CTCEA' }
+
+const iso = (data: Date) => data.toISOString().slice(0, 10)
+
+/** Lê ?ano= e ?semana= da URL; fora disso, a semana de hoje. */
+function semanaDaUrl(
+  params: Record<string, string | string[] | undefined>,
+  hoje: Date,
+): SemanaCtcea {
+  const ler = (chave: string) => {
+    const bruto = params[chave]
+    const valor = Array.isArray(bruto) ? bruto[0] : bruto
+    return typeof valor === 'string' ? Number(valor) : Number.NaN
+  }
+
+  const candidata = { ano: ler('ano'), semana: ler('semana') }
+  return Number.isInteger(candidata.ano) && ehSemanaValida(candidata)
+    ? candidata
+    : semanaDe(hoje)
+}
+
+export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
+  const { userId } = await auth()
+  const hoje = inicioDeHojeUTC()
+  const semana = semanaDaUrl(await searchParams, hoje)
+  const anterior = semanaAnterior(semana)
+  const periodo = periodoDaSemana(semana)
+
+  const colaborador =
+    userId === null
+      ? null
+      : await prisma.colaborador.findFirst({
+          where: { clerkUserId: userId, ativo: true },
+          select: { id: true, nome: true, area: true },
+        })
+
+  if (!colaborador) {
+    const livres = await prisma.colaborador.findMany({
+      where: { clerkUserId: null, ativo: true },
+      orderBy: { nome: 'asc' },
+      select: { id: true, nome: true },
+    })
+    return (
+      <main className="mx-auto w-full max-w-4xl px-6 py-12">
+        <h1 className="font-display text-2xl font-extrabold">Card WIN</h1>
+        <VincularColaborador livres={livres} />
+      </main>
+    )
+  }
+
+  const [cardAtual, cardAnterior, projetos] = await Promise.all([
+    prisma.cardSemanal.findUnique({
+      where: {
+        colaboradorId_ano_semana: {
+          colaboradorId: colaborador.id,
+          ano: semana.ano,
+          semana: semana.semana,
+        },
+      },
+      select: {
+        area: true,
+        atividade: true,
+        alertaRiscos: true,
+        pedidoAjuda: true,
+        registros: {
+          orderBy: { ordem: 'asc' },
+          select: {
+            id: true,
+            ordem: true,
+            prazo: true,
+            status: true,
+            win: {
+              select: {
+                id: true,
+                descricao: true,
+                suporte: true,
+                aparicoesAnteriores: true,
+                promovidoEm: true,
+                encerradoEm: true,
+                _count: { select: { registros: true } },
+              },
+            },
+          },
+        },
+      },
+    }),
+    // O bloco "semana anterior" é CONSULTA, nunca cópia. Era a duplicação
+    // manual desse bloco que fazia a planilha divergir de si mesma.
+    prisma.cardSemanal.findUnique({
+      where: {
+        colaboradorId_ano_semana: {
+          colaboradorId: colaborador.id,
+          ano: anterior.ano,
+          semana: anterior.semana,
+        },
+      },
+      select: {
+        registros: {
+          orderBy: { ordem: 'asc' },
+          select: {
+            id: true,
+            ordem: true,
+            prazo: true,
+            status: true,
+            win: { select: { id: true, descricao: true, suporte: true } },
+          },
+        },
+      },
+    }),
+    prisma.projeto.findMany({
+      where: { ativo: true },
+      orderBy: { nome: 'asc' },
+      select: { id: true, nome: true },
+    }),
+  ])
+
+  const linhas: LinhaWin[] = (cardAtual?.registros ?? []).map((registro) => ({
+    registroId: registro.id,
+    winId: registro.win.id,
+    ordem: registro.ordem,
+    descricao: registro.win.descricao,
+    suporte: registro.win.suporte,
+    prazoIso: registro.prazo === null ? null : iso(registro.prazo),
+    status: registro.status,
+    aparicoes: totalDeAparicoes({
+      aparicoesAnteriores: registro.win.aparicoesAnteriores,
+      registros: registro.win._count.registros,
+      promovidoEm: registro.win.promovidoEm,
+      encerradoEm: registro.win.encerradoEm,
+    }),
+    aparicoesAnteriores: registro.win.aparicoesAnteriores,
+    registros: registro.win._count.registros,
+    promovidoEm: registro.win.promovidoEm?.toISOString() ?? null,
+    encerradoEm: registro.win.encerradoEm?.toISOString() ?? null,
+  }))
+
+  const paraPromover = (cardAtual?.registros ?? []).filter((registro) =>
+    deveSerPromovido({
+      aparicoesAnteriores: registro.win.aparicoesAnteriores,
+      registros: registro.win._count.registros,
+      promovidoEm: registro.win.promovidoEm,
+      encerradoEm: registro.win.encerradoEm,
+    }),
+  )
+
+  const linkSemana = (alvo: SemanaCtcea) => `/wins?ano=${alvo.ano}&semana=${alvo.semana}`
+
+  return (
+    <main className="mx-auto w-full max-w-4xl px-6 py-12">
+      <p className="text-sm font-medium uppercase tracking-wide text-accent">
+        {colaborador.nome}
+      </p>
+      <h1 className="mt-2 font-display text-2xl font-extrabold">
+        Card WIN — {rotuloSemana(semana)}
+      </h1>
+      <p className="mt-1 text-sm text-textMuted">
+        {formatarDataBR(periodo.inicio)} a {formatarDataBR(periodo.fim)} · What&apos;s
+        Important Now
+      </p>
+
+      <nav className="mt-4 flex items-center gap-4 text-sm">
+        <Link className="text-textMuted hover:text-accent" href={linkSemana(anterior)}>
+          ← {rotuloSemana(anterior)}
+        </Link>
+        <Link className="text-textMuted hover:text-accent" href="/wins">
+          Semana atual
+        </Link>
+        <Link
+          className="text-textMuted hover:text-accent"
+          href={linkSemana(semanaSeguinte(semana))}
+        >
+          {rotuloSemana(semanaSeguinte(semana))} →
+        </Link>
+      </nav>
+
+      {paraPromover.length > 0 ? (
+        <section className="mt-8 space-y-4">
+          {paraPromover.map((registro) => (
+            <PromoverWin
+              key={registro.win.id}
+              winId={registro.win.id}
+              descricao={registro.win.descricao}
+              projetos={projetos}
+            />
+          ))}
+        </section>
+      ) : null}
+
+      <section className="mt-8">
+        <h2 className="font-display text-lg font-extrabold">WINs da semana</h2>
+        <p className="mt-1 text-sm text-textMuted">
+          No máximo três. É o método: obrigar a escolher é o que faz o card valer.
+        </p>
+        <div className="mt-4">
+          <CardWin
+            linhas={linhas}
+            semana={semana}
+            periodo={{ inicioIso: iso(periodo.inicio), fimIso: iso(periodo.fim) }}
+            cabecalho={{
+              area: cardAtual?.area ?? colaborador.area,
+              atividade: cardAtual?.atividade ?? null,
+              alertaRiscos: cardAtual?.alertaRiscos ?? null,
+              pedidoAjuda: cardAtual?.pedidoAjuda ?? null,
+            }}
+          />
+        </div>
+        {linhas.length > 0 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {linhas.map((linha) => (
+              <form key={linha.registroId} action={removerWinDaSemana}>
+                <input type="hidden" name="registroId" value={linha.registroId ?? ''} />
+                <button
+                  className="text-xs text-textMuted hover:text-warn"
+                  type="submit"
+                >
+                  Tirar WIN {String(linha.ordem).padStart(2, '0')} da semana
+                </button>
+              </form>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="mt-10 border-t border-border pt-8">
+        <h2 className="font-display text-lg font-extrabold">
+          WINs da semana anterior — {rotuloSemana(anterior)}
+        </h2>
+        <p className="mt-1 text-sm text-textMuted">
+          Gerado a partir do card daquela semana. Não é cópia: nada aqui pode
+          divergir do que foi registrado.
+        </p>
+        {(cardAnterior?.registros ?? []).length === 0 ? (
+          <p className="mt-4 border-l-2 border-borderSoft bg-surface py-3 pl-4 text-sm text-textMuted">
+            Nenhum card registrado em {rotuloSemana(anterior)}.
+          </p>
+        ) : (
+          <ul className="mt-4 divide-y divide-borderSoft border-l-2 border-borderSoft bg-surface">
+            {(cardAnterior?.registros ?? []).map((registro) => (
+              <li key={registro.id} className="px-4 py-3 text-sm">
+                <span className="text-textFaint">
+                  WIN {String(registro.ordem).padStart(2, '0')}
+                </span>{' '}
+                {registro.win.descricao}
+                <span className="mt-1 block text-xs text-textFaint">
+                  {registro.win.suporte ? `Suporte: ${registro.win.suporte} · ` : ''}
+                  {registro.prazo ? `Prazo: ${formatarDataBR(registro.prazo)} · ` : ''}
+                  {ROTULO_STATUS_WIN[registro.status]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <p className="mt-10 border-t border-border pt-6 text-xs text-textFaint">
+        Chave da semana: {chaveSemana(semana)}. O calendário é o da CTCEA (semana
+        começa no domingo, semana 1 de 2026 em 28/12/2025) — não é a semana ISO.
+      </p>
+    </main>
+  )
+}

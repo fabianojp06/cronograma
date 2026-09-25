@@ -138,6 +138,17 @@ não de código — ver as entradas de 2026-09-18 no Log de decisões.
 - [x] Pesos ajustáveis por critério (`/priorizacao/pesos`), somando 100% por grupo
 - [x] Entrada "Priorização" no menu principal
 
+### Bloco 10 — Card WIN Semanal (fase 1)
+- [x] Calendário de semanas da CTCEA (`semana-ctcea.ts`), com teste de paridade
+      contra as 52 semanas da aba Referências
+- [x] Schema `Colaborador`, `CardSemanal`, `Win`, `WinSemana` + enum `StatusWin`,
+      em migration nova
+- [x] Tela `/wins` com o card da semana, navegação e bloco da semana anterior
+      derivado (nunca copiado)
+- [x] Regra das 3 semanas com alerta e promoção ao plano de ação
+- [x] Importação da semana 39 com o contador de repetições semeado
+- [x] Entrada "Card WIN" no menu principal
+
 ## Log de decisões
 (o Claude preenche aqui a cada rodada: o que fez, por quê, o que falta)
 
@@ -1157,3 +1168,59 @@ afrouxá-la devolveria a cegueira. Registrado no CLAUDE.md que
 **Erro meu que vale registrar:** ao confirmar o deploy eu conferi apenas o
 `cronograma-lktu` e relatei o resultado como se fosse geral. Com dois projetos
 ligados ao mesmo repositório, conferir um só não basta.
+
+### 2026-09-25 — Bloco 10: Card WIN Semanal (fase 1)
+
+Integração da planilha `CARD WIN Semanal - Fabiano` enviada pelo usuário.
+
+**O achado que orientou tudo.** A planilha não é concorrente do plano de ação —
+é o funil de entrada dele, e ela mesma diz isso no rodapé de toda aba: "Caso um
+mesmo WIN se repetir por 3 semanas, já na terceira semana ele deve ser cadastrado
+no Plano de Ação (PLA-DEP-2026-001) e retirado do Card WIN."
+
+**E a regra já tinha estourado sem ninguém ver.** "Desenvolvimento do documento
+de elicitação de requisitos — relatórios orçamentários" aparece nas semanas 37,
+38 e 39; na semana 39 deveria ter virado item do plano e saído do card. Continuava
+lá como EM ANDAMENTO. Outros sintomas da manutenção manual, todos no arquivo:
+a aba S37 repete como "semana anterior" o bloco da S36 em vez dos WINs atuais
+dela (e o suporte do mesmo item mudou de "Priscila - GFIN" para "Giovani/Ana");
+a semana 34 não existe; e a maioria dos status da S37/S38 está em branco.
+
+**Decisões fechadas com o usuário antes de qualquer código:**
+1. Colaborador em tabela própria, com `clerkUserId` opcional — nome controlado,
+   funciona antes de a pessoa ter conta, e é o nome que vai para
+   `Projeto.responsavel` na promoção.
+2. Limite de 3 WINs por semana, **rígido**.
+3. Promoção escolhe o destino na hora: projeto novo ou ação em projeto existente.
+4. Importar só a semana 39, com o contador de repetições semeado.
+
+**Decisões técnicas que valem registro:**
+- **`Win` é identidade, `WinSemana` é aparição.** O texto do WIN muda de semana
+  para semana na planilha ("… orçamentários", "… orçamentários ()",
+  "… orçamentários () - SGO"), então contar repetição por string seria frágil.
+  A comparação por texto acontece **uma única vez**, na importação, só para
+  semear o contador.
+- **O bloco "semana anterior" é consulta**, não dado copiado. A duplicação
+  manual dele é a causa da divergência entre S36 e S37.
+- **A regra conta aparições, não semanas consecutivas** — a semana 34 não existe,
+  e zerar o contador por esquecimento premiaria justamente o que a regra pega.
+- **O calendário não é ISO**: semana começa no domingo, semana 1 de 2026 em
+  28/12/2025. A planilha lista 53 semanas mas o `XLOOKUP` dela só varre até a 52;
+  a 53ª é sobra de fórmula e já é a semana 1 de 2027.
+- **O limite de 3 é do banco**, via `@@unique([cardId, ordem])`, não só da tela.
+
+**Verificação:**
+- `npm test` = **455 passando em 35 arquivos** (366 antes; +89). Inclui as 52
+  semanas do calendário conferidas uma a uma contra a planilha.
+- `tsc`, `lint` e `next build` limpos; rota `/wins` registrada.
+- **Ponta a ponta contra Postgres local**: migration aplicada, a semana 39
+  importada do arquivo real (o WIN repetido entrou com 3 aparições e disparou o
+  alerta), a promoção executada criando a Ação e ligando os dois, e o WIN saindo
+  do alerta. A tentativa de reusar uma posição de WIN foi **rejeitada pela
+  constraint**, provando que o limite não depende da tela.
+- **Conferência visual** em navegador nos dois temas, com as Server Actions
+  substituídas por stubs; sem erro de console.
+
+**Fase 2 (não feita):** visão de equipe para a daily ("Compartilhamento dos
+Cards" da aba Agenda) e os dois relatórios no catálogo do dashboard — taxa de
+conclusão semanal e WINs reincidentes.
