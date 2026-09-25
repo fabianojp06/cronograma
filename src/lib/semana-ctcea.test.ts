@@ -258,3 +258,24 @@ describe('distanciaEmSemanas', () => {
     ).toBe(0)
   })
 })
+
+describe('a virada de ano cai nos dois sentidos', () => {
+  // Estes dois casos estão no docstring de `semanaDe`. Uma versão anterior do
+  // comentário dizia que 01/01/2027 era a semana 52 de 2026; ficaram aqui para
+  // que a documentação não possa voltar a divergir do código sem quebrar algo.
+  it('põe 30/12/2025 na semana 1 de 2026 (o ano civil ainda é o anterior)', () => {
+    expect(semanaDe(new Date(Date.UTC(2025, 11, 30)))).toEqual({ ano: 2026, semana: 1 })
+  })
+
+  it('fecha a semana 52 de 2026 em 26/12/2026', () => {
+    expect(semanaDe(new Date(Date.UTC(2026, 11, 26)))).toEqual({ ano: 2026, semana: 52 })
+  })
+
+  it('põe 27/12/2026 já na semana 1 de 2027, e não na 52 de 2026', () => {
+    expect(semanaDe(new Date(Date.UTC(2026, 11, 27)))).toEqual({ ano: 2027, semana: 1 })
+  })
+
+  it('põe 01/01/2027 na semana 1 de 2027', () => {
+    expect(semanaDe(new Date(Date.UTC(2027, 0, 1)))).toEqual({ ano: 2027, semana: 1 })
+  })
+})

@@ -174,3 +174,28 @@ describe('prepararImportacao — o caso real da semana 39', () => {
     expect(prepararImportacao(cards, 34)).toBeNull()
   })
 })
+
+describe('traduzirStatus não depende da forma Unicode', () => {
+  // O Excel entrega "NÃO FEITO" ora com o til composto (U+00C3), ora
+  // decomposto (A + U+0303). São strings diferentes para o `Record`, e sem
+  // normalizar a segunda caía calada em PENDENTE: um WIN não feito voltaria
+  // como pendente, sem nenhum erro para denunciar.
+  const composto = 'NÃO FEITO'.normalize('NFC')
+  const decomposto = 'NÃO FEITO'.normalize('NFD')
+
+  it('as duas formas são de fato strings diferentes', () => {
+    expect(decomposto).not.toBe(composto)
+  })
+
+  it.each([composto, decomposto])('traduz %j para NAO_FEITO', (bruto) => {
+    expect(traduzirStatus(bruto)).toBe('NAO_FEITO')
+  })
+
+  it('traduz também em minúsculas e com espaços sobrando', () => {
+    expect(traduzirStatus('  não feito '.normalize('NFD'))).toBe('NAO_FEITO')
+  })
+
+  it('texto desconhecido continua caindo em PENDENTE', () => {
+    expect(traduzirStatus('talvez')).toBe('PENDENTE')
+  })
+})

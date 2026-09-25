@@ -240,9 +240,23 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
 - **A regra das 3 semanas conta aparições, não semanas consecutivas.** A planilha
   não tem a semana 34; quem não preenche o card numa semana não deveria zerar o
   contador, seria premiar o esquecimento que a regra quer pegar.
+- **Repetir um WIN é uma ação explícita, não o reconhecimento do texto.** O
+  botão "Repetir nesta semana", na lista da semana anterior, reaproveita a
+  **mesma linha `Win`** — é só assim que as aparições se somam. Redigitar o
+  mesmo assunto no formulário cria um `Win` novo, com o contador em zero, e a
+  regra das 3 semanas nunca dispararia. Comparar descrições para adivinhar a
+  intenção é justamente o que o par `Win`/`WinSemana` existe para evitar.
 - **Promoção escolhe o destino na hora**: projeto novo ou ação dentro de projeto
   existente. Nem todo WIN vira projeto — "Finalização da documentação do módulo
   de integração" é parte do SGO, e forçar projeto novo fragmentaria a carteira.
+- **Promover tira o WIN do card**, como manda o rodapé da planilha, e **soma as
+  aparições em `aparicoesAnteriores` antes de apagar os registros**. Apagar
+  direto zeraria a contagem de um WIN que de fato se repetiu três semanas — e é
+  essa contagem que os relatórios de recorrência leem.
+- **Tirar da semana e encerrar são coisas diferentes.** Tirar libera a vaga e o
+  WIN pode voltar somando aparições; encerrar (`Win.encerradoEm`) diz que ele
+  não volta. Tirar a última aparição de um WIN que nunca foi promovido apaga
+  também o `Win`: o que sobraria é uma linha que nenhuma tela alcança.
 - `Colaborador.nome` é a mesma grafia de `Projeto.responsavel`: é ele que vai
   para lá na promoção, e é o que mantém o relatório por responsável somando certo.
 
@@ -257,6 +271,22 @@ silêncio. As 52 semanas da aba `Referências` estão transcritas em
 A planilha lista 53 linhas, mas o `XLOOKUP` dela só varre as semanas 1 a 52 — a
 53ª é sobra da fórmula que se estende sozinha, e por esta regra já é a semana 1
 de 2027.
+
+A divergência entre o ano do calendário e o ano civil acontece **nos dois
+sentidos**: 30/12/2025 já é a semana 1 de 2026, e 27/12/2026 já é a semana 1 de
+2027 (a semana 52 de 2026 termina em 26/12). Os quatro casos estão no teste.
+
+### Testes que precisam de banco
+
+`tests/integracao/` roda as Server Actions do Card WIN contra um Postgres de
+verdade, por `npm run test:integracao` — **fora** do `npm test`, porque o CI não
+sobe banco e um teste de integração no mesmo `include` deixaria o pipeline
+vermelho por falta de infraestrutura, não por defeito no código.
+
+Existe porque os erros desta área são invisíveis no teste unitário: repetição
+que não acumulava, promoção que não liberava a vaga e remoção deixando `Win`
+órfão passaram por `tsc`, por `eslint` e por 461 testes verdes. Só o banco
+denunciou. Toda mudança nas ações de `/wins` roda os dois.
 
 ## Migrations em produção
 

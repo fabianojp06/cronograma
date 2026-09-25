@@ -96,9 +96,15 @@ export const STATUS_DA_PLANILHA: Record<string, string> = {
   'EM ANDAMENTO': 'EM_ANDAMENTO',
 }
 
+/**
+ * O `normalize('NFC')` não é enfeite: "NÃO FEITO" digitado no Excel pode vir
+ * com o til decomposto (A + U+0303), que não é a mesma string que a chave do
+ * mapa. Sem normalizar, o status cairia calado em PENDENTE — um WIN dado como
+ * não feito voltaria como pendente, sem erro nenhum para denunciar.
+ */
 export function traduzirStatus(bruto: string | null): string {
   if (bruto === null) return 'PENDENTE'
-  const chave = bruto.trim().toUpperCase()
+  const chave = bruto.normalize('NFC').trim().toUpperCase()
   return STATUS_DA_PLANILHA[chave] ?? 'PENDENTE'
 }
 

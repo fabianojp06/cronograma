@@ -7,5 +7,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'],
+    // `tests/integracao/` exige um Postgres de verdade e roda por
+    // `npm run test:integracao`. Sem esta exclusão o CI, que não sobe banco,
+    // ficaria vermelho por falta de infraestrutura e não por defeito no código.
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/integracao/**'],
   },
 })

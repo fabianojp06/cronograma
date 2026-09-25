@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
 
 import { CardWin, type LinhaWin } from '@/components/card-win'
+import { EncerrarWin } from '@/components/encerrar-win'
 import { PromoverWin } from '@/components/promover-win'
+import { RepetirWin } from '@/components/repetir-win'
 import { VincularColaborador } from '@/components/vincular-colaborador'
 import { removerWinDaSemana } from '@/app/wins/acoes-win'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
@@ -129,7 +131,15 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
             ordem: true,
             prazo: true,
             status: true,
-            win: { select: { id: true, descricao: true, suporte: true } },
+            win: {
+              select: {
+                id: true,
+                descricao: true,
+                suporte: true,
+                promovidoEm: true,
+                encerradoEm: true,
+              },
+            },
           },
         },
       },
@@ -178,6 +188,24 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
 
   const paraPromover = registrosDoCard.filter((registro) =>
     deveSerPromovido(contavelDe(registro)),
+  )
+
+  /**
+   * Um WIN da semana anterior só pode ser repetido se ainda estiver em aberto
+   * e não estiver já na semana atual. Promovido virou item do plano de ação;
+   * encerrado foi dado por terminado — trazer qualquer um de volta desfaria
+   * silenciosamente uma decisão que já foi tomada.
+   */
+  const jaNaSemana = new Set(registrosDoCard.map((registro) => registro.win.id))
+  const repetiveis = new Set(
+    (cardAnterior?.registros ?? [])
+      .filter(
+        (registro) =>
+          registro.win.promovidoEm === null &&
+          registro.win.encerradoEm === null &&
+          !jaNaSemana.has(registro.win.id),
+      )
+      .map((registro) => registro.win.id),
   )
 
   const linkSemana = (alvo: SemanaCtcea) => `/wins?ano=${alvo.ano}&semana=${alvo.semana}`
@@ -244,15 +272,23 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
         {linhas.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {linhas.map((linha) => (
-              <form key={linha.registroId} action={removerWinDaSemana}>
-                <input type="hidden" name="registroId" value={linha.registroId ?? ''} />
-                <button
-                  className="text-xs text-textMuted hover:text-warn"
-                  type="submit"
-                >
-                  Tirar WIN {String(linha.ordem).padStart(2, '0')} da semana
-                </button>
-              </form>
+              <div key={linha.registroId} className="flex items-center gap-2">
+                <form action={removerWinDaSemana}>
+                  <input type="hidden" name="registroId" value={linha.registroId ?? ''} />
+                  <button
+                    className="text-xs text-textMuted hover:text-warn"
+                    type="submit"
+                  >
+                    Tirar WIN {String(linha.ordem).padStart(2, '0')} da semana
+                  </button>
+                </form>
+                {linha.winId && linha.promovidoEm === null ? (
+                  <>
+                    <span className="text-xs text-textFaint">·</span>
+                    <EncerrarWin winId={linha.winId} ordem={linha.ordem} />
+                  </>
+                ) : null}
+              </div>
             ))}
           </div>
         ) : null}
@@ -264,7 +300,10 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
         </h2>
         <p className="mt-1 text-sm text-textMuted">
           Gerado a partir do card daquela semana. Não é cópia: nada aqui pode
-          divergir do que foi registrado.
+          divergir do que foi registrado. Um WIN que continua aberto se traz
+          para cá por <strong className="font-medium">Repetir nesta semana</strong> —
+          é assim que ele soma as três aparições que disparam a promoção.
+          Redigitá-lo no formulário começaria a contagem do zero.
         </p>
         {(cardAnterior?.registros ?? []).length === 0 ? (
           <p className="mt-4 border-l-2 border-borderSoft bg-surface py-3 pl-4 text-sm text-textMuted">
@@ -283,6 +322,13 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
                   {registro.prazo ? `Prazo: ${formatarDataBR(registro.prazo)} · ` : ''}
                   {ROTULO_STATUS_WIN[registro.status]}
                 </span>
+                {repetiveis.has(registro.win.id) ? (
+                  <RepetirWin
+                    winId={registro.win.id}
+                    semana={semana}
+                    descricao={registro.win.descricao}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>

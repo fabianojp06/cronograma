@@ -41,9 +41,14 @@ function lerCampo(entrada: EntradaFormulario, campo: string): string {
   return typeof bruto === 'string' ? bruto.trim() : ''
 }
 
-const TAMANHO_MAXIMO_DESCRICAO = 300
-const TAMANHO_MAXIMO_SUPORTE = 120
-const TAMANHO_MAXIMO_TEXTO_LONGO = 2000
+/**
+ * Exportados porque a tela usa os mesmos números no `maxLength` dos campos.
+ * O servidor continua sendo a autoridade — `maxLength` é só para o usuário
+ * esbarrar no limite enquanto digita, em vez de perder o texto no envio.
+ */
+export const TAMANHO_MAXIMO_DESCRICAO = 300
+export const TAMANHO_MAXIMO_SUPORTE = 120
+export const TAMANHO_MAXIMO_TEXTO_LONGO = 2000
 
 export type DadosWin = {
   descricao: string

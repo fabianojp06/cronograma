@@ -3,7 +3,13 @@
 import { useActionState } from 'react'
 
 import { salvarCard, salvarWin, type EstadoCard, type EstadoWin } from '@/app/wins/acoes-win'
-import { ROTULO_STATUS_WIN, ORDENS_VALIDAS } from '@/lib/win-validacao'
+import {
+  ROTULO_STATUS_WIN,
+  ORDENS_VALIDAS,
+  TAMANHO_MAXIMO_DESCRICAO,
+  TAMANHO_MAXIMO_SUPORTE,
+  TAMANHO_MAXIMO_TEXTO_LONGO,
+} from '@/lib/win-validacao'
 import {
   ROTULO_SITUACAO,
   mensagemDaSituacao,
@@ -68,9 +74,6 @@ function FormularioWin({
       {linha.registroId ? (
         <input type="hidden" name="registroId" value={linha.registroId} />
       ) : null}
-      {linha.registroId === null && linha.winId ? (
-        <input type="hidden" name="winId" value={linha.winId} />
-      ) : null}
 
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-textMuted">
@@ -92,6 +95,7 @@ function FormularioWin({
         className={classeCampo}
         id={`descricao-${linha.ordem}`}
         name="descricao"
+        maxLength={TAMANHO_MAXIMO_DESCRICAO}
         rows={2}
         defaultValue={linha.descricao}
         placeholder="O que é importante agora?"
@@ -109,6 +113,7 @@ function FormularioWin({
             className={classeCampo}
             id={`suporte-${linha.ordem}`}
             name="suporte"
+            maxLength={TAMANHO_MAXIMO_SUPORTE}
             defaultValue={linha.suporte ?? ''}
             placeholder="Quem apoia"
           />
@@ -168,6 +173,18 @@ function FormularioWin({
   )
 }
 
+/**
+ * Os quatro campos do cabeçalho numa lista só: sem ela, cada campo repetia o
+ * mesmo bloco e o de erro ficava de fora em três deles — foi assim que o
+ * `estado.erros` do cabeçalho nunca chegou à tela.
+ */
+const CAMPOS_CABECALHO = [
+  { campo: 'area', rotulo: 'Área', linhas: 1 },
+  { campo: 'atividade', rotulo: 'Atividade', linhas: 1 },
+  { campo: 'alertaRiscos', rotulo: 'Alerta de riscos', linhas: 2 },
+  { campo: 'pedidoAjuda', rotulo: 'Pedido de ajuda', linhas: 2 },
+] as const
+
 export function CardWin({
   linhas,
   semana,
@@ -192,47 +209,34 @@ export function CardWin({
         <input type="hidden" name="ano" value={semana.ano} />
         <input type="hidden" name="semana" value={semana.semana} />
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs text-textMuted" htmlFor="area">
-              Área
-            </label>
-            <input className={classeCampo} id="area" name="area" defaultValue={cabecalho.area ?? ''} />
-          </div>
-          <div>
-            <label className="block text-xs text-textMuted" htmlFor="atividade">
-              Atividade
-            </label>
-            <input
-              className={classeCampo}
-              id="atividade"
-              name="atividade"
-              defaultValue={cabecalho.atividade ?? ''}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-textMuted" htmlFor="alertaRiscos">
-              Alerta de riscos
-            </label>
-            <textarea
-              className={classeCampo}
-              id="alertaRiscos"
-              name="alertaRiscos"
-              rows={2}
-              defaultValue={cabecalho.alertaRiscos ?? ''}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-textMuted" htmlFor="pedidoAjuda">
-              Pedido de ajuda
-            </label>
-            <textarea
-              className={classeCampo}
-              id="pedidoAjuda"
-              name="pedidoAjuda"
-              rows={2}
-              defaultValue={cabecalho.pedidoAjuda ?? ''}
-            />
-          </div>
+          {CAMPOS_CABECALHO.map(({ campo, rotulo, linhas: alturaEmLinhas }) => (
+            <div key={campo}>
+              <label className="block text-xs text-textMuted" htmlFor={campo}>
+                {rotulo}
+              </label>
+              {alturaEmLinhas === 1 ? (
+                <input
+                  className={classeCampo}
+                  id={campo}
+                  name={campo}
+                  maxLength={TAMANHO_MAXIMO_TEXTO_LONGO}
+                  defaultValue={cabecalho[campo] ?? ''}
+                />
+              ) : (
+                <textarea
+                  className={classeCampo}
+                  id={campo}
+                  name={campo}
+                  maxLength={TAMANHO_MAXIMO_TEXTO_LONGO}
+                  rows={alturaEmLinhas}
+                  defaultValue={cabecalho[campo] ?? ''}
+                />
+              )}
+              {estado.erros?.[campo] ? (
+                <p className="mt-1 text-sm text-warn">{estado.erros[campo]}</p>
+              ) : null}
+            </div>
+          ))}
         </div>
         {estado.erroGeral ? <p className="mt-3 text-sm text-warn">{estado.erroGeral}</p> : null}
         {estado.salvo ? <p className="mt-3 text-sm text-realizado">Card salvo.</p> : null}

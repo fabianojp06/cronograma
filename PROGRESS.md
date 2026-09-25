@@ -1285,3 +1285,84 @@ arquivo e reclamando quando vem sem valor.
 
 `npm test` = **461 passando em 35 arquivos** (455 antes; +6 do contador por
 semana). `tsc`, `lint` e `build` limpos.
+
+### Segunda rodada de code-review na Fase 1 (25/09/2026)
+
+Nove achados. O primeiro sozinho anulava o motivo da fase inteira.
+
+**1. O caminho de repetir um WIN estava morto.** O `input` escondido `winId` só
+era renderizado quando `registroId === null && winId !== null` — combinação que
+nenhuma linha da página produzia. Na prática, redigitar o mesmo WIN na semana
+seguinte criava um `Win` novo, com `aparicoesAnteriores = 0`: **a regra das 3
+semanas só podia disparar para WINs importados da planilha.** O sistema
+funcionava com os dados que vieram do Excel e nunca com os digitados.
+
+A correção não é reativar o campo: é uma ação própria, `repetirWin`, e um botão
+"Repetir nesta semana" na lista da semana anterior, com o ramo morto removido de
+`salvarWin`. Adivinhar a repetição comparando o texto seria voltar ao problema
+que o par `Win`/`WinSemana` existe para resolver.
+
+**Por que não peguei antes:** o teste ponta a ponta da rodada 1 semeava o banco
+pelo importador e promovia. Nenhuma vez exerceu "usuário repete o WIN na semana
+seguinte" — o único caminho que a fase inteira existe para servir.
+
+**2. Erros do cabeçalho nunca chegavam à tela.** `CardWin` calculava
+`estado.erros` e não renderizava; colar mais de 2000 caracteres abortava o
+salvamento em silêncio. Os quatro campos viraram uma lista (era a repetição do
+bloco que deixou o erro de fora em três deles) e ganharam `maxLength`.
+
+**3. Promover não tirava o WIN do card**, embora a tela prometesse isso e o
+rodapé da planilha exigisse. Ele seguia ocupando uma das três vagas. As
+aparições são somadas em `aparicoesAnteriores` **antes** de apagar os registros:
+apagar direto zeraria a contagem de um WIN que de fato se repetiu três semanas.
+
+**4. A promoção criava `Acao` sem o laço de nova tentativa** que `criarAcao`
+tem: lia o maior `numero` e gravava, e sob concorrência estouraria com P2002,
+deixando o WIN sem o item do plano. `ehColisaoDeNumero` e `TENTATIVAS_NUMERO`
+saíram de `acoes-acao.ts` para `src/lib/acao-validacao.ts`, com teste.
+
+**5. O importador gravava o card no ano errado.** Sem prazo em nenhum WIN da
+aba, o ano caía no relógio: uma aba importada em janeiro gravaria a semana 52
+sob o ano novo, fora do card certo e fora da contagem, sem erro. Agora aceita
+`--ano` e **para** quando não consegue deduzir.
+
+**6. Tirar da semana deixava `Win` órfão** — linha que nenhuma tela alcança. O
+importador já limpava exatamente esse estado; o caminho interativo, não.
+
+**7. `Win.encerradoEm` era campo que nada escrevia**, e a mensagem do limite
+mandava "encerrar". Em vez de corrigir o texto, a ação passou a existir
+(`encerrarWin`): tirar da semana libera a vaga e o WIN pode voltar somando
+aparições; encerrar diz que não volta.
+
+**8. `traduzirStatus` não normalizava Unicode.** "NÃO FEITO" com til decomposto
+não bate com a chave do mapa e caía calado em PENDENTE.
+
+**9. Docstring mentia** sobre 01/01/2027 ser a semana 52 de 2026. É a semana 1
+de 2027. Os quatro casos de virada viraram teste, para o comentário não poder
+divergir de novo.
+
+**A lição da rodada, e a mudança de prática:** `tsc`, `eslint` e 461 testes
+verdes conviviam com uma funcionalidade que não funcionava. Os achados 1, 3, 4 e
+6 são todos invisíveis em teste unitário. Por isso existe agora
+`tests/integracao/` — 12 testes que chamam as Server Actions reais contra um
+Postgres descartável (`npm run test:integracao`), fora do `npm test` porque o CI
+não sobe banco. Foram eles que provaram cada correção, em vez da releitura do
+código:
+
+- três semanas pelo botão Repetir → **1** `Win`, **3** aparições, promoção
+  disparando; redigitar → **2** `Win` com contador zerado (o defeito, fixado
+  como teste);
+- promoção → `winSemana = 0` e `aparicoesAnteriores = 3`;
+- ação promovida numerada **8** depois de uma ação 7 existente;
+- remoção apagando o órfão e **preservando** o WIN que ainda aparece noutra
+  semana;
+- `encerradoEm` gravado e WIN encerrado recusando repetição;
+- escrita cruzada entre colaboradores bloqueada nas três ações novas.
+
+Também aqui um erro meu: na primeira execução o `npm test` capturou o teste de
+integração (o `include` já cobria `tests/**`), o que teria deixado o CI vermelho
+por falta de banco. Pego porque rodei lint, testes e build antes de commitar, e
+não só o arquivo que eu tinha acabado de escrever.
+
+`npm test` = **474 passando em 35 arquivos** (461 antes; +13 dos achados 4, 8 e
+9). `npm run test:integracao` = **12 passando**. `tsc`, `lint` e `build` limpos.

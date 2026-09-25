@@ -4,7 +4,11 @@ import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
 import { prisma } from '@/lib/prisma'
-import { proximoNumero } from '@/lib/acao-validacao'
+import {
+  ehColisaoDeNumero,
+  proximoNumero,
+  TENTATIVAS_NUMERO,
+} from '@/lib/acao-validacao'
 import { ehSemanaValida, type SemanaCtcea } from '@/lib/semana-ctcea'
 
 /** Faixa de anos aceita — protege contra ano absurdo vindo de POST forjado. */
@@ -18,6 +22,7 @@ import {
 } from '@/lib/win-promocao'
 import {
   podeAdicionarWin,
+  proximaOrdemLivre,
   validarCard,
   validarWin,
   MENSAGEM_ERRO_LIMITE,
@@ -156,48 +161,25 @@ export async function salvarWin(
     )
     if (!vaga.ok) return { erroGeral: MENSAGEM_ERRO_LIMITE[vaga.erro] }
 
-    // `winId` presente = o WIN veio repetindo de uma semana anterior; é ele
-    // que carrega o contador da regra das 3 semanas.
-    const winExistente = formData.get('winId')
-
-    // O `winId` vem do formulário, então precisa ser conferido contra o dono
-    // antes de qualquer escrita: sem isto, um POST forjado reescreveria o WIN
-    // de outro colaborador e o penduraria no card de quem enviou.
-    if (typeof winExistente === 'string' && winExistente !== '') {
-      const doDono = await prisma.win.findFirst({
-        where: { id: winExistente, colaboradorId: colaborador.id },
+    // Este caminho cria SEMPRE um `Win` novo, com o contador zerado — é um WIN
+    // que aparece pela primeira vez.
+    //
+    // Continuar um WIN de semanas anteriores é `repetirWin`, e não redigitar o
+    // mesmo texto aqui: só reaproveitando a mesma linha `Win` as aparições se
+    // acumulam e a regra das 3 semanas chega a disparar.
+    await prisma.$transaction(async (tx) => {
+      const win = await tx.win.create({
+        data: {
+          colaboradorId: colaborador.id,
+          descricao: validacao.dados.descricao,
+          suporte: validacao.dados.suporte,
+        },
         select: { id: true },
       })
-      if (!doDono) return { erroGeral: 'WIN não encontrado.' }
-    }
-
-    await prisma.$transaction(async (tx) => {
-      let winId: string
-      if (typeof winExistente === 'string' && winExistente !== '') {
-        const win = await tx.win.update({
-          where: { id: winExistente, colaboradorId: colaborador.id },
-          data: {
-            descricao: validacao.dados.descricao,
-            suporte: validacao.dados.suporte,
-          },
-          select: { id: true },
-        })
-        winId = win.id
-      } else {
-        const win = await tx.win.create({
-          data: {
-            colaboradorId: colaborador.id,
-            descricao: validacao.dados.descricao,
-            suporte: validacao.dados.suporte,
-          },
-          select: { id: true },
-        })
-        winId = win.id
-      }
 
       await tx.winSemana.create({
         data: {
-          winId,
+          winId: win.id,
           cardId: card.id,
           ordem,
           prazo: validacao.dados.prazo,
@@ -214,7 +196,16 @@ export async function salvarWin(
   return { salvo: true }
 }
 
-/** Tira o WIN da semana (libera a posição); o WIN em si continua existindo. */
+/**
+ * Tira o WIN da semana e libera a posição.
+ *
+ * O `Win` em si sobrevive **enquanto ainda aparecer em alguma semana** — é ele
+ * que carrega as aparições, e apagá-lo zeraria a contagem de um WIN que
+ * continua no histórico. Mas se esta era a última aparição, e ele nunca foi
+ * promovido, o que sobra é uma linha invisível que nenhuma tela alcança:
+ * mantê-la só acumularia lixo no banco a cada correção de digitação. O
+ * importador já faz essa mesma limpeza; o caminho interativo não fazia.
+ */
 export async function removerWinDaSemana(formData: FormData): Promise<void> {
   const { userId } = await auth()
   if (!userId) return
@@ -222,14 +213,33 @@ export async function removerWinDaSemana(formData: FormData): Promise<void> {
   const registroId = formData.get('registroId')
   if (typeof registroId !== 'string' || registroId === '') return
 
-  const colaborador = await colaboradorDoUsuario(userId)
-  if (!colaborador) return
+  try {
+    const colaborador = await colaboradorDoUsuario(userId)
+    if (!colaborador) return
 
-  // O `where` amarra o registro ao colaborador logado: ninguém apaga o WIN de
-  // outra pessoa mandando um id qualquer.
-  await prisma.winSemana.deleteMany({
-    where: { id: registroId, card: { colaboradorId: colaborador.id } },
-  })
+    // O `where` amarra o registro ao colaborador logado: ninguém apaga o WIN
+    // de outra pessoa mandando um id qualquer.
+    const registro = await prisma.winSemana.findFirst({
+      where: { id: registroId, card: { colaboradorId: colaborador.id } },
+      select: { id: true, winId: true },
+    })
+    if (!registro) return
+
+    await prisma.$transaction(async (tx) => {
+      await tx.winSemana.delete({ where: { id: registro.id } })
+      await tx.win.deleteMany({
+        where: {
+          id: registro.winId,
+          registros: { none: {} },
+          promovidoEm: null,
+          aparicoesAnteriores: 0,
+        },
+      })
+    })
+  } catch (erro) {
+    console.error('Falha ao remover WIN da semana', erro)
+    return
+  }
 
   revalidatePath('/wins')
 }
@@ -291,6 +301,30 @@ export async function promoverWin(
       (win.suporte ? ` Suporte: ${win.suporte}.` : '')
 
     const resultado = await prisma.$transaction(async (tx) => {
+      /**
+       * Tira o WIN do card, como manda o rodapé da planilha ("após 3 semanas,
+       * o WIN é retirado e vira item do plano de ação").
+       *
+       * As aparições são **somadas em `aparicoesAnteriores` antes** de apagar
+       * os registros. Apagar direto zeraria a contagem de um WIN que de fato
+       * se repetiu por três semanas, e é essa contagem que os relatórios de
+       * recorrência leem. O campo já significa "aparições que o sistema não
+       * guarda linha a linha" — é exatamente este caso.
+       */
+      const tirarDoCard = async () => {
+        const registros = await tx.winSemana.findMany({
+          where: { winId: win.id },
+          select: { id: true },
+        })
+        if (registros.length > 0) {
+          await tx.win.update({
+            where: { id: win.id },
+            data: { aparicoesAnteriores: { increment: registros.length } },
+          })
+          await tx.winSemana.deleteMany({ where: { winId: win.id } })
+        }
+      }
+
       if (pedido.destino === 'PROJETO') {
         const projeto = await tx.projeto.create({
           data: {
@@ -304,6 +338,7 @@ export async function promoverWin(
           where: { id: win.id },
           data: { promovidoEm: new Date(), projetoId: projeto.id },
         })
+        await tirarDoCard()
         return { projetoId: projeto.id, acaoId: null }
       }
 
@@ -313,24 +348,37 @@ export async function promoverWin(
       })
       if (!projeto) throw new Error('PROJETO_INEXISTENTE')
 
-      const ultima = await tx.acao.findFirst({
-        where: { projetoId: projeto.id },
-        orderBy: { numero: 'desc' },
-        select: { numero: true },
-      })
-
-      const acao = await tx.acao.create({
-        data: {
-          projetoId: projeto.id,
-          numero: proximoNumero(ultima?.numero),
-          descricao: win.descricao,
-        },
-        select: { id: true },
-      })
+      // Mesmo laço de `criarAcao`: entre ler o maior número e gravar, outra
+      // criação pode tomá-lo. A constraint `@@unique([projetoId, numero])` é a
+      // autoridade, e na colisão o número é recalculado. Sem isto a promoção
+      // estouraria com P2002 e o WIN ficaria sem o item do plano de ação.
+      let acao: { id: string } | null = null
+      for (let tentativa = 0; tentativa < TENTATIVAS_NUMERO; tentativa += 1) {
+        const ultima = await tx.acao.findFirst({
+          where: { projetoId: projeto.id },
+          orderBy: { numero: 'desc' },
+          select: { numero: true },
+        })
+        try {
+          acao = await tx.acao.create({
+            data: {
+              projetoId: projeto.id,
+              numero: proximoNumero(ultima?.numero),
+              descricao: win.descricao,
+            },
+            select: { id: true },
+          })
+          break
+        } catch (erro) {
+          if (!ehColisaoDeNumero(erro)) throw erro
+        }
+      }
+      if (!acao) throw new Error('NUMERACAO_ESGOTADA')
       await tx.win.update({
         where: { id: win.id },
         data: { promovidoEm: new Date(), projetoId: projeto.id, acaoId: acao.id },
       })
+      await tirarDoCard()
       return { projetoId: projeto.id, acaoId: acao.id }
     })
 
@@ -414,6 +462,107 @@ export async function vincularColaborador(formData: FormData): Promise<void> {
     })
   } catch (erro) {
     console.error('Falha ao vincular colaborador', erro)
+    return
+  }
+
+  revalidatePath('/wins')
+}
+
+export type EstadoRepeticao = { erroGeral?: string }
+
+/**
+ * Traz para a semana atual um WIN que veio de antes — é o caminho que faz a
+ * regra das 3 semanas existir de verdade.
+ *
+ * Sem ele, redigitar o mesmo assunto criaria um `Win` novo com o contador
+ * zerado e a regra só valeria para WINs importados da planilha. O WIN precisa
+ * ser o MESMO registro para carregar as aparições.
+ */
+export async function repetirWin(
+  _anterior: EstadoRepeticao,
+  formData: FormData,
+): Promise<EstadoRepeticao> {
+  const { userId } = await auth()
+  if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
+
+  const semana = lerSemana(formData)
+  if (!semana) return { erroGeral: 'Semana não identificada. Recarregue a página.' }
+
+  const winId = formData.get('winId')
+  if (typeof winId !== 'string' || winId === '') {
+    return { erroGeral: 'WIN não identificado.' }
+  }
+
+  try {
+    const colaborador = await colaboradorDoUsuario(userId)
+    if (!colaborador) {
+      return { erroGeral: 'Sua conta ainda não está vinculada a um colaborador.' }
+    }
+
+    const win = await prisma.win.findFirst({
+      where: {
+        id: winId,
+        colaboradorId: colaborador.id,
+        promovidoEm: null,
+        encerradoEm: null,
+      },
+      select: { id: true },
+    })
+    if (!win) return { erroGeral: 'WIN não encontrado ou já encerrado.' }
+
+    const card = await garantirCard(colaborador.id, semana, colaborador.area)
+
+    const ocupadas = await prisma.winSemana.findMany({
+      where: { cardId: card.id },
+      select: { ordem: true, winId: true },
+    })
+    if (ocupadas.some((o) => o.winId === win.id)) {
+      return { erroGeral: 'Este WIN já está na semana.' }
+    }
+
+    const ordem = proximaOrdemLivre(ocupadas.map((o) => o.ordem))
+    if (ordem === null) return { erroGeral: MENSAGEM_ERRO_LIMITE.LIMITE_ATINGIDO }
+
+    await prisma.winSemana.create({ data: { winId: win.id, cardId: card.id, ordem } })
+  } catch (erro) {
+    console.error('Falha ao repetir WIN', erro)
+    return { erroGeral: 'Não foi possível repetir o WIN. Tente novamente.' }
+  }
+
+  revalidatePath('/wins')
+  return {}
+}
+
+/**
+ * Encerra um WIN sem promover — concluído de vez, ou abandonado.
+ *
+ * Existe para que a mensagem do limite ("conclua, encerre ou tire um deles")
+ * corresponda a algo real, e para que `Win.encerradoEm` deixe de ser um campo
+ * que nada escreve. Encerrar também o tira da semana, liberando a vaga.
+ */
+export async function encerrarWin(formData: FormData): Promise<void> {
+  const { userId } = await auth()
+  if (!userId) return
+
+  const winId = formData.get('winId')
+  if (typeof winId !== 'string' || winId === '') return
+
+  try {
+    const colaborador = await colaboradorDoUsuario(userId)
+    if (!colaborador) return
+
+    const win = await prisma.win.findFirst({
+      where: { id: winId, colaboradorId: colaborador.id, promovidoEm: null },
+      select: { id: true },
+    })
+    if (!win) return
+
+    await prisma.$transaction([
+      prisma.win.update({ where: { id: win.id }, data: { encerradoEm: new Date() } }),
+      prisma.winSemana.deleteMany({ where: { winId: win.id } }),
+    ])
+  } catch (erro) {
+    console.error('Falha ao encerrar WIN', erro)
     return
   }
 

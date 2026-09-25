@@ -1,7 +1,7 @@
 /**
  * Importa uma semana do arquivo `CARD WIN Semanal` para o sistema.
  *
- *   npm run importar:card-win -- <arquivo.xlsx> [--semana 39] [--gravar]
+ *   npm run importar:card-win -- <arquivo.xlsx> [--semana 39] [--ano 2026] [--gravar]
  *
  * Sem `--gravar` é simulação: mostra o que faria e não toca no banco. O padrão
  * é a semana mais recente encontrada no arquivo.
@@ -35,30 +35,40 @@ const gravar = argumentos.includes('--gravar')
  * `--semana` consome. Um `find(a => !a.startsWith('--'))` ingênuo pegaria o
  * "39" de `--semana 39` como se fosse o nome do arquivo.
  */
-const { arquivo, semanaPedida } = (() => {
+const { arquivo, semanaPedida, anoPedido } = (() => {
   let arquivo: string | undefined
   let semanaPedida: number | null = null
+  let anoPedido: number | null = null
+
+  const inteiro = (bruto: string | undefined, sinalizador: string, exemplo: string) => {
+    const valor = Number(bruto)
+    if (!Number.isInteger(valor)) {
+      console.error(`${sinalizador} precisa de um número inteiro. Ex.: ${sinalizador} ${exemplo}`)
+      process.exit(1)
+    }
+    return valor
+  }
 
   for (let i = 0; i < argumentos.length; i += 1) {
     const atual = argumentos[i]
     if (atual === '--semana') {
-      const valor = Number(argumentos[i + 1])
-      if (!Number.isInteger(valor)) {
-        console.error('--semana precisa de um número inteiro. Ex.: --semana 39')
-        process.exit(1)
-      }
-      semanaPedida = valor
+      semanaPedida = inteiro(argumentos[i + 1], '--semana', '39')
+      i += 1
+      continue
+    }
+    if (atual === '--ano') {
+      anoPedido = inteiro(argumentos[i + 1], '--ano', '2026')
       i += 1
       continue
     }
     if (atual.startsWith('--')) continue
     arquivo ??= atual
   }
-  return { arquivo, semanaPedida }
+  return { arquivo, semanaPedida, anoPedido }
 })()
 
 if (!arquivo) {
-  console.error('Uso: npm run importar:card-win -- <arquivo.xlsx> [--semana N] [--gravar]')
+  console.error('Uso: npm run importar:card-win -- <arquivo.xlsx> [--semana N] [--ano AAAA] [--gravar]')
   process.exit(1)
 }
 
@@ -107,9 +117,28 @@ if (!resumo) {
 const importacao = resumo
 
 const cardOriginal = cards.find((c) => c.semana === semanaAlvo)!
-// O ano vem do prazo de algum WIN; sem prazo, do relógio.
+
+/**
+ * O ano vem de `--ano`, ou do prazo de algum WIN da própria aba.
+ *
+ * Não cai para o relógio: a planilha não nomeia o ano em lugar nenhum, e uma
+ * aba sem prazo importada em janeiro gravaria a semana 52 sob o ano novo —
+ * fora do card certo e fora da contagem de aparições, sem erro nenhum. Melhor
+ * parar e pedir `--ano` do que gravar no ano errado.
+ */
 const primeiroPrazo = cardOriginal.wins.map((w) => dataDoSerial(w.prazoSerial)).find(Boolean)
-const { ano } = semanaDe(primeiroPrazo ?? new Date())
+const anoDeduzido = anoPedido ?? (primeiroPrazo ? semanaDe(primeiroPrazo).ano : null)
+if (anoDeduzido === null) {
+  console.error(
+    `Nenhum WIN da semana ${semanaAlvo} tem prazo, então o ano não pode ser deduzido.\n` +
+      'Informe explicitamente: --ano 2026',
+  )
+  process.exit(1)
+}
+
+// Como acontece com `resumo` acima, o `process.exit` já garante que não é
+// nulo, mas o TypeScript não enxerga isso dentro da função de gravação.
+const ano = anoDeduzido
 
 console.log(`Arquivo: ${arquivo}`)
 console.log(`Semanas no arquivo: ${cards.map((c) => c.semana).join(', ')}`)

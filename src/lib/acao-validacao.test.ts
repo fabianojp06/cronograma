@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CAMPOS_DATA,
+  ehColisaoDeNumero,
   lerDataISO,
   proximoNumero,
   ROTULOS_STATUS,
   STATUS_ACAO,
+  TENTATIVAS_NUMERO,
   validarDadosAcao,
 } from './acao-validacao'
 
@@ -134,5 +136,31 @@ describe('proximoNumero', () => {
   it('incrementa o maior número existente', () => {
     expect(proximoNumero(1)).toBe(2)
     expect(proximoNumero(7)).toBe(8)
+  })
+})
+
+describe('ehColisaoDeNumero', () => {
+  // Vive em `src/lib` porque os DOIS caminhos que criam uma Ação — o
+  // formulário e a promoção de um WIN — leem o maior número e só depois
+  // gravam. A promoção nasceu sem o laço de nova tentativa e estourava com
+  // P2002 sob concorrência, deixando o WIN sem o item do plano de ação.
+  it('reconhece a violação de unicidade do Prisma', () => {
+    expect(ehColisaoDeNumero({ code: 'P2002' })).toBe(true)
+  })
+
+  it('não confunde com outros erros do Prisma', () => {
+    expect(ehColisaoDeNumero({ code: 'P2025' })).toBe(false)
+  })
+
+  it('aguenta erro comum, null e undefined sem estourar', () => {
+    expect(ehColisaoDeNumero(new Error('qualquer'))).toBe(false)
+    expect(ehColisaoDeNumero(null)).toBe(false)
+    expect(ehColisaoDeNumero(undefined)).toBe(false)
+    expect(ehColisaoDeNumero('P2002')).toBe(false)
+  })
+
+  it('o limite de tentativas é finito — o laço nunca pode ser infinito', () => {
+    expect(TENTATIVAS_NUMERO).toBeGreaterThan(1)
+    expect(Number.isFinite(TENTATIVAS_NUMERO)).toBe(true)
   })
 })

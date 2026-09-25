@@ -64,8 +64,10 @@ export function periodoDaSemana({ ano, semana }: SemanaCtcea): PeriodoSemana {
 
 /**
  * Ano e semana de uma data. O ano do calendário pode não ser o ano civil da
- * data: 30/12/2025 pertence à semana 1 de **2026**, e 01/01/2027 à semana 52
- * de **2026**. É o que a planilha faz, e é o que mantém o histórico contínuo.
+ * data, e a divergência acontece nos dois sentidos: 30/12/2025 já pertence à
+ * semana 1 de **2026**, e 27/12/2026 já pertence à semana 1 de **2027** (a
+ * semana 52 de 2026 termina em 26/12). É o que a planilha faz, e é o que
+ * mantém o histórico contínuo.
  */
 export function semanaDe(data: Date): SemanaCtcea {
   const dia = Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate())
