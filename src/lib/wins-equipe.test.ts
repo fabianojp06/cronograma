@@ -139,7 +139,7 @@ describe('resumoDaEquipe', () => {
       S(39),
     )
     expect(resumoDaEquipe(cards)).toEqual({
-      pessoas: 1,
+      comWins: 1,
       totalWins: 2,
       concluidos: 1,
       aPromover: 1,

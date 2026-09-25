@@ -562,3 +562,43 @@ describe('encerrar exige saber como terminou', () => {
     expect(linha.status).toBe('NAO_FEITO')
   })
 })
+
+describe('as garantias que só existem em SQL', () => {
+  /**
+   * O índice único parcial e a CHECK de `ordem` vivem na migration, não no
+   * datamodel do Prisma — ele não expressa nenhum dos dois. Estes testes
+   * existem para que perdê-los seja BARULHENTO: um `prisma migrate dev` que
+   * gere um DROP para o índice tiraria em silêncio a camada de banco do limite
+   * de 3 WINs, e tudo continuaria compilando.
+   */
+  it('o índice único parcial existe, e é parcial', async () => {
+    const [{ indexdef }] = await prisma.$queryRawUnsafe<{ indexdef: string }[]>(
+      `SELECT indexdef FROM pg_indexes
+       WHERE tablename = 'WinSemana' AND indexname = 'WinSemana_cardId_ordem_no_card'`,
+    )
+    expect(indexdef).toContain('UNIQUE')
+    expect(indexdef).toContain("WHERE (desfecho = 'NO_CARD'")
+  })
+
+  it('a CHECK de ordem continua barrando posições fora de 1 a 3', async () => {
+    const colaborador = await prisma.colaborador.create({
+      data: { nome: 'Teste CHECK' },
+      select: { id: true },
+    })
+    const card = await prisma.cardSemanal.create({
+      data: { colaboradorId: colaborador.id, ano: 2026, semana: 39 },
+      select: { id: true },
+    })
+    const win = await prisma.win.create({
+      data: { colaboradorId: colaborador.id, descricao: 'Fora da faixa' },
+      select: { id: true },
+    })
+
+    await expect(
+      prisma.winSemana.create({ data: { winId: win.id, cardId: card.id, ordem: 4 } }),
+    ).rejects.toThrow()
+    await expect(
+      prisma.winSemana.create({ data: { winId: win.id, cardId: card.id, ordem: 0 } }),
+    ).rejects.toThrow()
+  })
+})

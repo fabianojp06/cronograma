@@ -127,7 +127,8 @@ export function semWins(
 export function resumoDaEquipe(cards: readonly CardDaEquipe[]) {
   const wins = cards.flatMap((c) => c.wins)
   return {
-    pessoas: cards.filter((c) => c.wins.length > 0).length,
+    /** Quem de fato comprometeu algo — ter card só de cabeçalho não conta. */
+    comWins: cards.filter((c) => c.wins.length > 0).length,
     totalWins: wins.length,
     concluidos: wins.filter((w) => w.status === 'FEITO').length,
     aPromover: wins.filter((w) => w.deveSerPromovido).length,

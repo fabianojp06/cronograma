@@ -269,9 +269,18 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
 - **Encerrar pergunta o desfecho**: "Concluí" grava `FEITO`, "Abandonei" grava
   `NAO_FEITO`. Sem a pergunta o WIN encerrado guardava o status que por acaso
   tinha — quase sempre PENDENTE — e a taxa de conclusão o contava como fracasso.
-- **O importador filtra por desfecho.** `deleteMany` sem filtro destruiria as
-  aparições promovidas e encerradas a cada reimportação, e a varredura de órfãos
-  precisa checar `encerradoEm` além de `promovidoEm`.
+- **O importador filtra por desfecho, e em três lugares.** `deleteMany` sem
+  filtro destruiria as aparições promovidas e encerradas a cada reimportação; a
+  varredura de órfãos precisa checar `encerradoEm` além de `promovidoEm`; e a
+  lista de "já resolvidos" também — sem ela o WIN encerrado seria recriado como
+  `Win` novo, com linha `NO_CARD` na mesma `ordem` (o índice parcial permite,
+  porque a linha encerrada não ocupa mais a vaga), deixando 4 aparições num card
+  de 3: `/wins` mostraria 3 e `/dashboards` contaria 4.
+- **O índice parcial e a CHECK de `ordem` só existem em SQL.** O Prisma não
+  expressa nenhum dos dois, então um `prisma migrate dev` pode gerar um DROP e
+  tirar em silêncio a camada de banco do limite de 3. `tests/integracao/`
+  verifica os dois contra o `pg_indexes` justamente para que perdê-los seja
+  barulhento — `@@index([desfecho])`, esse sim expressável, está no schema.
 - **`aparicoesAnteriores` nunca é incrementado pelo sistema.** Ele significa
   "aparições anteriores ao sistema", vindas da importação. Somar as aparições
   vivas nele para poder apagá-las daria dois lugares para a mesma verdade.

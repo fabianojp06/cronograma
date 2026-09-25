@@ -260,18 +260,28 @@ async function gravarNoBanco() {
     console.log(`  (${orfaos.length} WIN(s) órfão(s) da importação anterior removido(s))`)
   }
 
-  const jaPromovidos = await prisma.win.findMany({
-    where: { colaboradorId: colaborador.id, promovidoEm: { not: null } },
+  // WINs que já saíram de cena não voltam por reimportação.
+  //
+  // `encerradoEm` faz parte desta lista tanto quanto `promovidoEm`: sem ele, o
+  // laço abaixo recriaria o WIN encerrado como um `Win` novo, com uma linha
+  // `NO_CARD` na mesma `ordem` — o índice único parcial permite, porque a
+  // linha encerrada não ocupa mais a vaga. A semana ficaria com 4 aparições
+  // num card de 3, e `/wins` mostraria 3 enquanto `/dashboards` contaria 4.
+  const jaResolvidos = await prisma.win.findMany({
+    where: {
+      colaboradorId: colaborador.id,
+      OR: [{ promovidoEm: { not: null } }, { encerradoEm: { not: null } }],
+    },
     select: { descricao: true },
   })
-  const chavesPromovidas = new Set(
-    jaPromovidos.map((w) => chaveDeComparacao(w.descricao)),
+  const chavesResolvidas = new Set(
+    jaResolvidos.map((w) => chaveDeComparacao(w.descricao)),
   )
 
   let pulados = 0
   for (const [indice, win] of importacao.wins.entries()) {
-    if (chavesPromovidas.has(chaveDeComparacao(win.descricao))) {
-      console.log(`  (WIN 0${win.ordem} já foi promovido antes; não será recriado)`)
+    if (chavesResolvidas.has(chaveDeComparacao(win.descricao))) {
+      console.log(`  (WIN 0${win.ordem} já foi promovido ou encerrado; não será recriado)`)
       pulados += 1
       continue
     }

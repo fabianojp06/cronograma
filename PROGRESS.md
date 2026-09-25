@@ -1576,3 +1576,40 @@ implementação. Três rodadas sobre um documento acharam um erro de modelagem,
 duas decisões de negócio ausentes e uma perda de dados — tudo antes de existir
 código para refazer. Quando o custo de errar é migration mais reescrita de
 teste, o documento é o lugar certo para errar.
+
+### Code-review da fase 2 (25/09/2026)
+
+Cinco achados. A máquina de estados do `desfecho`, a taxa com promovido fora do
+denominador e a regra de identidade compartilhada passaram limpas.
+
+**1. Reimportar ressuscitava WIN encerrado.** O `deleteMany` já poupava as
+linhas `ENCERRADO`, mas a lista de "não recriar" só olhava `promovidoEm`. O laço
+recriava o WIN encerrado como `Win` novo, com linha `NO_CARD` na mesma `ordem` —
+permitido pelo índice parcial, porque a linha encerrada não ocupa mais a vaga.
+A semana ficava com 4 aparições num card de 3: `/wins` mostrava 3 e
+`/dashboards` contava 4. Provado e corrigido: reimportar agora deixa 3 linhas,
+2 no card.
+
+**2. O índice parcial podia sumir em silêncio.** Ele e a CHECK de `ordem` vivem
+só na migration — o Prisma não expressa nenhum dos dois, então um
+`prisma migrate dev` diffaria como índice sobrando e geraria um DROP, tirando a
+camada de banco do limite de 3 sem nada quebrar. `@@index([desfecho])`, que É
+expressável, entrou no schema; e dois testes de integração passaram a verificar
+o índice e a CHECK contra o `pg_indexes`, para que perdê-los seja barulhento.
+
+**3. Rótulo do eixo era no-op.** `rotuloSemana` já devolve "S39/2026", então o
+`.replace('Semana ', 'S')` não fazia nada e cada barra levava um rótulo de 8
+caracteres com o ano.
+
+**4. Indicador mentia no rótulo.** "Pessoas com card" contava quem tem WIN —
+justamente a distinção que `semWins` documenta. Virou "Pessoas com WIN", e o
+campo passou a se chamar `comWins`.
+
+**5. O índice de navegação mentia.** As duas entradas de WIN entraram no
+catálogo entre as duas de auditoria, então o menu (agrupado) dizia uma ordem e a
+página renderizava outra. Nada quebrava — o pior tipo de defeito. Corrigido nos
+dois lados, e **agora há teste**: `dashboard-catalogo.test.ts` lê o fonte da
+página e compara a ordem dos ids literais com a do catálogo.
+
+`npm test` = **526 passando em 38 arquivos** (524 antes).
+`npm run test:integracao` = **50 passando** (48 antes).

@@ -121,7 +121,7 @@ export default async function EquipePage({ searchParams }: PageProps<'/wins/equi
 
       <dl className="mt-8 grid gap-px border-l-2 border-accent bg-border sm:grid-cols-4">
         {[
-          { rotulo: 'Pessoas com card', valor: resumo.pessoas },
+          { rotulo: 'Pessoas com WIN', valor: resumo.comWins },
           { rotulo: 'WINs na semana', valor: resumo.totalWins },
           { rotulo: 'Concluídos', valor: resumo.concluidos },
           { rotulo: 'A promover', valor: resumo.aPromover, alerta: resumo.aPromover > 0 },

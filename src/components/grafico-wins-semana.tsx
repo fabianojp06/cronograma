@@ -127,7 +127,7 @@ export function GraficoWinsSemana({ semanas }: { semanas: ConclusaoSemanal[] }) 
                 textAnchor="middle"
                 className="fill-textMuted text-[10px]"
               >
-                {semana.rotulo.replace('Semana ', 'S')}
+                {`S${semana.semana.semana}`}
               </text>
               {semana.emCurso ? (
                 <text

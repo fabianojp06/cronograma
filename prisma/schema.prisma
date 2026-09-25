@@ -276,4 +276,5 @@ model WinSemana {
   /// O mesmo WIN não aparece duas vezes no mesmo card.
   @@unique([cardId, winId])
   @@index([winId])
+  @@index([desfecho])
 }

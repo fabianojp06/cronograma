@@ -122,12 +122,6 @@ export const RELATORIOS: readonly Relatorio[] = [
     grupo: 'QUALIDADE',
   },
   {
-    id: 'replanejamentos',
-    titulo: 'Replanejamentos',
-    pergunta: 'Quais ações tiveram a data prevista empurrada, e quantas vezes?',
-    grupo: 'AUDITORIA',
-  },
-  {
     id: 'wins-conclusao',
     titulo: 'Conclusão dos WINs por semana',
     pergunta: 'Dos WINs comprometidos em cada semana, quantos foram concluídos?',
@@ -139,6 +133,12 @@ export const RELATORIOS: readonly Relatorio[] = [
     pergunta:
       'Que assuntos se repetem semana após semana, e quais já viraram plano de ação?',
     grupo: 'WINS',
+  },
+  {
+    id: 'replanejamentos',
+    titulo: 'Replanejamentos',
+    pergunta: 'Quais ações tiveram a data prevista empurrada, e quantas vezes?',
+    grupo: 'AUDITORIA',
   },
   {
     id: 'alteracoes-recentes',
