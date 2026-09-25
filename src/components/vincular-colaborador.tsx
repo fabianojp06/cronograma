@@ -2,7 +2,12 @@
 
 import { useActionState } from 'react'
 
-import { vincularColaborador, type EstadoVinculo } from '@/app/wins/acoes-win'
+import {
+  cadastrarColaborador,
+  vincularColaborador,
+  type EstadoCadastroColaborador,
+  type EstadoVinculo,
+} from '@/app/wins/acoes-win'
 
 export type ColaboradorLivre = { id: string; nome: string }
 
@@ -13,7 +18,75 @@ export type ColaboradorLivre = { id: string; nome: string }
  * `Projeto.responsavel` quando um WIN for promovido — sem ele, a promoção não
  * saberia de quem é o item.
  */
-export function VincularColaborador({ livres }: { livres: ColaboradorLivre[] }) {
+const classeCampo =
+  'mt-1 rounded-md border border-border bg-surface px-3 py-2 text-sm text-text outline-none ' +
+  'placeholder:text-textFaint focus:border-accent focus:ring-1 focus:ring-accent'
+
+/**
+ * Cadastro do próprio nome — a saída para quem não está na lista.
+ *
+ * As sugestões vêm dos `Projeto.responsavel` que já existem, e não são
+ * enfeite: é esse mesmo nome que vai para o plano de ação quando um WIN for
+ * promovido. Se a pessoa digitar uma grafia diferente da que já usa lá, o
+ * relatório por responsável passa a contá-la como duas pessoas, e ninguém
+ * percebe.
+ */
+function CadastrarColaborador({ sugestoes }: { sugestoes: string[] }) {
+  const [estado, acao] = useActionState<EstadoCadastroColaborador, FormData>(
+    cadastrarColaborador,
+    {},
+  )
+
+  return (
+    <form action={acao} className="mt-4 flex flex-wrap items-end gap-3">
+      <div>
+        <label className="block text-xs text-textMuted" htmlFor="nome">
+          Seu nome
+        </label>
+        <input
+          className={classeCampo}
+          id="nome"
+          name="nome"
+          list="responsaveis-conhecidos"
+          maxLength={120}
+          placeholder="Como você assina no plano de ação"
+          autoComplete="off"
+        />
+        {sugestoes.length > 0 ? (
+          <datalist id="responsaveis-conhecidos">
+            {sugestoes.map((nome) => (
+              <option key={nome} value={nome} />
+            ))}
+          </datalist>
+        ) : null}
+      </div>
+      <button
+        className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-onAccent"
+        type="submit"
+      >
+        Cadastrar e usar o card
+      </button>
+      {estado.erroGeral ? (
+        <p className="w-full text-sm text-warn">{estado.erroGeral}</p>
+      ) : null}
+      {sugestoes.length > 0 ? (
+        <p className="w-full text-xs text-textFaint">
+          Use a mesma grafia do plano de ação — o campo sugere os nomes que já
+          aparecem lá. Grafias diferentes viram duas pessoas no relatório por
+          responsável.
+        </p>
+      ) : null}
+    </form>
+  )
+}
+
+export function VincularColaborador({
+  livres,
+  sugestoes,
+}: {
+  livres: ColaboradorLivre[]
+  sugestoes: string[]
+}) {
   const [estado, acao] = useActionState<EstadoVinculo, FormData>(vincularColaborador, {})
 
   return (
@@ -25,9 +98,8 @@ export function VincularColaborador({ livres }: { livres: ColaboradorLivre[] }) 
       </p>
 
       {livres.length === 0 ? (
-        <p className="mt-4 text-sm text-warn">
-          Não há colaborador disponível para vincular. Peça para cadastrarem seu
-          nome antes de usar o card.
+        <p className="mt-4 text-sm text-textMuted">
+          Ninguém cadastrado ainda — cadastre seu nome abaixo.
         </p>
       ) : (
         <form action={acao} className="mt-4 flex flex-wrap items-end gap-3">
@@ -60,6 +132,13 @@ export function VincularColaborador({ livres }: { livres: ColaboradorLivre[] }) 
           ) : null}
         </form>
       )}
+
+      <div className={livres.length === 0 ? '' : 'mt-6 border-t border-borderSoft pt-4'}>
+        {livres.length > 0 ? (
+          <p className="text-sm text-textMuted">Não achou seu nome na lista?</p>
+        ) : null}
+        <CadastrarColaborador sugestoes={sugestoes} />
+      </div>
     </div>
   )
 }

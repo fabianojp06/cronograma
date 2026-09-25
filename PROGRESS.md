@@ -1415,3 +1415,53 @@ num projeto que não o adotou.
 `npm run test:integracao` = **16 passando** (12 antes; +4 dos achados 2 e 3, entre
 eles a prova de que encerrar na S39 preserva as aparições da S37 e da S38).
 `tsc`, `lint` e `build` limpos.
+
+### Porta de entrada trancada — descoberto em produção (25/09/2026)
+
+Depois do merge do PR #7, o usuário abriu `/wins` em produção e viu: *"Não há
+colaborador disponível para vincular. Peça para cadastrarem seu nome antes de
+usar o card."* — e perguntou se conseguiria cadastrar um WIN na fase 2.
+
+**A única coisa que criava um `Colaborador` era `scripts/importar-card-win.ts`.**
+Não havia nenhum caminho pela interface. Num banco recém-migrado a tabela está
+vazia, a lista de nomes vem vazia, e ninguém passa da tela "Quem é você?" — nem
+para cadastrar o primeiro WIN. O sistema estava inutilizável na porta de entrada.
+
+**Por que três rodadas de code-review não pegaram:** não é defeito de código. O
+código está certo, os 478 testes passavam, e os testes de integração sempre
+criavam o colaborador no `beforeEach` ou pelo importador. Nunca exercitei o
+estado que a produção teria de verdade: banco migrado e vazio, primeiro usuário
+chegando. É o mesmo padrão do achado da rodada 2 — testei o caminho que eu já
+sabia que funcionava.
+
+**A lição, que vale além deste caso:** o estado inicial de um sistema é um caso
+de uso, não um detalhe de setup. Fixture que cria os dados que a tela precisa
+esconde exatamente a pergunta "como esses dados aparecem pela primeira vez?".
+
+**Correção** (auto-cadastro, escolhido pelo usuário entre três opções):
+
+- `cadastrarColaborador` cria o colaborador e vincula a conta na mesma ação.
+  Seguro aqui porque o Clerk já decide quem entra e o cadastro é restrito.
+- **Reconhece quem o importador já criou.** `nome` é `@unique`; sem comparar por
+  chave sem acento/caixa (`chaveDoNome`), digitar "fabiano jose" esbarraria no
+  índice único do "Fabiano José" existente e devolveria erro de banco em vez de
+  vincular. Vincula o cadastro que existe, preservando a `area` da planilha.
+- **Sugere os `Projeto.responsavel` já usados.** Não é conveniência: é o mesmo
+  nome que volta para o plano de ação na promoção, e duas grafias partem a
+  pessoa em dois responsáveis no relatório, sem erro aparecer.
+- Nome já vinculado a outra conta, ou colaborador desativado, dão mensagem
+  específica — desativação não é revertida por conta própria.
+
+**Verificação**, contra Postgres descartável, partindo de `colaborador.count() = 0`:
+o primeiro cadastro vincula; espaços normalizam mas acento e caixa se preservam;
+o nome do importador é reconhecido em vez de duplicado, com a `area` intacta;
+nome tomado e colaborador desativado avisam; uma conta não vira dois
+colaboradores; e a **jornada completa** — cadastrar e registrar o primeiro WIN —
+termina com o `WinSemana` na semana certa, sob o nome certo.
+
+`npm test` = **490 passando em 36 arquivos** (478 antes; +12 da validação do nome).
+`npm run test:integracao` = **26 passando** (16 antes; +10 do cadastro).
+`tsc`, `lint` e `build` limpos.
+
+**Ainda não resolvido:** não existe tela para desativar colaborador nem para
+corrigir um nome cadastrado errado. Hoje isso é edição direta no banco.

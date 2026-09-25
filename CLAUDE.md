@@ -268,6 +268,16 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
   recuperável pela falha da operação inteira — o contrário do que se quer.
 - `Colaborador.nome` é a mesma grafia de `Projeto.responsavel`: é ele que vai
   para lá na promoção, e é o que mantém o relatório por responsável somando certo.
+  Por isso o cadastro sugere os `responsavel` que já existem — duas grafias da
+  mesma pessoa viram dois responsáveis no painel, sem erro nenhum aparecer.
+- **Quem entra e não está na lista cadastra o próprio nome** (`cadastrarColaborador`).
+  Sem isso o sistema tinha uma porta trancada: a única coisa que criava um
+  `Colaborador` era o script de importação, então num banco recém-migrado
+  ninguém passava da tela "Quem é você?" — nem para cadastrar o primeiro WIN.
+  Auto-cadastro é seguro aqui porque o Clerk já decide quem entra.
+  O cadastro **reconhece a pessoa que o importador já criou**, comparando sem
+  acento nem caixa (`chaveDoNome`): sem isso, digitar "fabiano jose" esbarraria
+  no índice único de `nome` e devolveria erro de banco em vez de vincular.
 
 ### O calendário de semanas (`semana-ctcea.ts`)
 
