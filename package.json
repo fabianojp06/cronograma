@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integracao": "vitest run --config vitest.integracao.config.mts",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
@@ -17,7 +18,8 @@
     "importar:pla-dep": "tsx scripts/importar-pla-dep.ts",
     "importar:cro-dep": "tsx scripts/importar-cro-dep.ts",
     "validar:importacao": "tsx scripts/validar-importacao.ts",
-    "migrar:producao": "tsx scripts/migrar-producao.ts"
+    "migrar:producao": "tsx scripts/migrar-producao.ts",
+    "importar:card-win": "tsx scripts/importar-card-win.ts"
   },
   "dependencies": {
     "@clerk/localizations": "^4.17.1",

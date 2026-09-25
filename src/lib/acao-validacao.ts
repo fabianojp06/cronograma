@@ -161,3 +161,53 @@ export function lerIdAcao(entrada: EntradaAcao): string | null {
   const id = lerCampo(entrada, 'id')
   return id === '' ? null : id
 }
+
+/**
+ * Quantas vezes vale a pena recalcular o número antes de desistir.
+ *
+ * A colisão só acontece quando duas gravações leem o mesmo "maior número" no
+ * mesmo instante; cinco tentativas cobrem folgadamente a concorrência real de
+ * uma equipe, e o limite existe só para nunca virar laço infinito.
+ */
+export const TENTATIVAS_NUMERO = 5
+
+/**
+ * Reconhece a violação de `@@unique([projetoId, numero])` do Prisma (`P2002`).
+ *
+ * Fica aqui, e não em cada Server Action, porque todo caminho que cria uma
+ * `Acao` (formulário e promoção de WIN) lê o maior número e depois grava — é
+ * exatamente o intervalo em que outra gravação toma o número.
+ */
+export function ehColisaoDeNumero(erro: unknown): boolean {
+  return (
+    typeof erro === 'object' &&
+    erro !== null &&
+    (erro as { code?: string }).code === 'P2002'
+  )
+}
+
+/**
+ * Refaz uma operação inteira quando ela esbarra na colisão de número.
+ *
+ * Existe para que o retry não fique **dentro** de uma transação. No Postgres a
+ * violação de constraint aborta a transação toda: a consulta seguinte falha
+ * com "current transaction is aborted", não com P2002, e um laço por dentro
+ * transforma uma colisão recuperável na falha da operação inteira. Refazendo
+ * de fora, a nova tentativa começa numa transação limpa e já enxerga a linha
+ * concorrente.
+ *
+ * Devolve `null` quando esgota as tentativas — quem chama decide a mensagem.
+ */
+export async function refazerNaColisao<T>(
+  operacao: () => Promise<T>,
+  tentativas: number = TENTATIVAS_NUMERO,
+): Promise<T | null> {
+  for (let tentativa = 0; tentativa < tentativas; tentativa += 1) {
+    try {
+      return await operacao()
+    } catch (erro) {
+      if (!ehColisaoDeNumero(erro)) throw erro
+    }
+  }
+  return null
+}

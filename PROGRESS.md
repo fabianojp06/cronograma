@@ -138,6 +138,17 @@ não de código — ver as entradas de 2026-09-18 no Log de decisões.
 - [x] Pesos ajustáveis por critério (`/priorizacao/pesos`), somando 100% por grupo
 - [x] Entrada "Priorização" no menu principal
 
+### Bloco 10 — Card WIN Semanal (fase 1)
+- [x] Calendário de semanas da CTCEA (`semana-ctcea.ts`), com teste de paridade
+      contra as 52 semanas da aba Referências
+- [x] Schema `Colaborador`, `CardSemanal`, `Win`, `WinSemana` + enum `StatusWin`,
+      em migration nova
+- [x] Tela `/wins` com o card da semana, navegação e bloco da semana anterior
+      derivado (nunca copiado)
+- [x] Regra das 3 semanas com alerta e promoção ao plano de ação
+- [x] Importação da semana 39 com o contador de repetições semeado
+- [x] Entrada "Card WIN" no menu principal
+
 ## Log de decisões
 (o Claude preenche aqui a cada rodada: o que fez, por quê, o que falta)
 
@@ -1157,3 +1168,250 @@ afrouxá-la devolveria a cegueira. Registrado no CLAUDE.md que
 **Erro meu que vale registrar:** ao confirmar o deploy eu conferi apenas o
 `cronograma-lktu` e relatei o resultado como se fosse geral. Com dois projetos
 ligados ao mesmo repositório, conferir um só não basta.
+
+### 2026-09-25 — Bloco 10: Card WIN Semanal (fase 1)
+
+Integração da planilha `CARD WIN Semanal - Fabiano` enviada pelo usuário.
+
+**O achado que orientou tudo.** A planilha não é concorrente do plano de ação —
+é o funil de entrada dele, e ela mesma diz isso no rodapé de toda aba: "Caso um
+mesmo WIN se repetir por 3 semanas, já na terceira semana ele deve ser cadastrado
+no Plano de Ação (PLA-DEP-2026-001) e retirado do Card WIN."
+
+**E a regra já tinha estourado sem ninguém ver.** "Desenvolvimento do documento
+de elicitação de requisitos — relatórios orçamentários" aparece nas semanas 37,
+38 e 39; na semana 39 deveria ter virado item do plano e saído do card. Continuava
+lá como EM ANDAMENTO. Outros sintomas da manutenção manual, todos no arquivo:
+a aba S37 repete como "semana anterior" o bloco da S36 em vez dos WINs atuais
+dela (e o suporte do mesmo item mudou de "Priscila - GFIN" para "Giovani/Ana");
+a semana 34 não existe; e a maioria dos status da S37/S38 está em branco.
+
+**Decisões fechadas com o usuário antes de qualquer código:**
+1. Colaborador em tabela própria, com `clerkUserId` opcional — nome controlado,
+   funciona antes de a pessoa ter conta, e é o nome que vai para
+   `Projeto.responsavel` na promoção.
+2. Limite de 3 WINs por semana, **rígido**.
+3. Promoção escolhe o destino na hora: projeto novo ou ação em projeto existente.
+4. Importar só a semana 39, com o contador de repetições semeado.
+
+**Decisões técnicas que valem registro:**
+- **`Win` é identidade, `WinSemana` é aparição.** O texto do WIN muda de semana
+  para semana na planilha ("… orçamentários", "… orçamentários ()",
+  "… orçamentários () - SGO"), então contar repetição por string seria frágil.
+  A comparação por texto acontece **uma única vez**, na importação, só para
+  semear o contador.
+- **O bloco "semana anterior" é consulta**, não dado copiado. A duplicação
+  manual dele é a causa da divergência entre S36 e S37.
+- **A regra conta aparições, não semanas consecutivas** — a semana 34 não existe,
+  e zerar o contador por esquecimento premiaria justamente o que a regra pega.
+- **O calendário não é ISO**: semana começa no domingo, semana 1 de 2026 em
+  28/12/2025. A planilha lista 53 semanas mas o `XLOOKUP` dela só varre até a 52;
+  a 53ª é sobra de fórmula e já é a semana 1 de 2027.
+- **O limite de 3 é do banco**, via `@@unique([cardId, ordem])`, não só da tela.
+
+**Verificação:**
+- `npm test` = **455 passando em 35 arquivos** (366 antes; +89). Inclui as 52
+  semanas do calendário conferidas uma a uma contra a planilha.
+- `tsc`, `lint` e `next build` limpos; rota `/wins` registrada.
+- **Ponta a ponta contra Postgres local**: migration aplicada, a semana 39
+  importada do arquivo real (o WIN repetido entrou com 3 aparições e disparou o
+  alerta), a promoção executada criando a Ação e ligando os dois, e o WIN saindo
+  do alerta. A tentativa de reusar uma posição de WIN foi **rejeitada pela
+  constraint**, provando que o limite não depende da tela.
+- **Conferência visual** em navegador nos dois temas, com as Server Actions
+  substituídas por stubs; sem erro de console.
+
+**Fase 2 (não feita):** visão de equipe para a daily ("Compartilhamento dos
+Cards" da aba Agenda) e os dois relatórios no catálogo do dashboard — taxa de
+conclusão semanal e WINs reincidentes.
+
+### 2026-09-25 — Bloco 10: code review da fase 1 (8 achados, todos corrigidos)
+
+Revisão pedida pelo usuário antes de abrir o PR. Encontrou 8 problemas; todos
+foram corrigidos e **provados contra banco**, não só relidos.
+
+**1. Falha de segurança (a mais grave).** No ramo "reaproveitar um WIN que veio
+repetindo", `salvarWin` fazia `win.update({ where: { id: winExistente } })` com o
+id vindo direto do formulário e sem escopo de dono — ao contrário de todos os
+outros caminhos de escrita do arquivo. Um POST forjado reescreveria o WIN de
+outro colaborador e o penduraria no card de quem enviou. Corrigido com checagem
+prévia de propriedade e `where` com `colaboradorId`.
+
+**2. `lerSemana` aceitava lixo.** `Number(null)` é 0, então um POST sem os campos
+passava como "semana 0 do ano 0" e criava `CardSemanal` que nenhuma tela abre de
+novo. Agora exige os campos como texto, valida faixa de ano e passa por
+`ehSemanaValida`.
+
+**3. Área da GIA gravada como equipe.** A promoção escrevia `Colaborador.area`
+(AGP/APD/ACT) em `Projeto.equipe` (STI/GIA/GRH) — vocabulários diferentes, o que
+inventaria equipes no relatório "por equipe" do dashboard. A área passou para o
+comentário e a equipe fica em branco.
+
+**4. Contador mentia em semanas passadas.** A contagem vinha do total global do
+WIN, então abrir a semana 37 mostrava "está na 3ª semana" e o alerta de promoção
+para um WIN que ali estava na primeira aparição. Nasceu
+`contarAparicoesAte(anteriores, aparições, até)`, que congela a contagem na
+semana exibida, com 6 testes.
+
+**5. Reimportação acumulava lixo e podia duplicar projeto.** O script apagava só
+os `WinSemana` e sempre recriava os `Win`: órfãos acumulavam e um WIN já
+promovido voltava ao card, permitindo uma segunda promoção e um `Projeto`
+duplicado. Agora remove órfãos e pula WIN já promovido. Verificado: após duas
+importações da mesma semana, `orfaos=0` e `projetos=1`.
+
+**6. `vincularColaborador` podia estourar.** Sem try/catch e sem checar vínculo
+existente, um usuário cujo colaborador foi desativado veria o formulário de novo
+e o `updateMany` bateria no índice único de `clerkUserId` (P2002), com a exceção
+saindo da Server Action.
+
+**7. Argumentos do script.** `find(a => !a.startsWith('--'))` pegava o "39" de
+`--semana 39` como nome do arquivo, e `--semana` sem valor virava `NaN` que o
+`??` não pega.
+
+**8. Eu afirmei algo que não era verdade.** Disse — na conversa, no commit e no
+CLAUDE.md — que o limite de 3 era garantido pelo banco via
+`@@unique([cardId, ordem])`. A unicidade impede duas linhas na mesma posição mas
+**não limita o valor** de `ordem`: nada impedia as posições 4, 5, 6. Em vez de só
+corrigir o texto, a afirmação foi tornada verdadeira com a migration
+`20260925130000_limite_wins_por_semana`, que adiciona
+`CHECK (ordem BETWEEN 1 AND 3)`. Migration separada de propósito, porque a
+anterior já pode ter sido aplicada em alguma máquina.
+
+**Verificação das correções**, num Postgres local: escrita cruzada entre
+colaboradores bloqueada; ordem 4 e ordem 0 rejeitadas pelo banco e ordem 3 aceita;
+contador devolvendo 1/2/3 nas semanas 37/38/39; promoção deixando `equipe` nula;
+unicidade de `clerkUserId` confirmada; script aceitando `--semana` antes do
+arquivo e reclamando quando vem sem valor.
+
+`npm test` = **461 passando em 35 arquivos** (455 antes; +6 do contador por
+semana). `tsc`, `lint` e `build` limpos.
+
+### Segunda rodada de code-review na Fase 1 (25/09/2026)
+
+Nove achados. O primeiro sozinho anulava o motivo da fase inteira.
+
+**1. O caminho de repetir um WIN estava morto.** O `input` escondido `winId` só
+era renderizado quando `registroId === null && winId !== null` — combinação que
+nenhuma linha da página produzia. Na prática, redigitar o mesmo WIN na semana
+seguinte criava um `Win` novo, com `aparicoesAnteriores = 0`: **a regra das 3
+semanas só podia disparar para WINs importados da planilha.** O sistema
+funcionava com os dados que vieram do Excel e nunca com os digitados.
+
+A correção não é reativar o campo: é uma ação própria, `repetirWin`, e um botão
+"Repetir nesta semana" na lista da semana anterior, com o ramo morto removido de
+`salvarWin`. Adivinhar a repetição comparando o texto seria voltar ao problema
+que o par `Win`/`WinSemana` existe para resolver.
+
+**Por que não peguei antes:** o teste ponta a ponta da rodada 1 semeava o banco
+pelo importador e promovia. Nenhuma vez exerceu "usuário repete o WIN na semana
+seguinte" — o único caminho que a fase inteira existe para servir.
+
+**2. Erros do cabeçalho nunca chegavam à tela.** `CardWin` calculava
+`estado.erros` e não renderizava; colar mais de 2000 caracteres abortava o
+salvamento em silêncio. Os quatro campos viraram uma lista (era a repetição do
+bloco que deixou o erro de fora em três deles) e ganharam `maxLength`.
+
+**3. Promover não tirava o WIN do card**, embora a tela prometesse isso e o
+rodapé da planilha exigisse. Ele seguia ocupando uma das três vagas. As
+aparições são somadas em `aparicoesAnteriores` **antes** de apagar os registros:
+apagar direto zeraria a contagem de um WIN que de fato se repetiu três semanas.
+
+**4. A promoção criava `Acao` sem o laço de nova tentativa** que `criarAcao`
+tem: lia o maior `numero` e gravava, e sob concorrência estouraria com P2002,
+deixando o WIN sem o item do plano. `ehColisaoDeNumero` e `TENTATIVAS_NUMERO`
+saíram de `acoes-acao.ts` para `src/lib/acao-validacao.ts`, com teste.
+
+**5. O importador gravava o card no ano errado.** Sem prazo em nenhum WIN da
+aba, o ano caía no relógio: uma aba importada em janeiro gravaria a semana 52
+sob o ano novo, fora do card certo e fora da contagem, sem erro. Agora aceita
+`--ano` e **para** quando não consegue deduzir.
+
+**6. Tirar da semana deixava `Win` órfão** — linha que nenhuma tela alcança. O
+importador já limpava exatamente esse estado; o caminho interativo, não.
+
+**7. `Win.encerradoEm` era campo que nada escrevia**, e a mensagem do limite
+mandava "encerrar". Em vez de corrigir o texto, a ação passou a existir
+(`encerrarWin`): tirar da semana libera a vaga e o WIN pode voltar somando
+aparições; encerrar diz que não volta.
+
+**8. `traduzirStatus` não normalizava Unicode.** "NÃO FEITO" com til decomposto
+não bate com a chave do mapa e caía calado em PENDENTE.
+
+**9. Docstring mentia** sobre 01/01/2027 ser a semana 52 de 2026. É a semana 1
+de 2027. Os quatro casos de virada viraram teste, para o comentário não poder
+divergir de novo.
+
+**A lição da rodada, e a mudança de prática:** `tsc`, `eslint` e 461 testes
+verdes conviviam com uma funcionalidade que não funcionava. Os achados 1, 3, 4 e
+6 são todos invisíveis em teste unitário. Por isso existe agora
+`tests/integracao/` — 12 testes que chamam as Server Actions reais contra um
+Postgres descartável (`npm run test:integracao`), fora do `npm test` porque o CI
+não sobe banco. Foram eles que provaram cada correção, em vez da releitura do
+código:
+
+- três semanas pelo botão Repetir → **1** `Win`, **3** aparições, promoção
+  disparando; redigitar → **2** `Win` com contador zerado (o defeito, fixado
+  como teste);
+- promoção → `winSemana = 0` e `aparicoesAnteriores = 3`;
+- ação promovida numerada **8** depois de uma ação 7 existente;
+- remoção apagando o órfão e **preservando** o WIN que ainda aparece noutra
+  semana;
+- `encerradoEm` gravado e WIN encerrado recusando repetição;
+- escrita cruzada entre colaboradores bloqueada nas três ações novas.
+
+Também aqui um erro meu: na primeira execução o `npm test` capturou o teste de
+integração (o `include` já cobria `tests/**`), o que teria deixado o CI vermelho
+por falta de banco. Pego porque rodei lint, testes e build antes de commitar, e
+não só o arquivo que eu tinha acabado de escrever.
+
+`npm test` = **474 passando em 35 arquivos** (461 antes; +13 dos achados 4, 8 e
+9). `npm run test:integracao` = **12 passando**. `tsc`, `lint` e `build` limpos.
+
+### Terceira rodada de code-review na Fase 1 (25/09/2026)
+
+Três achados. O primeiro é um defeito que **eu introduzi na rodada 2**.
+
+**1. O retry de P2002 que eu adicionei não funcionava.** Coloquei o laço de
+nova tentativa *dentro* do `$transaction` de `promoverWin`, copiado de
+`criarAcao` — que roda **fora** de transação. No Postgres a violação de
+constraint aborta a transação inteira: a consulta seguinte falha com "current
+transaction is aborted", não com P2002. O laço por dentro, portanto, nunca
+renumerava; ele trocava uma colisão recuperável pela falha da promoção inteira,
+o oposto do que o comentário que escrevi prometia.
+
+Provado antes de mexer, num Postgres descartável: depois de uma colisão dentro
+da transação, o `findFirst` seguinte falha com **P2039**. O laço virou
+`refazerNaColisao`, em `src/lib/acao-validacao.ts`, envolvendo a transação
+inteira — com quatro testes unitários, porque concorrência real não é
+determinística mas a semântica do retry é.
+
+**2. `encerrarWin` apagava o histórico.** Apagava *todos* os `WinSemana` do WIN,
+não só o da semana corrente: encerrar na S39 sumia com o WIN dos cards da S37 e
+da S38. Isso levou a rever também a decisão que eu tinha tomado na rodada 2 —
+promover somava as aparições em `aparicoesAnteriores` e apagava os registros.
+**Estava errado pelo mesmo motivo**, e o CLAUDE.md foi corrigido: as duas ações
+agora recebem `ano`/`semana` e tiram o WIN **só daquela semana**. As aparições
+anteriores registram o que foi de fato comprometido; apagá-las é reescrever o
+passado para arrumar o presente. `aparicoesAnteriores` volta a significar uma
+coisa só: aparições anteriores ao sistema, vindas da importação.
+
+**3. `vincularColaborador` ignorava o `count` do `updateMany`.** A lista de
+nomes é montada quando a página renderiza; se entre aquilo e o envio o
+colaborador fosse tomado por outra conta ou desativado, o update não fazia nada
+e o usuário voltava ao mesmo "Quem é você?" sem erro e sem saída. Agora a ação
+devolve estado e o componente mostra a mensagem.
+
+Também: o docstring de `TENTATIVAS_NUMERO` ficou órfão em `acoes-acao.ts` quando
+movi a constante, empilhado sobre o doc de `criarAcao`. Removido.
+
+**Erro de processo nesta rodada:** rodei `npx prettier --write` nos arquivos que
+toquei. O projeto não usa prettier (sem config, fora do `package.json`), e o
+padrão da ferramenta trocou aspas simples por duplas e adicionou ponto-e-vírgula
+no arquivo inteiro — 565 linhas alteradas onde a correção mexia em ~200. Revertí
+os quatro arquivos para o HEAD e refiz as edições à mão. Formatador não se roda
+num projeto que não o adotou.
+
+`npm test` = **478 passando em 35 arquivos** (474 antes; +4 de `refazerNaColisao`).
+`npm run test:integracao` = **16 passando** (12 antes; +4 dos achados 2 e 3, entre
+eles a prova de que encerrar na S39 preserva as aparições da S37 e da S38).
+`tsc`, `lint` e `build` limpos.

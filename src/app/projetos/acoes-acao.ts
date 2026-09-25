@@ -6,8 +6,10 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { lerIdProjeto } from '@/lib/projeto-edicao'
 import {
+  ehColisaoDeNumero,
   lerIdAcao,
   proximoNumero,
+  TENTATIVAS_NUMERO,
   validarDadosAcao,
   type ErrosAcao,
   type StatusAcao,
@@ -23,17 +25,6 @@ export type EstadoFormularioAcao = {
   erros?: ErrosAcao
   /** Erro que não pertence a um campo específico (falha de banco, sessão). */
   erroGeral?: string
-}
-
-/** Número máximo de tentativas quando duas criações concorrem pelo mesmo número. */
-const TENTATIVAS_NUMERO = 5
-
-function ehColisaoDeNumero(erro: unknown): boolean {
-  return (
-    typeof erro === 'object' &&
-    erro !== null &&
-    (erro as { code?: string }).code === 'P2002'
-  )
 }
 
 /**

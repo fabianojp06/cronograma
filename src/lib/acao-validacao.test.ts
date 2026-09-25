@@ -1,11 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   CAMPOS_DATA,
+  ehColisaoDeNumero,
   lerDataISO,
   proximoNumero,
   ROTULOS_STATUS,
+  refazerNaColisao,
   STATUS_ACAO,
+  TENTATIVAS_NUMERO,
   validarDadosAcao,
 } from './acao-validacao'
 
@@ -134,5 +137,71 @@ describe('proximoNumero', () => {
   it('incrementa o maior número existente', () => {
     expect(proximoNumero(1)).toBe(2)
     expect(proximoNumero(7)).toBe(8)
+  })
+})
+
+describe('ehColisaoDeNumero', () => {
+  // Vive em `src/lib` porque os DOIS caminhos que criam uma Ação — o
+  // formulário e a promoção de um WIN — leem o maior número e só depois
+  // gravam. A promoção nasceu sem o laço de nova tentativa e estourava com
+  // P2002 sob concorrência, deixando o WIN sem o item do plano de ação.
+  it('reconhece a violação de unicidade do Prisma', () => {
+    expect(ehColisaoDeNumero({ code: 'P2002' })).toBe(true)
+  })
+
+  it('não confunde com outros erros do Prisma', () => {
+    expect(ehColisaoDeNumero({ code: 'P2025' })).toBe(false)
+  })
+
+  it('aguenta erro comum, null e undefined sem estourar', () => {
+    expect(ehColisaoDeNumero(new Error('qualquer'))).toBe(false)
+    expect(ehColisaoDeNumero(null)).toBe(false)
+    expect(ehColisaoDeNumero(undefined)).toBe(false)
+    expect(ehColisaoDeNumero('P2002')).toBe(false)
+  })
+
+  it('o limite de tentativas é finito — o laço nunca pode ser infinito', () => {
+    expect(TENTATIVAS_NUMERO).toBeGreaterThan(1)
+    expect(Number.isFinite(TENTATIVAS_NUMERO)).toBe(true)
+  })
+})
+
+describe('refazerNaColisao', () => {
+  const colisao = Object.assign(new Error('unique'), { code: 'P2002' })
+
+  it('devolve o resultado quando não há colisão, sem repetir', async () => {
+    const operacao = vi.fn(async () => 'pronto')
+    expect(await refazerNaColisao(operacao)).toBe('pronto')
+    expect(operacao).toHaveBeenCalledTimes(1)
+  })
+
+  it('refaz a operação INTEIRA na colisão, e não só o trecho que falhou', async () => {
+    // É a diferença que motivou o helper: dentro da transação, repetir só o
+    // `create` não adianta — a transação já está abortada. De fora, a operação
+    // toda recomeça.
+    let chamadas = 0
+    const operacao = vi.fn(async () => {
+      chamadas += 1
+      if (chamadas < 3) throw colisao
+      return chamadas
+    })
+    expect(await refazerNaColisao(operacao)).toBe(3)
+    expect(operacao).toHaveBeenCalledTimes(3)
+  })
+
+  it('devolve null quando esgota as tentativas, em vez de estourar', async () => {
+    const operacao = vi.fn(async () => {
+      throw colisao
+    })
+    expect(await refazerNaColisao(operacao, 4)).toBeNull()
+    expect(operacao).toHaveBeenCalledTimes(4)
+  })
+
+  it('propaga qualquer erro que não seja colisão de número', async () => {
+    const operacao = vi.fn(async () => {
+      throw new Error('banco fora do ar')
+    })
+    await expect(refazerNaColisao(operacao)).rejects.toThrow('banco fora do ar')
+    expect(operacao).toHaveBeenCalledTimes(1)
   })
 })

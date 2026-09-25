@@ -210,6 +210,93 @@ PRIORIDADE         = SE(Esforço = 0; Benefício × GUT; (Benefício × GUT) / E
   `matriz-calculo.test.ts` como teste de paridade. Se um deles quebrar, o cálculo
   deixou de ser o modelo aprovado.
 
+## Card WIN Semanal (`/wins`)
+
+Integra a planilha `CARD WIN Semanal` — o compromisso semanal individual da GIA
+(*What's Important Now*). **Não é uma planilha concorrente do plano de ação: é o
+funil de entrada dele.** A própria planilha diz isso no rodapé de toda aba:
+
+> "Caso um mesmo WIN se repetir por 3 semanas, já na terceira semana ele deve ser
+> cadastrado no Plano de Ação (PLA-DEP-2026-001) e retirado do Card WIN."
+
+```
+Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | Acao
+                (ano/semana)    (ordem 1-3,   (identidade     (promoção)
+                                 prazo,        que atravessa
+                                 status)       semanas)
+```
+
+- **`Win` é a identidade; `WinSemana` é a aparição.** É o que permite contar
+  repetições sem comparar texto. Na planilha o mesmo item aparecia como
+  "… relatórios orçamentários", "… orçamentários ()" e "… orçamentários () -
+  SGO": qualquer contagem por string erraria.
+- **O bloco "semana anterior" é consulta, nunca cópia.** Era a duplicação manual
+  dele que fazia a planilha divergir de si mesma (a aba S37 repetia o bloco da
+  S36 em vez de trazer os WINs atuais dela).
+- **Limite de 3 por semana, rígido**, garantido em duas camadas no banco, não
+  só pela tela: `@@unique([cardId, ordem])` impede duas linhas na mesma posição,
+  e a CHECK `WinSemana_ordem_entre_1_e_3` limita a posição a 1–3. A unicidade
+  sozinha não bastava — ela não limita o *valor* de `ordem`.
+- **A regra das 3 semanas conta aparições, não semanas consecutivas.** A planilha
+  não tem a semana 34; quem não preenche o card numa semana não deveria zerar o
+  contador, seria premiar o esquecimento que a regra quer pegar.
+- **Repetir um WIN é uma ação explícita, não o reconhecimento do texto.** O
+  botão "Repetir nesta semana", na lista da semana anterior, reaproveita a
+  **mesma linha `Win`** — é só assim que as aparições se somam. Redigitar o
+  mesmo assunto no formulário cria um `Win` novo, com o contador em zero, e a
+  regra das 3 semanas nunca dispararia. Comparar descrições para adivinhar a
+  intenção é justamente o que o par `Win`/`WinSemana` existe para evitar.
+- **Promoção escolhe o destino na hora**: projeto novo ou ação dentro de projeto
+  existente. Nem todo WIN vira projeto — "Finalização da documentação do módulo
+  de integração" é parte do SGO, e forçar projeto novo fragmentaria a carteira.
+- **Promover e encerrar tiram o WIN só da semana em que a ação aconteceu.** As
+  aparições anteriores são o registro do que foi de fato comprometido naquelas
+  semanas — é delas que vivem o bloco "semana anterior" e a contagem de
+  recorrência. Apagá-las reescreveria o passado para arrumar o presente, e por
+  isso as duas ações recebem `ano`/`semana` no formulário.
+- **`aparicoesAnteriores` nunca é incrementado pelo sistema.** Ele significa
+  "aparições anteriores ao sistema", vindas da importação. Somar as aparições
+  vivas nele para poder apagá-las daria dois lugares para a mesma verdade.
+- **Tirar da semana e encerrar são coisas diferentes.** Tirar libera a vaga e o
+  WIN pode voltar somando aparições; encerrar (`Win.encerradoEm`) diz que ele
+  não volta. Tirar a última aparição de um WIN que nunca foi promovido apaga
+  também o `Win`: o que sobraria é uma linha que nenhuma tela alcança.
+- **Retry de numeração envolve a transação inteira** (`refazerNaColisao`), nunca
+  o `create` por dentro dela. No Postgres a violação de constraint aborta a
+  transação: a consulta seguinte falha com "current transaction is aborted"
+  (P2039 pelo Prisma), não com P2002. Um laço por dentro troca uma colisão
+  recuperável pela falha da operação inteira — o contrário do que se quer.
+- `Colaborador.nome` é a mesma grafia de `Projeto.responsavel`: é ele que vai
+  para lá na promoção, e é o que mantém o relatório por responsável somando certo.
+
+### O calendário de semanas (`semana-ctcea.ts`)
+
+**Não é a semana ISO.** A semana começa no **domingo**, e a semana 1 de 2026
+começa em **28/12/2025** — regra: o domingo igual ou anterior a 1º de janeiro.
+`getISOWeek` daria números diferentes e desalinharia o histórico da equipe em
+silêncio. As 52 semanas da aba `Referências` estão transcritas em
+`semana-ctcea.test.ts` como teste de paridade, uma a uma.
+
+A planilha lista 53 linhas, mas o `XLOOKUP` dela só varre as semanas 1 a 52 — a
+53ª é sobra da fórmula que se estende sozinha, e por esta regra já é a semana 1
+de 2027.
+
+A divergência entre o ano do calendário e o ano civil acontece **nos dois
+sentidos**: 30/12/2025 já é a semana 1 de 2026, e 27/12/2026 já é a semana 1 de
+2027 (a semana 52 de 2026 termina em 26/12). Os quatro casos estão no teste.
+
+### Testes que precisam de banco
+
+`tests/integracao/` roda as Server Actions do Card WIN contra um Postgres de
+verdade, por `npm run test:integracao` — **fora** do `npm test`, porque o CI não
+sobe banco e um teste de integração no mesmo `include` deixaria o pipeline
+vermelho por falta de infraestrutura, não por defeito no código.
+
+Existe porque os erros desta área são invisíveis no teste unitário: repetição
+que não acumulava, promoção que não liberava a vaga e remoção deixando `Win`
+órfão passaram por `tsc`, por `eslint` e por 461 testes verdes. Só o banco
+denunciou. Toda mudança nas ações de `/wins` roda os dois.
+
 ## Migrations em produção
 
 O `build` roda `scripts/migrar-producao.ts` antes do `next build`, e esse script
