@@ -18,6 +18,7 @@ vi.mock('@clerk/nextjs/server', () => ({
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
 
 const { prisma } = await import('@/lib/prisma')
+const { DesfechoWin } = await import('@/generated/prisma/enums')
 const {
   salvarWin,
   repetirWin,
@@ -176,18 +177,28 @@ describe('promover tira o WIN do card sem perder a contagem', () => {
     expect(resultado.erroGeral).toBeUndefined()
     expect(resultado.promovido?.projetoId).toBeTruthy()
 
-    // A vaga da semana da promoção é liberada...
-    expect(
-      await prisma.winSemana.count({ where: { card: { semana: SEMANAS[2].semana } } }),
-    ).toBe(0)
-    // ...e as semanas anteriores continuam intactas: elas são o registro do
-    // que foi de fato comprometido, não rascunho a limpar.
-    const restantes = await prisma.winSemana.findMany({
-      select: { card: { select: { semana: true } } },
+    // A vaga da semana da promoção é liberada pelo DESFECHO, não pelo sumiço
+    // da linha: ela continua no banco registrando que aquela semana aconteceu.
+    const daSemanaDaPromocao = await prisma.winSemana.findMany({
+      where: { card: { semana: SEMANAS[2].semana } },
+      select: { desfecho: true },
     })
-    expect(restantes.map((r) => r.card.semana).sort()).toEqual([
+    expect(daSemanaDaPromocao).toEqual([{ desfecho: DesfechoWin.PROMOVIDO }])
+    expect(
+      await prisma.winSemana.count({
+        where: { card: { semana: SEMANAS[2].semana }, desfecho: DesfechoWin.NO_CARD },
+      }),
+    ).toBe(0)
+
+    // E as três aparições continuam todas no banco — é o que faz o relatório
+    // de recorrência contar certo.
+    const todas = await prisma.winSemana.findMany({
+      select: { card: { select: { semana: true } }, desfecho: true },
+    })
+    expect(todas.map((r) => r.card.semana).sort()).toEqual([
       SEMANAS[0].semana,
       SEMANAS[1].semana,
+      SEMANAS[2].semana,
     ])
     const depois = await prisma.win.findUniqueOrThrow({
       where: { id: win.id },
@@ -223,8 +234,11 @@ describe('promover tira o WIN do card sem perder a contagem', () => {
       select: { numero: true },
     })
     expect(acao.numero).toBe(8)
-    expect(await prisma.winSemana.count()).toBe(0)
-    // Só havia a aparição da S37, e era dela que o WIN saiu.
+    // Só havia a aparição da S37: ela vive, marcada como promovida.
+    expect(
+      await prisma.winSemana.count({ where: { desfecho: DesfechoWin.NO_CARD } }),
+    ).toBe(0)
+    expect(await prisma.winSemana.count()).toBe(1)
   })
 })
 
@@ -284,14 +298,19 @@ describe('encerrar é o que faz a mensagem do limite ser verdade', () => {
     fd.set('winId', win.id)
     fd.set('ano', String(SEMANAS[0].ano))
     fd.set('semana', String(SEMANAS[0].semana))
-    await encerrarWin(fd)
+    fd.set('desfecho', 'CONCLUI')
+    expect(await encerrarWin({}, fd)).toEqual({})
 
     const depois = await prisma.win.findUniqueOrThrow({
       where: { id: win.id },
       select: { encerradoEm: true },
     })
     expect(depois.encerradoEm).not.toBeNull()
-    expect(await prisma.winSemana.count()).toBe(0)
+    // A vaga sai, a história fica — e o desfecho escolhido virou status.
+    const linha = await prisma.winSemana.findFirstOrThrow({
+      select: { desfecho: true, status: true },
+    })
+    expect(linha).toEqual({ desfecho: DesfechoWin.ENCERRADO, status: 'FEITO' })
   })
 
   it('um WIN encerrado não pode ser repetido', async () => {
@@ -301,7 +320,8 @@ describe('encerrar é o que faz a mensagem do limite ser verdade', () => {
     encerrar.set('winId', win.id)
     encerrar.set('ano', String(SEMANAS[0].ano))
     encerrar.set('semana', String(SEMANAS[0].semana))
-    await encerrarWin(encerrar)
+    encerrar.set('desfecho', 'ABANDONEI')
+    expect(await encerrarWin({}, encerrar)).toEqual({})
 
     const fd = formulario(1)
     fd.set('winId', win.id)
@@ -320,15 +340,19 @@ describe('nem promover nem encerrar reescrevem o passado', () => {
     fd.set('winId', win.id)
     fd.set('ano', String(SEMANAS[2].ano))
     fd.set('semana', String(SEMANAS[2].semana))
-    await encerrarWin(fd)
+    fd.set('desfecho', 'CONCLUI')
+    expect(await encerrarWin({}, fd)).toEqual({})
 
     // A vaga da S39 sai; o que foi comprometido na S37 e na S38 continua lá.
-    const restantes = await prisma.winSemana.findMany({
-      select: { card: { select: { semana: true } } },
+    // A S39 sai do card; S37 e S38 continuam como estavam.
+    const porSemana = await prisma.winSemana.findMany({
+      select: { card: { select: { semana: true } }, desfecho: true },
+      orderBy: { card: { semana: 'asc' } },
     })
-    expect(restantes.map((r) => r.card.semana).sort()).toEqual([
-      SEMANAS[0].semana,
-      SEMANAS[1].semana,
+    expect(porSemana).toEqual([
+      { card: { semana: SEMANAS[0].semana }, desfecho: DesfechoWin.NO_CARD },
+      { card: { semana: SEMANAS[1].semana }, desfecho: DesfechoWin.NO_CARD },
+      { card: { semana: SEMANAS[2].semana }, desfecho: DesfechoWin.ENCERRADO },
     ])
     const depois = await prisma.win.findUniqueOrThrow({
       where: { id: win.id },
@@ -387,5 +411,154 @@ describe('vincular colaborador não pode virar beco sem saída', () => {
       select: { clerkUserId: true },
     })
     expect(depois.clerkUserId).toBe('user_novo')
+  })
+})
+
+describe('o desfecho libera a vaga sem apagar a história', () => {
+  it('depois de promover, a MESMA posição aceita um WIN novo', async () => {
+    // É o risco central da migration: se a ocupação contasse as linhas que já
+    // saíram do card, a posição ficaria presa para sempre. O índice único
+    // parcial é quem permite as duas linhas convivendo na ordem 1.
+    await salvarWin({}, formulario(0, { descricao: 'O que saiu' }))
+    const win = await prisma.win.findFirstOrThrow({ select: { id: true } })
+
+    const promover = new FormData()
+    promover.set('winId', win.id)
+    promover.set('ano', String(SEMANAS[0].ano))
+    promover.set('semana', String(SEMANAS[0].semana))
+    promover.set('destino', 'PROJETO')
+    expect((await promoverWin({}, promover)).erroGeral).toBeUndefined()
+
+    expect(
+      await salvarWin({}, formulario(0, { ordem: '1', descricao: 'O que entrou' })),
+    ).toEqual({ salvo: true })
+
+    const naOrdem1 = await prisma.winSemana.findMany({
+      where: { ordem: 1 },
+      select: { desfecho: true, win: { select: { descricao: true } } },
+      orderBy: { desfecho: 'asc' },
+    })
+    expect(naOrdem1).toHaveLength(2)
+    expect(naOrdem1.map((r) => r.win.descricao).sort()).toEqual([
+      'O que entrou',
+      'O que saiu',
+    ])
+  })
+
+  it('o limite de 3 não conta as linhas que já saíram do card', async () => {
+    for (const ordem of ['1', '2', '3']) {
+      await salvarWin({}, formulario(0, { ordem, descricao: `WIN ${ordem}` }))
+    }
+    const primeiro = await prisma.win.findFirstOrThrow({
+      where: { descricao: 'WIN 1' },
+      select: { id: true },
+    })
+
+    const encerrar = new FormData()
+    encerrar.set('winId', primeiro.id)
+    encerrar.set('ano', String(SEMANAS[0].ano))
+    encerrar.set('semana', String(SEMANAS[0].semana))
+    encerrar.set('desfecho', 'CONCLUI')
+    expect(await encerrarWin({}, encerrar)).toEqual({})
+
+    // A vaga 1 voltou a existir, embora haja 3 linhas no card.
+    expect(await prisma.winSemana.count()).toBe(3)
+    expect(
+      await salvarWin({}, formulario(0, { ordem: '1', descricao: 'Substituto' })),
+    ).toEqual({ salvo: true })
+    expect(await prisma.winSemana.count()).toBe(4)
+  })
+
+  it('um WIN encerrado é barrado antes mesmo da guarda do card', async () => {
+    await salvarWin({}, formulario(0))
+    const win = await prisma.win.findFirstOrThrow({ select: { id: true } })
+
+    const encerrar = new FormData()
+    encerrar.set('winId', win.id)
+    encerrar.set('ano', String(SEMANAS[0].ano))
+    encerrar.set('semana', String(SEMANAS[0].semana))
+    encerrar.set('desfecho', 'ABANDONEI')
+    await encerrarWin({}, encerrar)
+
+    const fd = formulario(0)
+    fd.set('winId', win.id)
+    expect((await repetirWin({}, fd)).erroGeral).toContain('já encerrado')
+  })
+
+  it('a guarda de duplicata enxerga as linhas que já saíram do card', async () => {
+    // `@@unique([cardId, winId])` vale para TODAS as linhas, não só as
+    // NO_CARD. Hoje `repetirWin` barra antes, pelos marcadores do próprio
+    // `Win` — mas se a guarda do card olhasse só as NO_CARD, bastaria existir
+    // um caminho de desfazer promoção para isto virar um P2002 cru.
+    //
+    // O estado é montado direto no banco justamente porque nenhuma ação o
+    // produz hoje: é a guarda defensiva que está sendo exercitada.
+    await salvarWin({}, formulario(0))
+    const registro = await prisma.winSemana.findFirstOrThrow({
+      select: { id: true, winId: true },
+    })
+    await prisma.winSemana.update({
+      where: { id: registro.id },
+      data: { desfecho: DesfechoWin.PROMOVIDO },
+    })
+
+    const fd = formulario(0)
+    fd.set('winId', registro.winId)
+    const r = await repetirWin({}, fd)
+
+    expect(r.erroGeral).toContain('não volta')
+    // E nada foi gravado: continua só a linha original.
+    expect(await prisma.winSemana.count()).toBe(1)
+  })
+})
+
+describe('encerrar exige saber como terminou', () => {
+  it('recusa desfecho ausente, sem deixar o WIN meio encerrado', async () => {
+    await salvarWin({}, formulario(0))
+    const win = await prisma.win.findFirstOrThrow({ select: { id: true } })
+
+    const fd = new FormData()
+    fd.set('winId', win.id)
+    fd.set('ano', String(SEMANAS[0].ano))
+    fd.set('semana', String(SEMANAS[0].semana))
+    const r = await encerrarWin({}, fd)
+
+    expect(r.erroGeral).toContain('concluído ou abandonado')
+    const depois = await prisma.win.findUniqueOrThrow({
+      where: { id: win.id },
+      select: { encerradoEm: true },
+    })
+    expect(depois.encerradoEm).toBeNull()
+    expect(
+      await prisma.winSemana.count({ where: { desfecho: DesfechoWin.NO_CARD } }),
+    ).toBe(1)
+  })
+
+  it('recusa desfecho forjado', async () => {
+    await salvarWin({}, formulario(0))
+    const win = await prisma.win.findFirstOrThrow({ select: { id: true } })
+
+    const fd = new FormData()
+    fd.set('winId', win.id)
+    fd.set('ano', String(SEMANAS[0].ano))
+    fd.set('semana', String(SEMANAS[0].semana))
+    fd.set('desfecho', 'APAGUE_TUDO')
+    expect((await encerrarWin({}, fd)).erroGeral).toContain('concluído ou abandonado')
+    expect(await prisma.winSemana.count()).toBe(1)
+  })
+
+  it('ABANDONEI grava NAO_FEITO', async () => {
+    await salvarWin({}, formulario(0))
+    const win = await prisma.win.findFirstOrThrow({ select: { id: true } })
+
+    const fd = new FormData()
+    fd.set('winId', win.id)
+    fd.set('ano', String(SEMANAS[0].ano))
+    fd.set('semana', String(SEMANAS[0].semana))
+    fd.set('desfecho', 'ABANDONEI')
+    await encerrarWin({}, fd)
+
+    const linha = await prisma.winSemana.findFirstOrThrow({ select: { status: true } })
+    expect(linha.status).toBe('NAO_FEITO')
   })
 })

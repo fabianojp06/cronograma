@@ -24,7 +24,7 @@ import {
 } from '../src/lib/importacao-card-win'
 import { semanaDe } from '../src/lib/semana-ctcea'
 import { encontrarPorNome } from '../src/lib/colaborador-validacao'
-import { StatusWin } from '../src/generated/prisma/enums'
+import { DesfechoWin, StatusWin } from '../src/generated/prisma/enums'
 
 const require = createRequire(import.meta.url)
 
@@ -231,17 +231,27 @@ async function gravarNoBanco() {
   // já virou item do plano de ação, e a promoção seguinte criaria um Projeto
   // duplicado. E os WINs que ficam sem nenhuma aparição depois da limpeza são
   // apagados, senão cada reimportação deixaria órfãos acumulando no banco.
+  // Só as linhas que ainda estão NO CARD são substituídas.
+  //
+  // Sem o filtro, reimportar uma semana apagaria as aparições promovidas e
+  // encerradas — exatamente o histórico que a migration `wins_desfecho_da_aparicao`
+  // existe para preservar, e que os relatórios de recorrência leem.
   const registrosAntigos = await prisma.winSemana.findMany({
-    where: { cardId: card.id },
+    where: { cardId: card.id, desfecho: DesfechoWin.NO_CARD },
     select: { winId: true },
   })
-  await prisma.winSemana.deleteMany({ where: { cardId: card.id } })
+  await prisma.winSemana.deleteMany({
+    where: { cardId: card.id, desfecho: DesfechoWin.NO_CARD },
+  })
 
   const orfaos = await prisma.win.findMany({
     where: {
       id: { in: registrosAntigos.map((r) => r.winId) },
       registros: { none: {} },
       promovidoEm: null,
+      // `encerradoEm` faltava aqui: sem ele, um WIN encerrado que tenha perdido
+      // sua última aparição seria apagado de vez pela varredura de órfãos.
+      encerradoEm: null,
     },
     select: { id: true },
   })

@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { proximoNumero, refazerNaColisao } from '@/lib/acao-validacao'
 import { ehSemanaValida, type SemanaCtcea } from '@/lib/semana-ctcea'
+import { DesfechoWin } from '@/generated/prisma/enums'
 
 /** Faixa de anos aceita — protege contra ano absurdo vindo de POST forjado. */
 const ANO_MINIMO = 2020
@@ -22,7 +23,9 @@ import {
   validarNomeColaborador,
 } from '@/lib/colaborador-validacao'
 import {
+  lerDesfecho,
   podeAdicionarWin,
+  STATUS_DO_DESFECHO,
   proximaOrdemLivre,
   validarCard,
   validarWin,
@@ -151,8 +154,10 @@ export async function salvarWin(
     }
 
     // WIN novo na semana — confere a vaga antes de gravar.
+    // Só o que está NO CARD ocupa posição: uma linha promovida ou encerrada
+    // guarda a história daquela semana, mas já liberou a vaga.
     const ocupadas = await prisma.winSemana.findMany({
-      where: { cardId: card.id },
+      where: { cardId: card.id, desfecho: DesfechoWin.NO_CARD },
       select: { ordem: true },
     })
     const ordem = Number(formData.get('ordem'))
@@ -324,15 +329,17 @@ export async function promoverWin(
          * o passado para arrumar o presente.
          */
         const tirarDoCard = () =>
-          tx.winSemana.deleteMany({
+          tx.winSemana.updateMany({
             where: {
               winId: win.id,
+              desfecho: DesfechoWin.NO_CARD,
               card: {
                 colaboradorId: colaborador.id,
                 ano: semana.ano,
                 semana: semana.semana,
               },
             },
+            data: { desfecho: DesfechoWin.PROMOVIDO },
           })
 
         if (pedido.destino === 'PROJETO') {
@@ -562,13 +569,30 @@ export async function repetirWin(
 
     const card = await garantirCard(colaborador.id, semana, colaborador.area)
 
-    const ocupadas = await prisma.winSemana.findMany({
-      where: { cardId: card.id },
-      select: { ordem: true, winId: true },
+    // Duas perguntas diferentes, duas consultas diferentes.
+    //
+    // "Este WIN já esteve neste card?" olha TODAS as linhas — inclusive as
+    // promovidas e encerradas —, porque `@@unique([cardId, winId])` vale para
+    // todas. Filtrar por `NO_CARD` aqui cegaria a guarda e trocaria esta
+    // mensagem por um P2002 cru vindo do banco.
+    const jaNoCard = await prisma.winSemana.findFirst({
+      where: { cardId: card.id, winId: win.id },
+      select: { desfecho: true },
     })
-    if (ocupadas.some((o) => o.winId === win.id)) {
-      return { erroGeral: 'Este WIN já está na semana.' }
+    if (jaNoCard) {
+      return {
+        erroGeral:
+          jaNoCard.desfecho === DesfechoWin.NO_CARD
+            ? 'Este WIN já está na semana.'
+            : 'Este WIN já saiu do card nesta semana e não volta.',
+      }
     }
+
+    // "Que posições estão ocupadas?" olha só o que está no card agora.
+    const ocupadas = await prisma.winSemana.findMany({
+      where: { cardId: card.id, desfecho: DesfechoWin.NO_CARD },
+      select: { ordem: true },
+    })
 
     const ordem = proximaOrdemLivre(ocupadas.map((o) => o.ordem))
     if (ordem === null) return { erroGeral: MENSAGEM_ERRO_LIMITE.LIMITE_ATINGIDO }
@@ -594,45 +618,69 @@ export async function repetirWin(
  * aparições anteriores são o que foi de fato comprometido naquelas semanas.
  * Encerrar um WIN na S39 não pode apagá-lo dos cards da S37 e da S38.
  */
-export async function encerrarWin(formData: FormData): Promise<void> {
+export type EstadoEncerramento = { erroGeral?: string }
+
+export async function encerrarWin(
+  _anterior: EstadoEncerramento,
+  formData: FormData,
+): Promise<EstadoEncerramento> {
   const { userId } = await auth()
-  if (!userId) return
+  if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
 
   const winId = formData.get('winId')
-  if (typeof winId !== 'string' || winId === '') return
+  if (typeof winId !== 'string' || winId === '') {
+    return { erroGeral: 'WIN não identificado.' }
+  }
 
   const semana = lerSemana(formData)
-  if (!semana) return
+  if (!semana) return { erroGeral: 'Semana não identificada. Recarregue a página.' }
+
+  // O desfecho vem do formulário, então é conferido contra a lista antes de
+  // qualquer escrita. Sem isso, um valor ausente ou forjado faria a transação
+  // inteira falhar: o WIN continuaria no card, `encerradoEm` nunca seria
+  // escrito, e nada apareceria na tela.
+  const desfecho = lerDesfecho(formData.get('desfecho'))
+  if (!desfecho) return { erroGeral: 'Diga se o WIN foi concluído ou abandonado.' }
 
   try {
     const colaborador = await colaboradorDoUsuario(userId)
-    if (!colaborador) return
+    if (!colaborador) {
+      return { erroGeral: 'Sua conta ainda não está vinculada a um colaborador.' }
+    }
 
     const win = await prisma.win.findFirst({
       where: { id: winId, colaboradorId: colaborador.id, promovidoEm: null },
       select: { id: true },
     })
-    if (!win) return
+    if (!win) return { erroGeral: 'WIN não encontrado ou já promovido.' }
 
     await prisma.$transaction([
       prisma.win.update({ where: { id: win.id }, data: { encerradoEm: new Date() } }),
-      prisma.winSemana.deleteMany({
+      // Marca a aparição desta semana, sem tocar nas anteriores: elas são o
+      // registro do que foi de fato comprometido naquelas semanas.
+      prisma.winSemana.updateMany({
         where: {
           winId: win.id,
+          desfecho: DesfechoWin.NO_CARD,
           card: {
             colaboradorId: colaborador.id,
             ano: semana.ano,
             semana: semana.semana,
           },
         },
+        data: {
+          desfecho: DesfechoWin.ENCERRADO,
+          status: STATUS_DO_DESFECHO[desfecho],
+        },
       }),
     ])
   } catch (erro) {
     console.error('Falha ao encerrar WIN', erro)
-    return
+    return { erroGeral: 'Não foi possível encerrar o WIN. Tente novamente.' }
   }
 
   revalidatePath('/wins')
+  return {}
 }
 
 export type EstadoCadastroColaborador = { erroGeral?: string }
