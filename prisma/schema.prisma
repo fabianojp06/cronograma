@@ -134,6 +134,16 @@ model PesoCriterio {
 /// Status de um WIN numa semana. A planilha usa FEITO / NÃO FEITO / EM
 /// ANDAMENTO e deixa a célula **vazia** com frequência — vazio vira PENDENTE
 /// aqui, para que "ninguém preencheu" seja um estado nomeado e não um buraco.
+/// O que aconteceu com uma aparição do WIN numa semana.
+enum DesfechoWin {
+  /// Está no card desta semana, ocupando uma das três posições.
+  NO_CARD
+  /// Virou item do plano de ação pela regra das 3 semanas.
+  PROMOVIDO
+  /// Terminou aqui — concluído ou abandonado, conforme o `status`.
+  ENCERRADO
+}
+
 enum StatusWin {
   PENDENTE
   EM_ANDAMENTO
@@ -244,16 +254,27 @@ model WinSemana {
   cardId String
   card   CardSemanal @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
-  /// 1 a 3 — o limite do método, garantido também no banco pela unicidade.
+  /// 1 a 3 — o limite do método, garantido também no banco pela CHECK
+  /// `WinSemana_ordem_entre_1_e_3`.
   ordem  Int
+  /// O que aconteceu com esta APARIÇÃO — e não com o WIN.
+  ///
+  /// Mora aqui, e não em `Win`, porque um WIN promovido na semana 39 continua
+  /// tendo acontecido nas semanas 37 e 38: ler o desfecho de `Win.promovidoEm`
+  /// tiraria o WIN do denominador de todas as semanas anteriores.
+  desfecho DesfechoWin @default(NO_CARD)
   prazo  DateTime?
   status StatusWin @default(PENDENTE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([cardId, ordem])
+  /// A unicidade de `[cardId, ordem]` é **parcial** e vive em SQL, na migration
+  /// `wins_desfecho_da_aparicao`: vale só onde `desfecho = NO_CARD`. É o que
+  /// libera a vaga quando um WIN sai do card sem apagar o histórico dele. O
+  /// Prisma não expressa índice parcial — mesmo caminho da CHECK de `ordem`.
   /// O mesmo WIN não aparece duas vezes no mesmo card.
   @@unique([cardId, winId])
   @@index([winId])
+  @@index([desfecho])
 }

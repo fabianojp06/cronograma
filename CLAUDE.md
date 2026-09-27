@@ -249,11 +249,38 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
 - **Promoção escolhe o destino na hora**: projeto novo ou ação dentro de projeto
   existente. Nem todo WIN vira projeto — "Finalização da documentação do módulo
   de integração" é parte do SGO, e forçar projeto novo fragmentaria a carteira.
-- **Promover e encerrar tiram o WIN só da semana em que a ação aconteceu.** As
-  aparições anteriores são o registro do que foi de fato comprometido naquelas
-  semanas — é delas que vivem o bloco "semana anterior" e a contagem de
-  recorrência. Apagá-las reescreveria o passado para arrumar o presente, e por
-  isso as duas ações recebem `ano`/`semana` no formulário.
+- **O desfecho pertence à APARIÇÃO, não ao WIN** (`WinSemana.desfecho`:
+  `NO_CARD` | `PROMOVIDO` | `ENCERRADO`). Um WIN promovido na semana 39
+  continua tendo acontecido nas semanas 37 e 38 — ler o desfecho de
+  `Win.promovidoEm` o tiraria do denominador de todas as semanas anteriores.
+- **Promover e encerrar MARCAM a aparição da semana da ação; não apagam.**
+  Apagar destruía o histórico que os relatórios leem: a semana em que a equipe
+  promoveu tudo ficava vazia, e cada WIN promovido perdia uma aparição. As duas
+  ações recebem `ano`/`semana` no formulário e só mexem naquela semana.
+- **A vaga no card é liberada por índice único PARCIAL**, não pela ausência da
+  linha: `WinSemana_cardId_ordem_no_card` vale só onde `desfecho = NO_CARD`.
+  Assim `ordem` continua `NOT NULL` e nenhum call site precisa lidar com nulo.
+  O Prisma não expressa índice parcial — ele vive em SQL na migration, mesmo
+  caminho da CHECK de `ordem`.
+- **Ocupação e duplicata são consultas diferentes.** "Que posições estão
+  ocupadas?" filtra `desfecho: NO_CARD`; "este WIN já esteve neste card?" olha
+  TODAS as linhas, porque `@@unique([cardId, winId])` vale para todas.
+  Confundi-las troca a mensagem amigável por um P2002 cru.
+- **Encerrar pergunta o desfecho**: "Concluí" grava `FEITO`, "Abandonei" grava
+  `NAO_FEITO`. Sem a pergunta o WIN encerrado guardava o status que por acaso
+  tinha — quase sempre PENDENTE — e a taxa de conclusão o contava como fracasso.
+- **O importador filtra por desfecho, e em três lugares.** `deleteMany` sem
+  filtro destruiria as aparições promovidas e encerradas a cada reimportação; a
+  varredura de órfãos precisa checar `encerradoEm` além de `promovidoEm`; e a
+  lista de "já resolvidos" também — sem ela o WIN encerrado seria recriado como
+  `Win` novo, com linha `NO_CARD` na mesma `ordem` (o índice parcial permite,
+  porque a linha encerrada não ocupa mais a vaga), deixando 4 aparições num card
+  de 3: `/wins` mostraria 3 e `/dashboards` contaria 4.
+- **O índice parcial e a CHECK de `ordem` só existem em SQL.** O Prisma não
+  expressa nenhum dos dois, então um `prisma migrate dev` pode gerar um DROP e
+  tirar em silêncio a camada de banco do limite de 3. `tests/integracao/`
+  verifica os dois contra o `pg_indexes` justamente para que perdê-los seja
+  barulhento — `@@index([desfecho])`, esse sim expressável, está no schema.
 - **`aparicoesAnteriores` nunca é incrementado pelo sistema.** Ele significa
   "aparições anteriores ao sistema", vindas da importação. Somar as aparições
   vivas nele para poder apagá-las daria dois lugares para a mesma verdade.
@@ -289,6 +316,47 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
   `Projeto.responsavel` numa promoção); avisa a divergência e deixa a decisão
   para quem roda.
 
+### Administração de colaboradores (`/colaboradores`)
+
+Desativar, reativar e corrigir nome. Não há sistema de papéis: qualquer conta
+autenticada administra, coerente com o auto-cadastro — o Clerk já decide quem
+entra, e inventar papéis para três pessoas seria infraestrutura sem demanda.
+
+- **Renomear e alinhar `Projeto.responsavel` são independentes.** A propagação
+  não anda de carona numa mudança de nome: quem desmarcou a caixa uma vez
+  precisa poder voltar e alinhar depois, e há divergência que nasce sem ninguém
+  renomear nada — a planilha importada com uma grafia, o cadastro com outra.
+  Amarrar as duas deixaria essa divergência sem conserto pela tela.
+- **A propagação casa por `chaveDoNome`, não por igualdade exata.** A
+  divergência que a tela cura é justamente a que um `where` exato não enxerga:
+  "Fabiano Jose" no projeto contra "Fabiano José" no cadastro. Contar com uma
+  regra e escrever com outra faria o rótulo prometer N e o resultado relatar M,
+  então tela e ação usam a MESMA função (`projetosDaPessoa`).
+- **A contagem não filtra `ativo`.** Projeto excluído logicamente pode ser
+  restaurado, e voltaria com a grafia velha.
+- **Desativar/reativar age pela INTENÇÃO clicada**, nunca negando o `ativo`
+  lido. Entre a página renderizar e o clique chegar, outra pessoa pode ter
+  mexido: negar o que se lê faria um clique em "Desativar" reativar alguém e
+  ainda relatar "voltou a ficar ativo". O `updateMany` condicional devolve
+  `count = 0` nesse caso e o usuário é avisado — mesmo padrão de
+  `vincularColaborador`.
+- **O `comentario` da promoção não é reescrito.** Ele também cita o nome
+  ("Promovido do Card WIN de Fulano…"), mas em prosa e como registro do que
+  aconteceu na época.
+- **Conflito de nome usa `chaveDoNome`**, a mesma regra do cadastro e do
+  importador: igualdade exata deixaria criar "Fabiano Jose" ao lado de "Fabiano
+  José". Trocar só acento ou caixa do **próprio** nome é permitido — é a
+  correção que a tela existe para fazer.
+- **Desativar não apaga nada.** Cards e WINs seguem no histórico e a tela de
+  equipe continua mostrando o que a pessoa comprometeu; o que muda é sair da
+  lista de "quem falta" e da lista de vínculo.
+- **Desativar não solta o `clerkUserId`.** Soltar deixaria a conta se cadastrar
+  de novo com outro nome, e o histórico dela ficaria órfão. Reativar devolve o
+  acesso exatamente como era.
+- **Ninguém desativa a si mesmo**: cairia na tela "Quem é você?" sem conseguir
+  se escolher (a lista só oferece ativos e sem dono) e ficaria sem acesso ao
+  próprio card até alguém mexer no banco.
+
 ### O calendário de semanas (`semana-ctcea.ts`)
 
 **Não é a semana ISO.** A semana começa no **domingo**, e a semana 1 de 2026
@@ -304,6 +372,43 @@ de 2027.
 A divergência entre o ano do calendário e o ano civil acontece **nos dois
 sentidos**: 30/12/2025 já é a semana 1 de 2026, e 27/12/2026 já é a semana 1 de
 2027 (a semana 52 de 2026 termina em 26/12). Os quatro casos estão no teste.
+
+## Relatórios do Card WIN
+
+- **Visão de equipe (`/wins/equipe`)** — o "Compartilhamento dos Cards" da aba
+  Agenda, para a daily. **Somente leitura**: editar card alheio é decisão de
+  produto que ninguém tomou. Não filtra colaborador ativo na consulta, porque a
+  tela navega por semanas passadas e esconder quem saiu reescreveria o que
+  aconteceu; a lista de *quem falta* é que só considera os ativos.
+- **`semWins` pergunta "tem WIN?", não "tem card?"** — salvar só o cabeçalho já
+  cria a linha do `CardSemanal`, então o critério ingênuo esconderia quem digitou
+  a área e mais nada, que é justamente quem a reunião precisa ver.
+- **Os relatórios de WIN ficam fora dos filtros da tela `/dashboards`**, junto
+  com a auditoria: equipe, natureza e prioridade são dimensões de `Projeto`, e um
+  WIN não tem nenhuma delas. Mexer num filtro deixaria os números parados, o que
+  leria como bug — daí o grupo próprio `WINS` e a ressalva no cabeçalho.
+- **Promovido é categoria própria na taxa de conclusão**, fora do denominador:
+  não é concluir nem falhar, o trabalho mudou de lugar. E os baldes de status só
+  valem para o que não foi promovido — a linha promovida guarda o status que
+  tinha, e contá-la nos dois somaria mais que o total.
+- **`taxa: null` carrega o motivo** (`SEM_WINS` ou `TODOS_PROMOVIDOS`): sem isso,
+  a semana em que o funil funcionou melhor renderiza igual a uma de recesso.
+- **A janela é densa e atravessa o ano por `semanaAnterior`**, nunca por
+  `semana - 1`: `ano`/`semana` são duas colunas inteiras e nenhum intervalo
+  contínuo sai de um `gte`.
+- **Hachura significa uma coisa só.** `PROMOVIDO` é hachura sobre `realizado`
+  (textura, não cor — `accent` é reservado a magnitude); a semana em curso é
+  contorno tracejado. As duas coincidiriam na última barra.
+- **A amostra da legenda repete a TEXTURA, não só a cor.** Um quadrado liso ao
+  lado de "Promovido" obrigaria quem lê a adivinhar que o listrado na barra
+  corresponde àquele verde — e a legenda existe justamente para a identidade
+  não ficar só na cor.
+- **`desfecho` tem de ser consultado em TODA ação que age sobre uma aparição.**
+  `salvarWin` (ramo de edição), `removerWinDaSemana` e `encerrarWin` filtram
+  `NO_CARD`; `encerrarWin` exige também `encerradoEm: null`. Sem isso, uma aba
+  aberta antes da promoção ainda mostra os botões antigos, e o clique reescreve
+  ou apaga uma semana já fechada — o histórico que a migration existe para
+  preservar.
 
 ### Testes que precisam de banco
 

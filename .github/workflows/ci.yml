@@ -10,6 +10,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Permite reexecutar à mão, pela aba Actions.
+  #
+  # Sem isto, a única forma de rodar o CI de novo é empurrar código — e houve
+  # um caso em que o `pull_request` não disparou na abertura do PR, deixando 12
+  # commits sem nenhuma execução. As saídas que sobravam eram todas ruins:
+  # commit vazio, ou fechar e reabrir o PR.
+  workflow_dispatch:
 
 # Um push novo cancela a execução anterior da mesma branch — não faz sentido
 # esperar CI de um commit que já foi substituído.

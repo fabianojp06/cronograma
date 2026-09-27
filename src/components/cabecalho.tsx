@@ -13,6 +13,8 @@ const MENU = [
   { href: "/dashboards", rotulo: "Dashboards" },
   { href: "/priorizacao", rotulo: "Priorização" },
   { href: "/wins", rotulo: "Card WIN" },
+  { href: "/wins/equipe", rotulo: "Equipe" },
+  { href: "/colaboradores", rotulo: "Colaboradores" },
 ] as const;
 
 /** Barra superior fixa: identidade do sistema, menu e sessão do usuário. */

@@ -1,8 +1,49 @@
 # PROGRESS — Cronograma CTCEA
 
 ## Status
-BACKLOG_CONCLUIDO (Blocos 1–7 marcados). Pendências restantes são operacionais,
-não de código — ver as entradas de 2026-09-18 no Log de decisões.
+
+**BACKLOG_CONCLUIDO** — 12 blocos entregues, nenhum item em aberto. Tudo o que
+resta é operacional ou decisão de negócio, não código pendente.
+
+| # | Bloco | Estado | Onde vive |
+|---|---|---|---|
+| 1 | Fundação (Next, Prisma, Clerk, Vercel, Railway) | entregue | — |
+| 2 | CRUD de Projetos | entregue | `/projetos` |
+| 3 | CRUD de Ações + `HistoricoAlteracao` | entregue | `/projetos/[id]` |
+| 4 | Visualização Gantt | entregue | `/projetos/[id]` |
+| 5 | Painel consolidado (modelo PLA-DEP) | entregue | `/` |
+| 6 | Migração dos dados das planilhas | entregue | `scripts/` |
+| 7 | Dashboards (15 relatórios) | entregue | `/dashboards` |
+| 8 | Modo escuro (Sistema/Claro/Escuro) | entregue | cabeçalho |
+| 9 | Matriz de Priorização (Benefício × Esforço × GUT) | entregue | `/priorizacao` |
+| 10 | Card WIN — fase 1 (funil de entrada do plano) | entregue | `/wins` |
+| 11 | Card WIN — fase 2 (equipe + 2 relatórios) | entregue | `/wins/equipe`, `/dashboards` |
+| 12 | Administração de colaboradores | entregue | `/colaboradores` |
+
+Blocos 1–10 estão detalhados no Backlog abaixo; 11 e 12 nasceram depois e estão
+no Log de decisões.
+
+**Verificação atual:** `npm test` 541 em 39 arquivos · `npm run test:integracao`
+71 em 5 arquivos · `tsc`, `lint` e `build` limpos.
+
+### O que está em aberto
+
+| Pendência | Tipo | Consequência se ficar assim |
+|---|---|---|
+| **PR #8 não mergeado** (13 commits, três assuntos: auto-cadastro, fase 2, colaboradores) | processo | Nada dos blocos 11–12 está em produção. O histórico do PR não se lê sozinho. |
+| **Clerk em instância de *development*** | operacional | Limites de conta e chaves de teste. Ao promover, **registrar o app no Azure AD ANTES**, senão o login Microsoft quebra na troca de chaves. |
+| **Planilha real não importada em produção** | operacional | Ninguém tem card. O WIN que já bateu 3 semanas segue sem virar item do plano. |
+| **Sem trilha de auditoria para `Colaborador`** | código, fora de escopo | Quem desativou ou renomeou quem, e quando, não fica registrado. `HistoricoAlteracao` é só de `Acao`. |
+| **URLs órfãs do projeto `cronograma` desconectado** | operacional | Continuam no ar, protegidas por SSO. Não recebem deploy novo. |
+| **CI em `actions/checkout@v4` e `setup-node@v4`** | manutenção | Aviso de descontinuação do Node 20 a cada execução. Não quebra nada hoje. |
+
+### O que ainda não existe e talvez você queira
+
+- Notificação de WIN prestes a estourar as 3 semanas (hoje o aviso só aparece
+  para quem abre a própria tela).
+- Exportar card ou relatório para PDF/Excel.
+- Editar card de outra pessoa (decisão de produto não tomada).
+
 
 ## Contexto do projeto (não apagar — referência para o Claude)
 - Sistema independente que substitui as planilhas PLA-DEP-2026-001.xlsx (consolidado
@@ -137,6 +178,21 @@ não de código — ver as entradas de 2026-09-18 no Log de decisões.
 - [x] Formulário de avaliação por projeto, com totais e quadrante recalculados
 - [x] Pesos ajustáveis por critério (`/priorizacao/pesos`), somando 100% por grupo
 - [x] Entrada "Priorização" no menu principal
+
+### Bloco 11 — Card WIN, fase 2
+- [x] Visão de equipe para a daily (`/wins/equipe`) — o "Compartilhamento dos
+      Cards" da aba Agenda, somente leitura
+- [x] Relatório de conclusão dos WINs por semana, com promovido como categoria
+      própria fora do denominador
+- [x] Relatório de WINs reincidentes, somando as aparições anteriores ao sistema
+- [x] Migration `wins_desfecho_da_aparicao`: o desfecho passa a viver na
+      aparição, com a vaga liberada por índice único parcial
+
+### Bloco 12 — Administração de colaboradores
+- [x] Tela `/colaboradores` — desativar, reativar e corrigir nome
+- [x] Renomear oferece alinhar `Projeto.responsavel`, pela mesma chave de
+      identidade do cadastro e do importador
+- [x] Auto-cadastro na tela do Card WIN, para o primeiro usuário num banco zerado
 
 ### Bloco 10 — Card WIN Semanal (fase 1)
 - [x] Calendário de semanas da CTCEA (`semana-ctcea.ts`), com teste de paridade
@@ -1507,3 +1563,224 @@ este teste, com a mensagem certa, porque a planilha de prova não tinha prazo.
 `npm test` = **494 passando em 36 arquivos** (490 antes; +4 de `encontrarPorNome`).
 `npm run test:integracao` = **29 passando** (26 antes; +3 do vínculo desativado).
 `tsc`, `lint` e `build` limpos.
+
+### Bloco 11 — Card WIN, fase 2 (25/09/2026)
+
+Três entregas: visão de equipe para a daily, taxa de conclusão semanal e WINs
+reincidentes. O plano passou por **três rodadas de code-review antes de virar
+código** — 20 achados, e é o que mais vale registrar deste bloco.
+
+**A revisão do plano encontrou um erro de modelagem que nenhuma revisão de
+código teria pego barato.** A fase 1 apagava o `WinSemana` ao promover ou
+encerrar. Isso não incomodava ninguém enquanto não havia relatório; com eles, a
+semana em que a equipe promoveu tudo apareceria vazia e cada WIN promovido
+perderia uma aparição. Duas tentativas de remendo (`ordem = null`, depois
+somar em `aparicoesAnteriores`) criaram mais problemas do que resolveram —
+sintoma de estar sobrecarregando um campo com significado que ele não carrega.
+
+O desenho que resolveu: **o desfecho pertence à aparição**, não ao WIN. Um WIN
+promovido na S39 continua tendo acontecido na S37 e na S38. Daí
+`WinSemana.desfecho` e a vaga liberada por índice único **parcial**, com `ordem`
+continuando `NOT NULL` — nenhum call site precisou lidar com nulo, e o risco do
+`?? 0` recriar erro de contagem de vaga sumiu junto.
+
+Duas decisões de negócio que a revisão expôs como ausentes, decididas com o
+usuário:
+
+- **Promovido é categoria própria**, fora do denominador da taxa: nem concluído
+  nem falho. Contá-lo como fracasso ensinaria a equipe a evitar a promoção, que
+  é o método funcionando.
+- **Encerrar passa a perguntar o desfecho.** A ação existia sem perguntar, e o
+  próprio docstring dela admitia a ambiguidade. Sem a pergunta, o WIN encerrado
+  guardava o status que por acaso tinha e a taxa o contava como fracasso.
+
+Outros achados corrigidos antes de escrever a primeira linha: `encerradoEm`
+faltava na consulta da tela de equipe (WIN encerrado seria marcado "deve
+promover"); filtrar colaborador ativo apagaria retroativamente os cards de quem
+saiu; `contarAparicoesAte` e `totalDeAparicoes` somam `aparicoesAnteriores` cada
+um, então o consumidor passa zero; `ano`/`semana` são duas colunas e nenhum
+intervalo contínuo sai de um `gte` na virada de ano; os relatórios de WIN não
+respondem aos filtros da página; a última barra é a semana em curso e sem marca
+lê como queda a zero; hachura estava significando duas coisas; `semCard` errava
+o critério, porque salvar só o cabeçalho já cria a linha do card.
+
+E um que era perda de dados: **o importador apagava todos os `WinSemana` do
+card**, sem filtro, e ignorava `encerradoEm` na varredura de órfãos —
+reimportar uma semana destruiria exatamente o histórico que a migration existe
+para preservar.
+
+**Verificação**, contra Postgres descartável:
+
+- o índice parcial existe no banco, com o `WHERE` correto;
+- depois de promover, a **mesma posição** aceita um WIN novo — o risco central
+  da migration;
+- o limite de 3 não conta linhas que saíram do card;
+- repetir um WIN que saiu dá mensagem, não P2002;
+- encerrar sem desfecho, ou com desfecho forjado, recusa **sem** deixar o WIN
+  meio encerrado;
+- reimportar preserva a aparição promovida;
+- a contagem da tela de equipe bate com a da tela individual;
+- promovido sai do denominador e não é contado duas vezes;
+- semana toda promovida não se confunde com semana de recesso.
+
+`npm test` = **524 passando em 38 arquivos** (505 antes).
+`npm run test:integracao` = **48 passando** (36 antes).
+`tsc`, `lint` e `build` limpos.
+
+**A lição do bloco:** revisar o plano saiu muito mais barato que revisar a
+implementação. Três rodadas sobre um documento acharam um erro de modelagem,
+duas decisões de negócio ausentes e uma perda de dados — tudo antes de existir
+código para refazer. Quando o custo de errar é migration mais reescrita de
+teste, o documento é o lugar certo para errar.
+
+### Code-review da fase 2 (25/09/2026)
+
+Cinco achados. A máquina de estados do `desfecho`, a taxa com promovido fora do
+denominador e a regra de identidade compartilhada passaram limpas.
+
+**1. Reimportar ressuscitava WIN encerrado.** O `deleteMany` já poupava as
+linhas `ENCERRADO`, mas a lista de "não recriar" só olhava `promovidoEm`. O laço
+recriava o WIN encerrado como `Win` novo, com linha `NO_CARD` na mesma `ordem` —
+permitido pelo índice parcial, porque a linha encerrada não ocupa mais a vaga.
+A semana ficava com 4 aparições num card de 3: `/wins` mostrava 3 e
+`/dashboards` contava 4. Provado e corrigido: reimportar agora deixa 3 linhas,
+2 no card.
+
+**2. O índice parcial podia sumir em silêncio.** Ele e a CHECK de `ordem` vivem
+só na migration — o Prisma não expressa nenhum dos dois, então um
+`prisma migrate dev` diffaria como índice sobrando e geraria um DROP, tirando a
+camada de banco do limite de 3 sem nada quebrar. `@@index([desfecho])`, que É
+expressável, entrou no schema; e dois testes de integração passaram a verificar
+o índice e a CHECK contra o `pg_indexes`, para que perdê-los seja barulhento.
+
+**3. Rótulo do eixo era no-op.** `rotuloSemana` já devolve "S39/2026", então o
+`.replace('Semana ', 'S')` não fazia nada e cada barra levava um rótulo de 8
+caracteres com o ano.
+
+**4. Indicador mentia no rótulo.** "Pessoas com card" contava quem tem WIN —
+justamente a distinção que `semWins` documenta. Virou "Pessoas com WIN", e o
+campo passou a se chamar `comWins`.
+
+**5. O índice de navegação mentia.** As duas entradas de WIN entraram no
+catálogo entre as duas de auditoria, então o menu (agrupado) dizia uma ordem e a
+página renderizava outra. Nada quebrava — o pior tipo de defeito. Corrigido nos
+dois lados, e **agora há teste**: `dashboard-catalogo.test.ts` lê o fonte da
+página e compara a ordem dos ids literais com a do catálogo.
+
+`npm test` = **526 passando em 38 arquivos** (524 antes).
+`npm run test:integracao` = **50 passando** (48 antes).
+
+### Bloco 12 — Administração de colaboradores (25/09/2026)
+
+Fechando a lacuna que eu vinha sinalizando desde o auto-cadastro: não havia como
+desativar alguém nem corrigir um nome digitado errado, e isso era edição direta
+no banco.
+
+**O risco desta tela não é renomear — é o que renomear arrasta.**
+`Colaborador.nome` é copiado para `Projeto.responsavel` a cada promoção de WIN.
+Renomear só de um lado parte a pessoa em duas no relatório por responsável: o
+mesmo defeito que o auto-cadastro veio evitar, chegando pela outra ponta.
+
+Por isso a renomeação **oferece** levar a mudança para os projetos, mostrando
+quantos serão afetados antes de decidir. É escolha e não automatismo porque as
+duas intenções são legítimas: corrigir digitação quer levar junto; alguém que
+mudou de sobrenome pode não querer reescrever o histórico. O `comentario` da
+promoção, que também cita o nome em prosa, fica como está — é registro do que
+aconteceu na época.
+
+Outras decisões:
+
+- **Conflito de nome usa `chaveDoNome`**, a mesma regra do cadastro e do
+  importador. Igualdade exata deixaria criar "Fabiano Jose" ao lado de "Fabiano
+  José". Corrigir só acento ou caixa do próprio nome é permitido — é o caso de
+  uso principal.
+- **Desativar não apaga nada e não solta o `clerkUserId`.** Soltar deixaria a
+  conta se cadastrar de novo com outro nome, deixando o histórico órfão.
+- **Ninguém desativa a si mesmo**: cairia na tela "Quem é você?" sem conseguir
+  se escolher, porque a lista só oferece ativos e sem dono.
+- **Sem sistema de papéis.** Qualquer conta autenticada administra, coerente com
+  a decisão do auto-cadastro. Inventar papéis para uma equipe deste tamanho
+  seria infraestrutura sem demanda — e, se um dia precisar, o lugar é o Clerk.
+
+`npm test` = **535 passando em 39 arquivos** (526 antes).
+`npm run test:integracao` = **60 passando** (50 antes), incluindo a propagação do
+nome para os projetos, a recusa de colisão sem acento e a preservação do
+histórico ao desativar.
+
+**Ainda não existe** trilha de auditoria para `Colaborador` — `HistoricoAlteracao`
+é de `Acao`. Quem desativou quem, e quando, não fica registrado.
+
+### Code-review da tela de colaboradores (27/09/2026)
+
+Cinco achados, e os três primeiros eram do mesmo tipo: a tela usava um modelo de
+identidade e de intenção diferente do resto do sistema.
+
+**1. Propagar só andava de carona numa mudança de nome.** Quem desmarcasse a
+caixa uma vez deixava a divergência **sem conserto pela tela**: a linha passava a
+mostrar "0 projeto(s)", a caixa sumia, e reenviar o mesmo nome devolvia "o nome
+já era esse". Pior, há divergência que nasce sem ninguém renomear — planilha
+importada com uma grafia, cadastro com outra. As duas operações ficaram
+independentes.
+
+**2. `alternarAtivo` negava o estado lido em vez de agir pela intenção.** Com
+duas pessoas administrando, ou um POST reenviado, um clique em "Desativar" podia
+reativar alguém e ainda relatar "voltou a ficar ativo". A intenção passou a vir
+no `value` do botão, e o `updateMany` condicional devolve `count = 0` quando o
+estado já mudou — mesmo padrão de `vincularColaborador`.
+
+**3. A propagação casava `Projeto.responsavel` por igualdade exata**, enquanto a
+identidade em todo o resto passa por `chaveDoNome`. A tela ficava cega
+justamente para a divergência que existe para curar: "Fabiano Jose" no projeto
+contra "Fabiano José" no cadastro não era contado nem atualizado, e propagar
+podia deixar uma terceira grafia para trás.
+
+**4. A contagem filtrava `ativo: true`, a escrita não** — o rótulo prometia N e
+o resultado relatava M. E projeto excluído logicamente pode ser restaurado,
+voltando com a grafia velha. As duas passaram a usar a mesma consulta, sem
+filtro.
+
+**5. Faltavam revalidações.** Renomear não invalidava `/projetos` nem
+`/wins/equipe`, e pulava `/dashboards` quando só o nome mudava — embora ele
+imprima o nome.
+
+Tela e ação agora compartilham `projetosDaPessoa`/`projetosADivergir`, em
+`src/lib`, testadas em separado. A tela também passou a dizer quantos projetos
+**já estão divergentes**, o que torna o conserto visível antes de alguém
+precisar descobrir sozinho.
+
+`npm test` = **541 passando em 39 arquivos** (535 antes).
+`npm run test:integracao` = **67 passando** (60 antes).
+
+### Revisão e conferência visual da fase 2 (27/09/2026)
+
+**Code review, 4 achados — todos da mesma família.** Introduzi o `desfecho` como
+a coisa que decide "esta aparição ainda está no card" e atualizei quase todos os
+pontos de uso; **quatro ficaram agindo sobre aparições sem consultá-lo.** Todos
+partem do mesmo cenário: alguém tem a página aberta, o WIN é promovido ou
+encerrado por outro caminho, e o clique num botão que a aba antiga ainda mostra
+reescreve o passado.
+
+- `removerWinDaSemana` sem filtro apagava de vez uma linha PROMOVIDO/ENCERRADO;
+- a varredura de órfãos da mesma função não checava `encerradoEm` — o mesmo
+  buraco que este PR corrigiu no importador e deixou aqui;
+- o ramo de edição de `salvarWin` resolvia por `{ id, cardId }` e reescrevia o
+  `status` de uma semana já fechada e a `descricao` de um WIN já promovido;
+- `encerrarWin` não exigia `encerradoEm: null`, então um WIN encerrado na S38
+  podia ser encerrado de novo pela aparição da S37, sobrescrevendo a data.
+
+**Conferência visual — 2 defeitos que nenhum teste pegaria.** Três telas foram
+construídas nesta sessão sem nunca serem renderizadas. Com harness Vite +
+Playwright (Server Actions substituídas por stubs), nos dois temas:
+
+- **A amostra da legenda de "Promovido" era um quadrado liso**, enquanto a barra
+  usa hachura. A legenda existe para a identidade não ficar só na cor, e ela
+  estava falhando nisso — agora repete a textura.
+- **Erro de concordância visível ao usuário**: "2 já está com grafia diferente".
+
+O que a conferência confirmou funcionando: semana vazia como traço e não barra
+de altura zero; "todos promovidos" distinto de "—"; e a hachura (promovido)
+distinguível do contorno tracejado (semana em curso) na mesma barra — que era o
+risco que motivou separar as duas marcas.
+
+`npm test` = **541 passando**. `npm run test:integracao` = **71 passando**
+(67 antes; +4 dos cenários de aba velha).

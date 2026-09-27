@@ -194,3 +194,33 @@ export function podeAdicionarWin(
 export function proximaOrdemLivre(ordensOcupadas: readonly number[]): OrdemWin | null {
   return ORDENS_VALIDAS.find((ordem) => !ordensOcupadas.includes(ordem)) ?? null
 }
+
+/**
+ * Como um WIN termina quando alguém o encerra.
+ *
+ * A ação de encerrar existia sem perguntar isto, e o próprio docstring dela
+ * admitia a ambiguidade ("concluído de vez, ou abandonado"). Enquanto ninguém
+ * responde, o WIN encerrado guarda o status que por acaso tinha — quase sempre
+ * PENDENTE — e a taxa de conclusão semanal o conta como fracasso. Perguntar na
+ * origem é mais barato do que um pedaço do relatório sem resposta.
+ */
+export const DESFECHOS_ENCERRAMENTO = ['CONCLUI', 'ABANDONEI'] as const
+export type DesfechoEncerramento = (typeof DESFECHOS_ENCERRAMENTO)[number]
+
+export const ROTULO_DESFECHO: Record<DesfechoEncerramento, string> = {
+  CONCLUI: 'Concluí',
+  ABANDONEI: 'Abandonei',
+}
+
+/** O status que cada desfecho grava — é o que faz o relatório somar certo. */
+export const STATUS_DO_DESFECHO: Record<DesfechoEncerramento, StatusWin> = {
+  CONCLUI: StatusWin.FEITO,
+  ABANDONEI: StatusWin.NAO_FEITO,
+}
+
+export function lerDesfecho(bruto: unknown): DesfechoEncerramento | null {
+  return typeof bruto === 'string' &&
+    (DESFECHOS_ENCERRAMENTO as readonly string[]).includes(bruto)
+    ? (bruto as DesfechoEncerramento)
+    : null
+}

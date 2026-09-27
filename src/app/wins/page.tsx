@@ -22,6 +22,7 @@ import {
 } from '@/lib/semana-ctcea'
 import { contarAparicoesAte, deveSerPromovido } from '@/lib/win-promocao'
 import { ROTULO_STATUS_WIN } from '@/lib/win-validacao'
+import { DesfechoWin } from '@/generated/prisma/enums'
 
 export const metadata = { title: 'Card WIN — Cronograma CTCEA' }
 
@@ -102,6 +103,9 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
         alertaRiscos: true,
         pedidoAjuda: true,
         registros: {
+          // Só o que está no card: promovido e encerrado viram histórico, e o
+          // índice parcial já liberou a posição para outro WIN.
+          where: { desfecho: DesfechoWin.NO_CARD },
           orderBy: { ordem: 'asc' },
           select: {
             id: true,
@@ -139,6 +143,9 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
       },
       select: {
         registros: {
+          // Só o que está no card: promovido e encerrado viram histórico, e o
+          // índice parcial já liberou a posição para outro WIN.
+          where: { desfecho: DesfechoWin.NO_CARD },
           orderBy: { ordem: 'asc' },
           select: {
             id: true,
@@ -297,7 +304,7 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
                     Tirar WIN {String(linha.ordem).padStart(2, '0')} da semana
                   </button>
                 </form>
-                {linha.winId && linha.promovidoEm === null ? (
+                {linha.winId && linha.promovidoEm === null && linha.encerradoEm === null ? (
                   <>
                     <span className="text-xs text-textFaint">·</span>
                     <EncerrarWin winId={linha.winId} ordem={linha.ordem} semana={semana} />

@@ -24,7 +24,7 @@ import {
 } from '../src/lib/importacao-card-win'
 import { semanaDe } from '../src/lib/semana-ctcea'
 import { encontrarPorNome } from '../src/lib/colaborador-validacao'
-import { StatusWin } from '../src/generated/prisma/enums'
+import { DesfechoWin, StatusWin } from '../src/generated/prisma/enums'
 
 const require = createRequire(import.meta.url)
 
@@ -231,17 +231,27 @@ async function gravarNoBanco() {
   // já virou item do plano de ação, e a promoção seguinte criaria um Projeto
   // duplicado. E os WINs que ficam sem nenhuma aparição depois da limpeza são
   // apagados, senão cada reimportação deixaria órfãos acumulando no banco.
+  // Só as linhas que ainda estão NO CARD são substituídas.
+  //
+  // Sem o filtro, reimportar uma semana apagaria as aparições promovidas e
+  // encerradas — exatamente o histórico que a migration `wins_desfecho_da_aparicao`
+  // existe para preservar, e que os relatórios de recorrência leem.
   const registrosAntigos = await prisma.winSemana.findMany({
-    where: { cardId: card.id },
+    where: { cardId: card.id, desfecho: DesfechoWin.NO_CARD },
     select: { winId: true },
   })
-  await prisma.winSemana.deleteMany({ where: { cardId: card.id } })
+  await prisma.winSemana.deleteMany({
+    where: { cardId: card.id, desfecho: DesfechoWin.NO_CARD },
+  })
 
   const orfaos = await prisma.win.findMany({
     where: {
       id: { in: registrosAntigos.map((r) => r.winId) },
       registros: { none: {} },
       promovidoEm: null,
+      // `encerradoEm` faltava aqui: sem ele, um WIN encerrado que tenha perdido
+      // sua última aparição seria apagado de vez pela varredura de órfãos.
+      encerradoEm: null,
     },
     select: { id: true },
   })
@@ -250,18 +260,28 @@ async function gravarNoBanco() {
     console.log(`  (${orfaos.length} WIN(s) órfão(s) da importação anterior removido(s))`)
   }
 
-  const jaPromovidos = await prisma.win.findMany({
-    where: { colaboradorId: colaborador.id, promovidoEm: { not: null } },
+  // WINs que já saíram de cena não voltam por reimportação.
+  //
+  // `encerradoEm` faz parte desta lista tanto quanto `promovidoEm`: sem ele, o
+  // laço abaixo recriaria o WIN encerrado como um `Win` novo, com uma linha
+  // `NO_CARD` na mesma `ordem` — o índice único parcial permite, porque a
+  // linha encerrada não ocupa mais a vaga. A semana ficaria com 4 aparições
+  // num card de 3, e `/wins` mostraria 3 enquanto `/dashboards` contaria 4.
+  const jaResolvidos = await prisma.win.findMany({
+    where: {
+      colaboradorId: colaborador.id,
+      OR: [{ promovidoEm: { not: null } }, { encerradoEm: { not: null } }],
+    },
     select: { descricao: true },
   })
-  const chavesPromovidas = new Set(
-    jaPromovidos.map((w) => chaveDeComparacao(w.descricao)),
+  const chavesResolvidas = new Set(
+    jaResolvidos.map((w) => chaveDeComparacao(w.descricao)),
   )
 
   let pulados = 0
   for (const [indice, win] of importacao.wins.entries()) {
-    if (chavesPromovidas.has(chaveDeComparacao(win.descricao))) {
-      console.log(`  (WIN 0${win.ordem} já foi promovido antes; não será recriado)`)
+    if (chavesResolvidas.has(chaveDeComparacao(win.descricao))) {
+      console.log(`  (WIN 0${win.ordem} já foi promovido ou encerrado; não será recriado)`)
       pulados += 1
       continue
     }
