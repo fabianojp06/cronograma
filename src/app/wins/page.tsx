@@ -304,7 +304,7 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
                     Tirar WIN {String(linha.ordem).padStart(2, '0')} da semana
                   </button>
                 </form>
-                {linha.winId && linha.promovidoEm === null ? (
+                {linha.winId && linha.promovidoEm === null && linha.encerradoEm === null ? (
                   <>
                     <span className="text-xs text-textFaint">·</span>
                     <EncerrarWin winId={linha.winId} ordem={linha.ordem} semana={semana} />

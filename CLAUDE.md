@@ -399,6 +399,16 @@ sentidos**: 30/12/2025 já é a semana 1 de 2026, e 27/12/2026 já é a semana 1
 - **Hachura significa uma coisa só.** `PROMOVIDO` é hachura sobre `realizado`
   (textura, não cor — `accent` é reservado a magnitude); a semana em curso é
   contorno tracejado. As duas coincidiriam na última barra.
+- **A amostra da legenda repete a TEXTURA, não só a cor.** Um quadrado liso ao
+  lado de "Promovido" obrigaria quem lê a adivinhar que o listrado na barra
+  corresponde àquele verde — e a legenda existe justamente para a identidade
+  não ficar só na cor.
+- **`desfecho` tem de ser consultado em TODA ação que age sobre uma aparição.**
+  `salvarWin` (ramo de edição), `removerWinDaSemana` e `encerrarWin` filtram
+  `NO_CARD`; `encerrarWin` exige também `encerradoEm: null`. Sem isso, uma aba
+  aberta antes da promoção ainda mostra os botões antigos, e o clique reescreve
+  ou apaga uma semana já fechada — o histórico que a migration existe para
+  preservar.
 
 ### Testes que precisam de banco
 

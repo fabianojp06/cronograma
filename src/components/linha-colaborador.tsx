@@ -77,7 +77,9 @@ export function LinhaColaborador({ colaborador }: { colaborador: ColaboradorAdmi
                       <>
                         {' '}
                         <strong className="font-medium text-warn">
-                          {colaborador.divergentes} já está com grafia diferente
+                          {colaborador.divergentes === 1
+                            ? '1 já está com grafia diferente'
+                            : `${colaborador.divergentes} já estão com grafia diferente`}
                         </strong>{' '}
                         do cadastro — salvar sem mudar o nome já alinha.
                       </>

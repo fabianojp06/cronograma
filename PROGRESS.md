@@ -1694,3 +1694,37 @@ precisar descobrir sozinho.
 
 `npm test` = **541 passando em 39 arquivos** (535 antes).
 `npm run test:integracao` = **67 passando** (60 antes).
+
+### Revisão e conferência visual da fase 2 (27/09/2026)
+
+**Code review, 4 achados — todos da mesma família.** Introduzi o `desfecho` como
+a coisa que decide "esta aparição ainda está no card" e atualizei quase todos os
+pontos de uso; **quatro ficaram agindo sobre aparições sem consultá-lo.** Todos
+partem do mesmo cenário: alguém tem a página aberta, o WIN é promovido ou
+encerrado por outro caminho, e o clique num botão que a aba antiga ainda mostra
+reescreve o passado.
+
+- `removerWinDaSemana` sem filtro apagava de vez uma linha PROMOVIDO/ENCERRADO;
+- a varredura de órfãos da mesma função não checava `encerradoEm` — o mesmo
+  buraco que este PR corrigiu no importador e deixou aqui;
+- o ramo de edição de `salvarWin` resolvia por `{ id, cardId }` e reescrevia o
+  `status` de uma semana já fechada e a `descricao` de um WIN já promovido;
+- `encerrarWin` não exigia `encerradoEm: null`, então um WIN encerrado na S38
+  podia ser encerrado de novo pela aparição da S37, sobrescrevendo a data.
+
+**Conferência visual — 2 defeitos que nenhum teste pegaria.** Três telas foram
+construídas nesta sessão sem nunca serem renderizadas. Com harness Vite +
+Playwright (Server Actions substituídas por stubs), nos dois temas:
+
+- **A amostra da legenda de "Promovido" era um quadrado liso**, enquanto a barra
+  usa hachura. A legenda existe para a identidade não ficar só na cor, e ela
+  estava falhando nisso — agora repete a textura.
+- **Erro de concordância visível ao usuário**: "2 já está com grafia diferente".
+
+O que a conferência confirmou funcionando: semana vazia como traço e não barra
+de altura zero; "todos promovidos" distinto de "—"; e a hachura (promovido)
+distinguível do contorno tracejado (semana em curso) na mesma barra — que era o
+risco que motivou separar as duas marcas.
+
+`npm test` = **541 passando**. `npm run test:integracao` = **71 passando**
+(67 antes; +4 dos cenários de aba velha).

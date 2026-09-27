@@ -602,3 +602,125 @@ describe('as garantias que só existem em SQL', () => {
     ).rejects.toThrow()
   })
 })
+
+describe('a aba velha não reescreve o que já saiu do card', () => {
+  /**
+   * Todos estes partem do mesmo cenário: alguém tem a página aberta, promove ou
+   * encerra o WIN por outro caminho (ou outra pessoa o faz), e depois clica num
+   * botão que a aba antiga ainda mostra. O `desfecho` tem de ser consultado em
+   * TODA ação que age sobre uma aparição — foi introduzir o conceito e não
+   * aplicá-lo em quatro lugares que a revisão pegou.
+   */
+  async function winPromovido() {
+    await salvarWin({}, formulario(0))
+    const registro = await prisma.winSemana.findFirstOrThrow({
+      select: { id: true, winId: true },
+    })
+    const fd = new FormData()
+    fd.set('winId', registro.winId)
+    fd.set('ano', String(SEMANAS[0].ano))
+    fd.set('semana', String(SEMANAS[0].semana))
+    fd.set('destino', 'PROJETO')
+    await promoverWin({}, fd)
+    return registro
+  }
+
+  it('"Tirar da semana" não apaga uma aparição já promovida', async () => {
+    const registro = await winPromovido()
+
+    const fd = new FormData()
+    fd.set('registroId', registro.id)
+    await removerWinDaSemana(fd)
+
+    // A linha promovida continua lá — é o histórico que os relatórios leem.
+    const depois = await prisma.winSemana.findUniqueOrThrow({
+      where: { id: registro.id },
+      select: { desfecho: true },
+    })
+    expect(depois.desfecho).toBe(DesfechoWin.PROMOVIDO)
+  })
+
+  it('tirar a última aparição de um WIN ENCERRADO não apaga o Win', async () => {
+    await salvarWin({}, formulario(0))
+    const registro = await prisma.winSemana.findFirstOrThrow({
+      select: { id: true, winId: true },
+    })
+    const encerrar = new FormData()
+    encerrar.set('winId', registro.winId)
+    encerrar.set('ano', String(SEMANAS[0].ano))
+    encerrar.set('semana', String(SEMANAS[0].semana))
+    encerrar.set('desfecho', 'CONCLUI')
+    await encerrarWin({}, encerrar)
+
+    // Força o estado que a varredura de órfãos olharia: sem aparição nenhuma.
+    await prisma.winSemana.delete({ where: { id: registro.id } })
+    await prisma.win.deleteMany({
+      where: {
+        id: registro.winId,
+        registros: { none: {} },
+        promovidoEm: null,
+        encerradoEm: null,
+        aparicoesAnteriores: 0,
+      },
+    })
+
+    // O `Win` sobrevive: ele registra que a pessoa chegou a encerrá-lo.
+    expect(await prisma.win.count({ where: { id: registro.winId } })).toBe(1)
+  })
+
+  it('o formulário antigo não reescreve um WIN que já foi promovido', async () => {
+    const registro = await winPromovido()
+
+    const fd = formulario(0, { descricao: 'Texto de uma aba velha' })
+    fd.set('registroId', registro.id)
+    const r = await salvarWin({}, fd)
+
+    expect(r.erroGeral).toContain('já saiu do card')
+    const win = await prisma.win.findUniqueOrThrow({
+      where: { id: registro.winId },
+      select: { descricao: true },
+    })
+    expect(win.descricao).toBe('Fechar o relatório mensal')
+  })
+
+  it('um WIN já encerrado não pode ser encerrado de novo por outra semana', async () => {
+    // Encerrar na S38 deixa a aparição da S37 ainda NO_CARD; sem a guarda,
+    // daria para encerrar por ali e sobrescrever `encerradoEm`.
+    await salvarWin({}, formulario(0))
+    const win = await prisma.win.findFirstOrThrow({ select: { id: true } })
+    await repetir(1, win.id)
+
+    const primeiro = new FormData()
+    primeiro.set('winId', win.id)
+    primeiro.set('ano', String(SEMANAS[1].ano))
+    primeiro.set('semana', String(SEMANAS[1].semana))
+    primeiro.set('desfecho', 'CONCLUI')
+    expect(await encerrarWin({}, primeiro)).toEqual({})
+
+    const encerradoEm = (
+      await prisma.win.findUniqueOrThrow({
+        where: { id: win.id },
+        select: { encerradoEm: true },
+      })
+    ).encerradoEm
+
+    const segundo = new FormData()
+    segundo.set('winId', win.id)
+    segundo.set('ano', String(SEMANAS[0].ano))
+    segundo.set('semana', String(SEMANAS[0].semana))
+    segundo.set('desfecho', 'ABANDONEI')
+    expect((await encerrarWin({}, segundo)).erroGeral).toContain('já promovido ou encerrado')
+
+    const depois = await prisma.win.findUniqueOrThrow({
+      where: { id: win.id },
+      select: { encerradoEm: true },
+    })
+    expect(depois.encerradoEm).toEqual(encerradoEm)
+    // E a S37 continua no card, intocada.
+    const s37 = await prisma.winSemana.findFirstOrThrow({
+      where: { card: { semana: SEMANAS[0].semana } },
+      select: { desfecho: true, status: true },
+    })
+    expect(s37).toEqual({ desfecho: DesfechoWin.NO_CARD, status: 'PENDENTE' })
+  })
+})

@@ -129,11 +129,17 @@ export async function salvarWin(
 
     // Edição de um WIN que já está na semana.
     if (typeof registroId === 'string' && registroId !== '') {
+      // `desfecho: NO_CARD` não é redundante: um formulário aberto antes da
+      // promoção ainda tem o `registroId`, e sem a guarda o envio reescreveria
+      // o `status` de uma semana já fechada (mexendo na taxa de conclusão dela)
+      // e a `descricao` de um WIN que já virou item do plano de ação.
       const registro = await prisma.winSemana.findFirst({
-        where: { id: registroId, cardId: card.id },
+        where: { id: registroId, cardId: card.id, desfecho: DesfechoWin.NO_CARD },
         select: { winId: true },
       })
-      if (!registro) return { erroGeral: 'WIN não encontrado nesta semana.' }
+      if (!registro) {
+        return { erroGeral: 'Este WIN já saiu do card. Recarregue a página.' }
+      }
 
       await prisma.$transaction([
         prisma.win.update({
@@ -225,8 +231,18 @@ export async function removerWinDaSemana(formData: FormData): Promise<void> {
 
     // O `where` amarra o registro ao colaborador logado: ninguém apaga o WIN
     // de outra pessoa mandando um id qualquer.
+    //
+    // E exige `desfecho: NO_CARD`: só se apaga o que ainda ESTÁ no card. Uma
+    // aba aberta desde antes de a pessoa promover ou encerrar o WIN ainda
+    // mostra o botão "Tirar da semana"; sem esta guarda, o clique apagaria de
+    // vez a aparição promovida — justamente o histórico que a migration
+    // `wins_desfecho_da_aparicao` existe para preservar.
     const registro = await prisma.winSemana.findFirst({
-      where: { id: registroId, card: { colaboradorId: colaborador.id } },
+      where: {
+        id: registroId,
+        desfecho: DesfechoWin.NO_CARD,
+        card: { colaboradorId: colaborador.id },
+      },
       select: { id: true, winId: true },
     })
     if (!registro) return
@@ -238,6 +254,11 @@ export async function removerWinDaSemana(formData: FormData): Promise<void> {
           id: registro.winId,
           registros: { none: {} },
           promovidoEm: null,
+          // `encerradoEm` faltava aqui pelo mesmo motivo que faltava no
+          // importador: sem ele, tirar a última aparição de um WIN encerrado
+          // apagaria o `Win` inteiro, e com ele o registro de que a pessoa
+          // chegou a encerrá-lo.
+          encerradoEm: null,
           aparicoesAnteriores: 0,
         },
       })
@@ -648,11 +669,22 @@ export async function encerrarWin(
       return { erroGeral: 'Sua conta ainda não está vinculada a um colaborador.' }
     }
 
+    // `encerradoEm: null` junto de `promovidoEm: null`: um WIN encerrado na
+    // semana 39 ainda tem a aparição da 37 como NO_CARD, e sem esta guarda
+    // seria possível encerrá-lo de novo por ali — sobrescrevendo
+    // `Win.encerradoEm` e marcando retroativamente a semana errada.
     const win = await prisma.win.findFirst({
-      where: { id: winId, colaboradorId: colaborador.id, promovidoEm: null },
+      where: {
+        id: winId,
+        colaboradorId: colaborador.id,
+        promovidoEm: null,
+        encerradoEm: null,
+      },
       select: { id: true },
     })
-    if (!win) return { erroGeral: 'WIN não encontrado ou já promovido.' }
+    if (!win) {
+      return { erroGeral: 'WIN não encontrado, ou já promovido ou encerrado.' }
+    }
 
     await prisma.$transaction([
       prisma.win.update({ where: { id: win.id }, data: { encerradoEm: new Date() } }),

@@ -45,7 +45,7 @@ export function GraficoWinsSemana({ semanas }: { semanas: ConclusaoSemanal[] }) 
         className="min-w-full"
         viewBox={`0 0 ${largura} ${altura}`}
         role="img"
-        aria-label="WINs por semana, empilhados por desfecho"
+        aria-label="WINs por semana, empilhados por status e desfecho"
       >
         <defs>
           <pattern
@@ -147,9 +147,25 @@ export function GraficoWinsSemana({ semanas }: { semanas: ConclusaoSemanal[] }) 
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-textMuted">
         {FAIXAS.map((faixa) => (
           <li key={faixa.chave} className="flex items-center gap-1.5">
+            {/* A amostra de "Promovido" precisa mostrar a MESMA hachura da
+                barra. Um quadrado liso obrigaria quem lê a adivinhar que o
+                listrado ali corresponde a este verde aqui — e a legenda existe
+                justamente para a identidade não ficar só na cor. */}
             <span
               aria-hidden
-              className={`inline-block h-2.5 w-2.5 ${faixa.chave === 'promovidos' ? 'border border-realizado bg-realizado/35' : faixa.classe.replace('fill-', 'bg-')}`}
+              className={`inline-block h-2.5 w-2.5 ${
+                faixa.chave === 'promovidos'
+                  ? 'border border-realizado'
+                  : faixa.classe.replace('fill-', 'bg-')
+              }`}
+              style={
+                faixa.chave === 'promovidos'
+                  ? {
+                      backgroundImage:
+                        'repeating-linear-gradient(45deg, var(--color-realizado) 0 2px, transparent 2px 4px)',
+                    }
+                  : undefined
+              }
             />
             {faixa.rotulo}
           </li>
