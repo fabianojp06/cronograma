@@ -1,8 +1,49 @@
 # PROGRESS — Cronograma CTCEA
 
 ## Status
-BACKLOG_CONCLUIDO (Blocos 1–7 marcados). Pendências restantes são operacionais,
-não de código — ver as entradas de 2026-09-18 no Log de decisões.
+
+**BACKLOG_CONCLUIDO** — 12 blocos entregues, nenhum item em aberto. Tudo o que
+resta é operacional ou decisão de negócio, não código pendente.
+
+| # | Bloco | Estado | Onde vive |
+|---|---|---|---|
+| 1 | Fundação (Next, Prisma, Clerk, Vercel, Railway) | entregue | — |
+| 2 | CRUD de Projetos | entregue | `/projetos` |
+| 3 | CRUD de Ações + `HistoricoAlteracao` | entregue | `/projetos/[id]` |
+| 4 | Visualização Gantt | entregue | `/projetos/[id]` |
+| 5 | Painel consolidado (modelo PLA-DEP) | entregue | `/` |
+| 6 | Migração dos dados das planilhas | entregue | `scripts/` |
+| 7 | Dashboards (15 relatórios) | entregue | `/dashboards` |
+| 8 | Modo escuro (Sistema/Claro/Escuro) | entregue | cabeçalho |
+| 9 | Matriz de Priorização (Benefício × Esforço × GUT) | entregue | `/priorizacao` |
+| 10 | Card WIN — fase 1 (funil de entrada do plano) | entregue | `/wins` |
+| 11 | Card WIN — fase 2 (equipe + 2 relatórios) | entregue | `/wins/equipe`, `/dashboards` |
+| 12 | Administração de colaboradores | entregue | `/colaboradores` |
+
+Blocos 1–10 estão detalhados no Backlog abaixo; 11 e 12 nasceram depois e estão
+no Log de decisões.
+
+**Verificação atual:** `npm test` 541 em 39 arquivos · `npm run test:integracao`
+71 em 5 arquivos · `tsc`, `lint` e `build` limpos.
+
+### O que está em aberto
+
+| Pendência | Tipo | Consequência se ficar assim |
+|---|---|---|
+| **PR #8 não mergeado** (13 commits, três assuntos: auto-cadastro, fase 2, colaboradores) | processo | Nada dos blocos 11–12 está em produção. O histórico do PR não se lê sozinho. |
+| **Clerk em instância de *development*** | operacional | Limites de conta e chaves de teste. Ao promover, **registrar o app no Azure AD ANTES**, senão o login Microsoft quebra na troca de chaves. |
+| **Planilha real não importada em produção** | operacional | Ninguém tem card. O WIN que já bateu 3 semanas segue sem virar item do plano. |
+| **Sem trilha de auditoria para `Colaborador`** | código, fora de escopo | Quem desativou ou renomeou quem, e quando, não fica registrado. `HistoricoAlteracao` é só de `Acao`. |
+| **URLs órfãs do projeto `cronograma` desconectado** | operacional | Continuam no ar, protegidas por SSO. Não recebem deploy novo. |
+| **CI em `actions/checkout@v4` e `setup-node@v4`** | manutenção | Aviso de descontinuação do Node 20 a cada execução. Não quebra nada hoje. |
+
+### O que ainda não existe e talvez você queira
+
+- Notificação de WIN prestes a estourar as 3 semanas (hoje o aviso só aparece
+  para quem abre a própria tela).
+- Exportar card ou relatório para PDF/Excel.
+- Editar card de outra pessoa (decisão de produto não tomada).
+
 
 ## Contexto do projeto (não apagar — referência para o Claude)
 - Sistema independente que substitui as planilhas PLA-DEP-2026-001.xlsx (consolidado
@@ -137,6 +178,21 @@ não de código — ver as entradas de 2026-09-18 no Log de decisões.
 - [x] Formulário de avaliação por projeto, com totais e quadrante recalculados
 - [x] Pesos ajustáveis por critério (`/priorizacao/pesos`), somando 100% por grupo
 - [x] Entrada "Priorização" no menu principal
+
+### Bloco 11 — Card WIN, fase 2
+- [x] Visão de equipe para a daily (`/wins/equipe`) — o "Compartilhamento dos
+      Cards" da aba Agenda, somente leitura
+- [x] Relatório de conclusão dos WINs por semana, com promovido como categoria
+      própria fora do denominador
+- [x] Relatório de WINs reincidentes, somando as aparições anteriores ao sistema
+- [x] Migration `wins_desfecho_da_aparicao`: o desfecho passa a viver na
+      aparição, com a vaga liberada por índice único parcial
+
+### Bloco 12 — Administração de colaboradores
+- [x] Tela `/colaboradores` — desativar, reativar e corrigir nome
+- [x] Renomear oferece alinhar `Projeto.responsavel`, pela mesma chave de
+      identidade do cadastro e do importador
+- [x] Auto-cadastro na tela do Card WIN, para o primeiro usuário num banco zerado
 
 ### Bloco 10 — Card WIN Semanal (fase 1)
 - [x] Calendário de semanas da CTCEA (`semana-ctcea.ts`), com teste de paridade
