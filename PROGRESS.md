@@ -30,7 +30,7 @@ no Log de decisões.
 
 | Pendência | Tipo | Consequência se ficar assim |
 |---|---|---|
-| **PR #8 não mergeado** (13 commits, três assuntos: auto-cadastro, fase 2, colaboradores) | processo | Nada dos blocos 11–12 está em produção. O histórico do PR não se lê sozinho. |
+| **GitHub Actions não roda desde 25/09** | operacional, urgente | Todo merge entra sem a rede de segurança do pipeline. Ver a entrada de 27/09 no log. |
 | **Clerk em instância de *development*** | operacional | Limites de conta e chaves de teste. Ao promover, **registrar o app no Azure AD ANTES**, senão o login Microsoft quebra na troca de chaves. |
 | **Planilha real não importada em produção** | operacional | Ninguém tem card. O WIN que já bateu 3 semanas segue sem virar item do plano. |
 | **Sem trilha de auditoria para `Colaborador`** | código, fora de escopo | Quem desativou ou renomeou quem, e quando, não fica registrado. `HistoricoAlteracao` é só de `Acao`. |
@@ -1784,3 +1784,67 @@ risco que motivou separar as duas marcas.
 
 `npm test` = **541 passando**. `npm run test:integracao` = **71 passando**
 (67 antes; +4 dos cenários de aba velha).
+
+### Blocos 11 e 12 em produção, e o CI parado (27/09/2026)
+
+**PR #9 mergeado** (`cd0acbf`), com os 13 commits conferidos um a um no `main`.
+Deploy de produção READY no commit do merge; o projeto duplicado segue
+desconectado. Em produção agora: `/wins/equipe`, os dois relatórios de WIN em
+`/dashboards` e `/colaboradores`.
+
+A migration `wins_desfecho_da_aparicao` foi aplicada — **por dedução da ordem do
+build**, não por leitura de log: `migrar-producao.ts` roda antes do `next build`
+e falha de migration aborta o build, então um deploy READY implica sucesso. Os
+logs da Vercel devolvem 403 de escopo neste token e a política de rede do
+ambiente bloqueia o app, então as duas vias diretas estão fechadas. Abrir
+`/wins` logado fecha a lacuna em um clique.
+
+**Um erro meu que vale registrar.** Durante várias mensagens eu afirmei que "o
+PR #8 está aberto com 13 commits e três assuntos", e recomendei separá-los antes
+de mergear. **O PR #8 já estava mergeado desde 25/09**, com apenas 2 commits (o
+auto-cadastro). Eu contei os commits da branch e presumi que estavam todos no
+PR, sem nunca reler o estado dele.
+
+Efeito prático: por horas, a fase 2 e a tela de colaboradores não estavam em
+nenhum PR — e portanto nunca estiveram a um clique de produção, como eu dava a
+entender. A lição é a mesma de outros erros desta sessão: **estado remoto se
+verifica, não se deduz do que está na máquina local.**
+
+Um PR mergeado não recebe trabalho novo, então o certo foi abrir o **PR #9**
+para os 12 commits que ficaram de fora.
+
+**O GitHub Actions não executa neste repositório desde 25/09.** Três evidências
+independentes, todas sobre o PR #9:
+
+- abrir o PR não disparou o workflow;
+- o push seguinte (evento `synchronize`) também não;
+- o **merge no `main`** — que dispara por `push` — também não.
+
+E o disparo manual terminou em `startup_failure` com **zero jobs criados**. O
+workflow está `active` e o YAML é válido (conferido com `yaml.safe_load`). Zero
+jobs significa que o Actions não conseguiu iniciar nada: normalmente cota de
+minutos esgotada ou bloqueio de faturamento, que não dá para verificar pelas
+ferramentas desta sessão. **Conferir em `github.com/settings/billing`.**
+
+Enquanto isso, o que substituiu o CI neste merge, rodado localmente: 541 testes
+unitários, 71 de integração contra Postgres real, `tsc`/`eslint`/`next build`
+limpos, e conferência visual nos dois temas. O CI roda `npm ci → lint → test →
+build`; a única coisa a mais seria o `npm ci` com `node_modules` limpo.
+
+O workflow ganhou `workflow_dispatch` no caminho — antes não havia como
+reexecutá-lo sem empurrar código, e as alternativas eram commit vazio ou fechar
+e reabrir o PR, ambas descartadas.
+
+### Onde retomar
+
+1. **Conferir o faturamento do GitHub Actions.** É a pendência mais urgente:
+   sem CI, todo merge entra sem rede de segurança.
+2. **Importar a planilha real em produção** (`npm run importar:card-win -- <arquivo> --ano 2026 --gravar`).
+   Sem ela ninguém tem card, e o WIN que já bateu três semanas segue sem virar
+   item do plano de ação. Importar **antes** de as pessoas se cadastrarem evita
+   divergência de grafia — embora a proteção funcione nos dois sentidos.
+3. **Abrir `/wins` logado** para confirmar a migration pelo caminho direto.
+4. Promover o Clerk para produção, **registrando o app no Azure AD antes**.
+
+A branch `claude/peaceful-dijkstra-daoesm` foi reiniciada a partir do `main`
+depois do merge, como manda a regra de PR já mergeado, e está limpa.
