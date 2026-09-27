@@ -322,13 +322,24 @@ Desativar, reativar e corrigir nome. Não há sistema de papéis: qualquer conta
 autenticada administra, coerente com o auto-cadastro — o Clerk já decide quem
 entra, e inventar papéis para três pessoas seria infraestrutura sem demanda.
 
-- **Renomear oferece levar o nome para `Projeto.responsavel`**, e a tela mostra
-  quantos projetos serão afetados antes de decidir. `Colaborador.nome` é copiado
-  para lá a cada promoção; renomear só de um lado parte a pessoa em duas no
-  relatório por responsável — o mesmo defeito que o auto-cadastro evita, vindo
-  pela outra ponta. A propagação é **escolha**, não automática: corrigir
-  digitação quer levar junto, mudar de sobrenome talvez não queira reescrever o
-  histórico.
+- **Renomear e alinhar `Projeto.responsavel` são independentes.** A propagação
+  não anda de carona numa mudança de nome: quem desmarcou a caixa uma vez
+  precisa poder voltar e alinhar depois, e há divergência que nasce sem ninguém
+  renomear nada — a planilha importada com uma grafia, o cadastro com outra.
+  Amarrar as duas deixaria essa divergência sem conserto pela tela.
+- **A propagação casa por `chaveDoNome`, não por igualdade exata.** A
+  divergência que a tela cura é justamente a que um `where` exato não enxerga:
+  "Fabiano Jose" no projeto contra "Fabiano José" no cadastro. Contar com uma
+  regra e escrever com outra faria o rótulo prometer N e o resultado relatar M,
+  então tela e ação usam a MESMA função (`projetosDaPessoa`).
+- **A contagem não filtra `ativo`.** Projeto excluído logicamente pode ser
+  restaurado, e voltaria com a grafia velha.
+- **Desativar/reativar age pela INTENÇÃO clicada**, nunca negando o `ativo`
+  lido. Entre a página renderizar e o clique chegar, outra pessoa pode ter
+  mexido: negar o que se lê faria um clique em "Desativar" reativar alguém e
+  ainda relatar "voltou a ficar ativo". O `updateMany` condicional devolve
+  `count = 0` nesse caso e o usuário é avisado — mesmo padrão de
+  `vincularColaborador`.
 - **O `comentario` da promoção não é reescrito.** Ele também cita o nome
   ("Promovido do Card WIN de Fulano…"), mas em prosa e como registro do que
   aconteceu na época.

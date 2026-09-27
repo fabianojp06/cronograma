@@ -10,11 +10,22 @@
 
 import { chaveDoNome, validarNomeColaborador } from './colaborador-validacao'
 
+/** A intenção clicada, não o estado lido — ver `alternarAtivo`. */
+export const ACOES_ATIVO = ['desativar', 'reativar'] as const
+export type AcaoAtivo = (typeof ACOES_ATIVO)[number]
+
+export function lerAcaoAtivo(bruto: unknown): AcaoAtivo | null {
+  return typeof bruto === 'string' && (ACOES_ATIVO as readonly string[]).includes(bruto)
+    ? (bruto as AcaoAtivo)
+    : null
+}
+
 export type ErroAdmin =
   | 'NOME_INVALIDO'
   | 'NOME_EM_USO'
   | 'NAO_ENCONTRADO'
   | 'AUTO_DESATIVACAO'
+  | 'ESTADO_MUDOU'
 
 export const MENSAGEM_ERRO_ADMIN: Record<ErroAdmin, string> = {
   NOME_INVALIDO: 'Nome inválido.',
@@ -23,6 +34,9 @@ export const MENSAGEM_ERRO_ADMIN: Record<ErroAdmin, string> = {
   AUTO_DESATIVACAO:
     'Você não pode desativar a si mesmo — perderia o acesso ao próprio card. ' +
     'Peça para outra pessoa fazer isso.',
+  ESTADO_MUDOU:
+    'Alguém já alterou este colaborador enquanto a página estava aberta. ' +
+    'Atualize e tente de novo.',
 }
 
 export type Cadastrado = { id: string; nome: string }
@@ -69,4 +83,37 @@ export function podeDesativar(
   idDeQuemPede: string | null,
 ): { ok: true } | { ok: false; erro: ErroAdmin } {
   return idAlvo === idDeQuemPede ? { ok: false, erro: 'AUTO_DESATIVACAO' } : { ok: true }
+}
+
+/**
+ * Quais projetos respondem por este nome, pela MESMA regra de identidade que o
+ * resto do sistema (`chaveDoNome`).
+ *
+ * Comparar `Projeto.responsavel` por igualdade exata deixaria a tela cega
+ * justamente para o problema que ela existe para curar: se a divergência é
+ * "Fabiano Jose" no projeto e "Fabiano José" no cadastro, um `where` exato não
+ * encontra nada, a contagem mostra zero, e propagar deixaria uma terceira
+ * grafia para trás.
+ */
+export function projetosDaPessoa<T extends { responsavel: string | null }>(
+  projetos: readonly T[],
+  nome: string,
+): T[] {
+  const chave = chaveDoNome(nome)
+  return projetos.filter(
+    (p) => p.responsavel !== null && chaveDoNome(p.responsavel) === chave,
+  )
+}
+
+/**
+ * Dentre os projetos da pessoa, os que de fato precisam de escrita.
+ *
+ * Um projeto que já está com a grafia certa não entra na contagem — dizer
+ * "3 projetos atualizados" quando dois já estavam certos seria ruído.
+ */
+export function projetosADivergir<T extends { responsavel: string | null }>(
+  projetos: readonly T[],
+  nome: string,
+): T[] {
+  return projetosDaPessoa(projetos, nome).filter((p) => p.responsavel !== nome)
 }

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { podeDesativar, validarRenomear } from './colaborador-admin'
+import {
+  lerAcaoAtivo,
+  podeDesativar,
+  projetosADivergir,
+  projetosDaPessoa,
+  validarRenomear,
+} from './colaborador-admin'
 
 const cadastrados = [
   { id: 'a', nome: 'Fabiano José' },
@@ -70,5 +76,54 @@ describe('podeDesativar', () => {
 
   it('permite quando quem pede não está vinculado', () => {
     expect(podeDesativar('a', null)).toEqual({ ok: true })
+  })
+})
+
+describe('projetosDaPessoa e projetosADivergir', () => {
+  const projetos = [
+    { id: '1', responsavel: 'Fabiano José' },
+    { id: '2', responsavel: 'Fabiano Jose' },
+    { id: '3', responsavel: 'fabiano  josé' },
+    { id: '4', responsavel: 'Márcia Gonçalves' },
+    { id: '5', responsavel: null },
+  ]
+
+  it('acha todas as grafias da mesma pessoa', () => {
+    // É o ponto da tela: a divergência que ela existe para curar é justamente
+    // a que um `where` exato não enxerga.
+    expect(projetosDaPessoa(projetos, 'Fabiano José').map((p) => p.id)).toEqual([
+      '1',
+      '2',
+      '3',
+    ])
+  })
+
+  it('ignora responsável nulo', () => {
+    expect(projetosDaPessoa(projetos, 'Ninguém')).toEqual([])
+  })
+
+  it('divergir exclui quem já está com a grafia certa', () => {
+    expect(projetosADivergir(projetos, 'Fabiano José').map((p) => p.id)).toEqual([
+      '2',
+      '3',
+    ])
+  })
+
+  it('não diverge nada quando todos já estão certos', () => {
+    expect(projetosADivergir([{ id: '1', responsavel: 'Ana' }], 'Ana')).toEqual([])
+  })
+})
+
+describe('lerAcaoAtivo', () => {
+  it('aceita as duas intenções', () => {
+    expect(lerAcaoAtivo('desativar')).toBe('desativar')
+    expect(lerAcaoAtivo('reativar')).toBe('reativar')
+  })
+
+  it('recusa qualquer outra coisa', () => {
+    expect(lerAcaoAtivo('apagar')).toBeNull()
+    expect(lerAcaoAtivo('')).toBeNull()
+    expect(lerAcaoAtivo(null)).toBeNull()
+    expect(lerAcaoAtivo(1)).toBeNull()
   })
 })

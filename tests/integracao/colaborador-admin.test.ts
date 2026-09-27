@@ -121,7 +121,7 @@ describe('renomear e o plano de ação', () => {
     expect(depois.nome).toBe('Fabiano José')
   })
 
-  it('não faz nada quando o nome não mudou', async () => {
+  it('não escreve nada quando o nome e os projetos já estão certos', async () => {
     const c = await prisma.colaborador.create({
       data: { nome: 'Fabiano José' },
       select: { id: true },
@@ -132,7 +132,7 @@ describe('renomear e o plano de ação', () => {
       {},
       fd({ colaboradorId: c.id, nome: '  Fabiano   José ', propagar: 'sim' }),
     )
-    expect(r.aviso).toBe('O nome já era esse.')
+    expect(r.aviso).toContain('Nada a alterar')
   })
 })
 
@@ -152,7 +152,7 @@ describe('desativar e reativar', () => {
     })
     await prisma.winSemana.create({ data: { winId: win.id, cardId: card.id, ordem: 1 } })
 
-    const r = await alternarAtivo({}, fd({ colaboradorId: c.id }))
+    const r = await alternarAtivo({}, fd({ colaboradorId: c.id, acao: 'desativar' }))
     expect(r.aviso).toContain('desativado')
 
     const depois = await prisma.colaborador.findUniqueOrThrow({
@@ -172,7 +172,7 @@ describe('desativar e reativar', () => {
       data: { nome: 'Vai sair', clerkUserId: 'user_dela' },
       select: { id: true },
     })
-    await alternarAtivo({}, fd({ colaboradorId: c.id }))
+    await alternarAtivo({}, fd({ colaboradorId: c.id, acao: 'desativar' }))
     const depois = await prisma.colaborador.findUniqueOrThrow({
       where: { id: c.id },
       select: { clerkUserId: true },
@@ -185,7 +185,7 @@ describe('desativar e reativar', () => {
       data: { nome: 'Eu Mesmo', clerkUserId: 'user_admin' },
       select: { id: true },
     })
-    const r = await alternarAtivo({}, fd({ colaboradorId: eu.id }))
+    const r = await alternarAtivo({}, fd({ colaboradorId: eu.id, acao: 'desativar' }))
     expect(r.erroGeral).toContain('não pode desativar a si mesmo')
     const depois = await prisma.colaborador.findUniqueOrThrow({
       where: { id: eu.id },
@@ -199,7 +199,7 @@ describe('desativar e reativar', () => {
       data: { nome: 'Voltou', clerkUserId: 'user_dela', ativo: false },
       select: { id: true },
     })
-    const r = await alternarAtivo({}, fd({ colaboradorId: c.id }))
+    const r = await alternarAtivo({}, fd({ colaboradorId: c.id, acao: 'reativar' }))
     expect(r.aviso).toContain('voltou a ficar ativo')
     const depois = await prisma.colaborador.findUniqueOrThrow({
       where: { id: c.id },
@@ -214,11 +214,144 @@ describe('desativar e reativar', () => {
       select: { id: true },
     })
     usuarioAtual.userId = null
-    expect((await alternarAtivo({}, fd({ colaboradorId: c.id }))).erroGeral).toContain(
+    expect((await alternarAtivo({}, fd({ colaboradorId: c.id, acao: 'desativar' }))).erroGeral).toContain(
       'Sessão expirada',
     )
     expect((await renomearColaborador({}, fd({ colaboradorId: c.id, nome: 'X Y' }))).erroGeral).toContain(
       'Sessão expirada',
     )
+  })
+})
+
+describe('propagar não depende de renomear', () => {
+  it('alinha os projetos mesmo quando o nome não muda', async () => {
+    // Quem desmarcou a caixa uma vez precisa poder voltar e alinhar depois.
+    // Antes, a propagação só andava de carona numa mudança de nome, e a
+    // divergência ficava sem conserto pela tela.
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Fabiano José' },
+      select: { id: true },
+    })
+    await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Fabiano Jose' } })
+
+    const r = await renomearColaborador(
+      {},
+      fd({ colaboradorId: c.id, nome: 'Fabiano José', propagar: 'sim' }),
+    )
+    expect(r.aviso).toContain('1 projeto(s)')
+
+    const p = await prisma.projeto.findFirstOrThrow({ select: { responsavel: true } })
+    expect(p.responsavel).toBe('Fabiano José')
+  })
+
+  it('acha a divergência de acento, que um where exato não enxerga', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Márcia Gonçalves' },
+      select: { id: true },
+    })
+    await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Marcia Goncalves' } })
+    await prisma.projeto.create({ data: { nome: 'P2', responsavel: 'MARCIA GONCALVES' } })
+    await prisma.projeto.create({ data: { nome: 'P3', responsavel: 'Outra Pessoa' } })
+
+    const r = await renomearColaborador(
+      {},
+      fd({ colaboradorId: c.id, nome: 'Márcia Gonçalves', propagar: 'sim' }),
+    )
+    expect(r.aviso).toContain('2 projeto(s)')
+
+    const todos = await prisma.projeto.findMany({
+      orderBy: { nome: 'asc' },
+      select: { responsavel: true },
+    })
+    expect(todos.map((p) => p.responsavel)).toEqual([
+      'Márcia Gonçalves',
+      'Márcia Gonçalves',
+      'Outra Pessoa',
+    ])
+  })
+
+  it('alcança projeto excluído logicamente', async () => {
+    // Ele pode ser restaurado, e voltaria com a grafia velha.
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Fabiano José' },
+      select: { id: true },
+    })
+    await prisma.projeto.create({
+      data: { nome: 'Arquivado', responsavel: 'Fabiano Jose', ativo: false },
+    })
+
+    await renomearColaborador(
+      {},
+      fd({ colaboradorId: c.id, nome: 'Fabiano José', propagar: 'sim' }),
+    )
+    const p = await prisma.projeto.findFirstOrThrow({ select: { responsavel: true } })
+    expect(p.responsavel).toBe('Fabiano José')
+  })
+
+  it('avisa quando não há nada a fazer', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Ana Silva' },
+      select: { id: true },
+    })
+    await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Ana Silva' } })
+
+    const r = await renomearColaborador(
+      {},
+      fd({ colaboradorId: c.id, nome: 'Ana Silva', propagar: 'sim' }),
+    )
+    expect(r.aviso).toContain('Nada a alterar')
+  })
+})
+
+describe('a intenção clicada manda, não o estado lido', () => {
+  it('desativar num colaborador já desativado avisa, em vez de reativar', async () => {
+    // Duas pessoas administrando, ou um POST reenviado: negar o estado lido
+    // faria um clique em "Desativar" reativar alguém e relatar o oposto.
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Já saiu', ativo: false },
+      select: { id: true },
+    })
+
+    const r = await alternarAtivo({}, fd({ colaboradorId: c.id, acao: 'desativar' }))
+    expect(r.erroGeral).toContain('já alterou este colaborador')
+
+    const depois = await prisma.colaborador.findUniqueOrThrow({
+      where: { id: c.id },
+      select: { ativo: true },
+    })
+    expect(depois.ativo).toBe(false)
+  })
+
+  it('reativar num colaborador já ativo avisa, em vez de desativar', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Está ativo' },
+      select: { id: true },
+    })
+
+    const r = await alternarAtivo({}, fd({ colaboradorId: c.id, acao: 'reativar' }))
+    expect(r.erroGeral).toContain('já alterou este colaborador')
+
+    const depois = await prisma.colaborador.findUniqueOrThrow({
+      where: { id: c.id },
+      select: { ativo: true },
+    })
+    expect(depois.ativo).toBe(true)
+  })
+
+  it('recusa intenção ausente ou forjada', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Alguém' },
+      select: { id: true },
+    })
+    expect((await alternarAtivo({}, fd({ colaboradorId: c.id }))).erroGeral).toBeTruthy()
+    expect(
+      (await alternarAtivo({}, fd({ colaboradorId: c.id, acao: 'apagar' }))).erroGeral,
+    ).toBeTruthy()
+
+    const depois = await prisma.colaborador.findUniqueOrThrow({
+      where: { id: c.id },
+      select: { ativo: true },
+    })
+    expect(depois.ativo).toBe(true)
   })
 })

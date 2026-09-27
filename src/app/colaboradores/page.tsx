@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 
 import { LinhaColaborador, type ColaboradorAdmin } from '@/components/linha-colaborador'
 import { prisma } from '@/lib/prisma'
+import { projetosADivergir, projetosDaPessoa } from '@/lib/colaborador-admin'
 
 export const metadata = { title: 'Colaboradores — Cronograma CTCEA' }
 
@@ -21,18 +22,18 @@ export default async function ColaboradoresPage() {
         _count: { select: { cards: true, wins: true } },
       },
     }),
-    // Quantos projetos cada nome responde — mostrado ANTES de renomear, porque
-    // é o número que decide se a mudança deve ir para o plano de ação junto.
-    prisma.projeto.groupBy({
-      by: ['responsavel'],
-      where: { ativo: true, responsavel: { not: null } },
-      _count: { _all: true },
+    // Os projetos que cada pessoa responde — mostrado ANTES de renomear,
+    // porque é o número que decide se a mudança deve ir junto para o plano.
+    //
+    // Sem filtro de `ativo`: um projeto excluído logicamente pode ser
+    // restaurado, e voltaria com a grafia velha. E é a mesma consulta que a
+    // ação usa — contar com uma regra e escrever com outra faria o rótulo
+    // prometer N e o resultado relatar M.
+    prisma.projeto.findMany({
+      where: { responsavel: { not: null } },
+      select: { responsavel: true },
     }),
   ])
-
-  const porResponsavel = new Map(
-    projetos.map((p) => [p.responsavel as string, p._count._all]),
-  )
 
   const lista: ColaboradorAdmin[] = cadastrados.map((c) => ({
     id: c.id,
@@ -42,7 +43,10 @@ export default async function ColaboradoresPage() {
     vinculado: c.clerkUserId !== null,
     cards: c._count.cards,
     wins: c._count.wins,
-    projetos: porResponsavel.get(c.nome) ?? 0,
+    // Pela MESMA chave da ação: é a divergência de grafia que a tela cura, e
+    // contar por igualdade exata a deixaria invisível justamente aqui.
+    projetos: projetosDaPessoa(projetos, c.nome).length,
+    divergentes: projetosADivergir(projetos, c.nome).length,
   }))
 
   const ativos = lista.filter((c) => c.ativo).length

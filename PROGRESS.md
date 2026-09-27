@@ -1653,3 +1653,44 @@ histórico ao desativar.
 
 **Ainda não existe** trilha de auditoria para `Colaborador` — `HistoricoAlteracao`
 é de `Acao`. Quem desativou quem, e quando, não fica registrado.
+
+### Code-review da tela de colaboradores (27/09/2026)
+
+Cinco achados, e os três primeiros eram do mesmo tipo: a tela usava um modelo de
+identidade e de intenção diferente do resto do sistema.
+
+**1. Propagar só andava de carona numa mudança de nome.** Quem desmarcasse a
+caixa uma vez deixava a divergência **sem conserto pela tela**: a linha passava a
+mostrar "0 projeto(s)", a caixa sumia, e reenviar o mesmo nome devolvia "o nome
+já era esse". Pior, há divergência que nasce sem ninguém renomear — planilha
+importada com uma grafia, cadastro com outra. As duas operações ficaram
+independentes.
+
+**2. `alternarAtivo` negava o estado lido em vez de agir pela intenção.** Com
+duas pessoas administrando, ou um POST reenviado, um clique em "Desativar" podia
+reativar alguém e ainda relatar "voltou a ficar ativo". A intenção passou a vir
+no `value` do botão, e o `updateMany` condicional devolve `count = 0` quando o
+estado já mudou — mesmo padrão de `vincularColaborador`.
+
+**3. A propagação casava `Projeto.responsavel` por igualdade exata**, enquanto a
+identidade em todo o resto passa por `chaveDoNome`. A tela ficava cega
+justamente para a divergência que existe para curar: "Fabiano Jose" no projeto
+contra "Fabiano José" no cadastro não era contado nem atualizado, e propagar
+podia deixar uma terceira grafia para trás.
+
+**4. A contagem filtrava `ativo: true`, a escrita não** — o rótulo prometia N e
+o resultado relatava M. E projeto excluído logicamente pode ser restaurado,
+voltando com a grafia velha. As duas passaram a usar a mesma consulta, sem
+filtro.
+
+**5. Faltavam revalidações.** Renomear não invalidava `/projetos` nem
+`/wins/equipe`, e pulava `/dashboards` quando só o nome mudava — embora ele
+imprima o nome.
+
+Tela e ação agora compartilham `projetosDaPessoa`/`projetosADivergir`, em
+`src/lib`, testadas em separado. A tela também passou a dizer quantos projetos
+**já estão divergentes**, o que torna o conserto visível antes de alguém
+precisar descobrir sozinho.
+
+`npm test` = **541 passando em 39 arquivos** (535 antes).
+`npm run test:integracao` = **67 passando** (60 antes).

@@ -16,8 +16,10 @@ export type ColaboradorAdmin = {
   vinculado: boolean
   cards: number
   wins: number
-  /** Projetos cujo `responsavel` é exatamente este nome. */
+  /** Projetos que respondem por esta pessoa, por chave de nome. */
   projetos: number
+  /** Desses, quantos estão com grafia diferente da do cadastro. */
+  divergentes: number
 }
 
 const classeCampo =
@@ -65,12 +67,21 @@ export function LinhaColaborador({ colaborador }: { colaborador: ColaboradorAdmi
                     className="mt-0.5"
                   />
                   <span>
-                    Atualizar também os{' '}
+                    Alinhar também os{' '}
                     <strong className="font-medium text-text">
                       {colaborador.projetos} projeto(s)
                     </strong>{' '}
-                    em que este nome é o responsável. Sem isso, o relatório por
+                    em que esta pessoa é a responsável. Sem isso, o relatório por
                     responsável passa a contar duas pessoas.
+                    {colaborador.divergentes > 0 ? (
+                      <>
+                        {' '}
+                        <strong className="font-medium text-warn">
+                          {colaborador.divergentes} já está com grafia diferente
+                        </strong>{' '}
+                        do cadastro — salvar sem mudar o nome já alinha.
+                      </>
+                    ) : null}
                   </span>
                 </label>
               ) : null}
@@ -123,9 +134,14 @@ export function LinhaColaborador({ colaborador }: { colaborador: ColaboradorAdmi
           )}
           <form action={acaoAtivo}>
             <input type="hidden" name="colaboradorId" value={colaborador.id} />
+            {/* A intenção vai no valor do botão: a ação não deduz o que fazer
+                negando o estado que lê, senão um clique em "Desativar" pode
+                reativar alguém que outra pessoa já desativou. */}
             <button
               className={`text-xs disabled:opacity-60 ${colaborador.ativo ? 'text-textMuted hover:text-warn' : 'text-accent hover:underline'}`}
               type="submit"
+              name="acao"
+              value={colaborador.ativo ? 'desativar' : 'reativar'}
               disabled={alternando}
             >
               {colaborador.ativo ? 'Desativar' : 'Reativar'}
