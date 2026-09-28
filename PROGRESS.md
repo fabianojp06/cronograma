@@ -1955,6 +1955,32 @@ A pendência **"GitHub Actions não roda desde 25/09" foi removida** da tabela d
 aberto e do "Onde retomar". Os deploys de preview da Vercel, esses, nunca
 pararam — é por isso que o build vinha sendo conferido por lá.
 
+### Conferência pós-importação do Card WIN (28/09/2026)
+
+O usuário rodou a importação em produção e pediu conferência. Não dá para ler o
+banco de produção desta sessão, e o `validar:importacao` que já existia cobre só
+PLA-DEP e CRO-DEP — o Card WIN não tinha conferência nenhuma.
+
+- **Novo `npm run validar:card-win`**, mesmo padrão do irmão: regra pura em
+  `src/lib/validacao-card-win.ts` (14 testes), script fino de E/S, sem gravar
+  nada, saída 1 quando há ERRO.
+- Usa `lerArgumentos`, então aceita os mesmos argumentos do importador — conferir
+  com parâmetros diferentes dos que gravaram olharia para outro card.
+- **A pessoa partida em duas é acusada pelos DOIS lados.** A primeira versão só
+  achava o homônimo do nome da planilha, o que exige que quem confere passe o
+  `--colaborador` certo; sem a flag, a conferência resolvia para a mesma linha
+  errada que a importação criou e nada parecia fora do lugar. O teste falhou e
+  denunciou isso antes do commit. A segunda checagem pega pela consequência, que
+  independe do alvo: cards numa linha sem conta, `clerkUserId` noutra sem card.
+- Também confere card da semana, área e atividade, descrição, suporte, status,
+  `aparicoesAnteriores` WIN a WIN, mais de 3 ocupando vaga, e duas aparições na
+  mesma `ordem`.
+- Promoção depois da importação é AVISO, não ERRO — é uso normal.
+- **Provado contra banco nos dois estados**: importação correta devolve "Tudo
+  confere" e saída 0; importação sem a flag devolve o erro certo e saída 1, tanto
+  conferindo com a flag quanto sem ela.
+- Verde: 574 unitários (41 arquivos), 78 de integração, `tsc` e `eslint`.
+
 ### Onde retomar
 
 1. **Importar a planilha real em produção** — ensaiada e validada em 28/09 contra

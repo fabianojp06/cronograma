@@ -18,6 +18,7 @@
     "importar:pla-dep": "tsx scripts/importar-pla-dep.ts",
     "importar:cro-dep": "tsx scripts/importar-cro-dep.ts",
     "validar:importacao": "tsx scripts/validar-importacao.ts",
+    "validar:card-win": "tsx scripts/validar-card-win.ts",
     "migrar:producao": "tsx scripts/migrar-producao.ts",
     "importar:card-win": "tsx scripts/importar-card-win.ts"
   },

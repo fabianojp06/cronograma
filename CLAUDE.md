@@ -332,6 +332,14 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
   Daí as duas regras: toda forma que um sinalizador aceita, todos aceitam; e
   valor faltando, valor vazio ou sinalizador desconhecido abortam com saída 1,
   nunca são ignorados.
+- **A conferência pós-importação é `npm run validar:card-win`**, com os MESMOS
+  argumentos que gravaram — conferir com outros olharia para outro card. A regra
+  fica em `src/lib/validacao-card-win.ts`, pura e testada, e o script sai com 1
+  quando há ERRO. Ela acusa a pessoa partida em duas **pelos dois lados**: com
+  `--colaborador`, achando o homônimo do nome da planilha; e sem a flag, pela
+  consequência — os cards numa linha sem conta e o `clerkUserId` noutra sem card.
+  Sem esse segundo caminho, quem conferisse sem a flag resolveria para a mesma
+  linha errada que a importação criou e não veria nada de errado.
 - **A área da planilha SEMEIA o cadastro, não o sobrescreve.** Desde que existe
   a tela `/colaboradores`, `Colaborador.area` pode ter sido definido por uma
   pessoa, e reimportar desfaria a escolha em silêncio — pior, uma planilha com o
