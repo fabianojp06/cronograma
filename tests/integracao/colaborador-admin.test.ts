@@ -16,7 +16,7 @@ vi.mock('@clerk/nextjs/server', () => ({
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
 
 const { prisma } = await import('@/lib/prisma')
-const { renomearColaborador, alternarAtivo } = await import(
+const { salvarColaborador, alternarAtivo } = await import(
   '@/app/colaboradores/acoes-colaborador'
 )
 
@@ -50,7 +50,7 @@ describe('renomear e o plano de ação', () => {
     await prisma.projeto.create({ data: { nome: 'P2', responsavel: 'Fabiano Jose' } })
     await prisma.projeto.create({ data: { nome: 'P3', responsavel: 'Outra Pessoa' } })
 
-    const r = await renomearColaborador(
+    const r = await salvarColaborador(
       {},
       fd({ colaboradorId: c.id, nome: 'Fabiano José', propagar: 'sim' }),
     )
@@ -74,7 +74,7 @@ describe('renomear e o plano de ação', () => {
     })
     await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Antigo Nome' } })
 
-    await renomearColaborador({}, fd({ colaboradorId: c.id, nome: 'Nome Novo' }))
+    await salvarColaborador({}, fd({ colaboradorId: c.id, nome: 'Nome Novo' }))
 
     const p = await prisma.projeto.findFirstOrThrow({ select: { responsavel: true } })
     expect(p.responsavel).toBe('Antigo Nome')
@@ -90,7 +90,7 @@ describe('renomear e o plano de ação', () => {
       data: { nome: 'Marcia Goncalves' },
       select: { id: true },
     })
-    const r = await renomearColaborador(
+    const r = await salvarColaborador(
       {},
       fd({ colaboradorId: c.id, nome: 'Márcia Gonçalves' }),
     )
@@ -109,7 +109,7 @@ describe('renomear e o plano de ação', () => {
     })
     await prisma.colaborador.create({ data: { nome: 'Márcia Gonçalves' } })
 
-    const r = await renomearColaborador(
+    const r = await salvarColaborador(
       {},
       fd({ colaboradorId: a.id, nome: 'marcia goncalves' }),
     )
@@ -128,7 +128,7 @@ describe('renomear e o plano de ação', () => {
     })
     await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Fabiano José' } })
 
-    const r = await renomearColaborador(
+    const r = await salvarColaborador(
       {},
       fd({ colaboradorId: c.id, nome: '  Fabiano   José ', propagar: 'sim' }),
     )
@@ -217,7 +217,7 @@ describe('desativar e reativar', () => {
     expect((await alternarAtivo({}, fd({ colaboradorId: c.id, acao: 'desativar' }))).erroGeral).toContain(
       'Sessão expirada',
     )
-    expect((await renomearColaborador({}, fd({ colaboradorId: c.id, nome: 'X Y' }))).erroGeral).toContain(
+    expect((await salvarColaborador({}, fd({ colaboradorId: c.id, nome: 'X Y' }))).erroGeral).toContain(
       'Sessão expirada',
     )
   })
@@ -234,7 +234,7 @@ describe('propagar não depende de renomear', () => {
     })
     await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Fabiano Jose' } })
 
-    const r = await renomearColaborador(
+    const r = await salvarColaborador(
       {},
       fd({ colaboradorId: c.id, nome: 'Fabiano José', propagar: 'sim' }),
     )
@@ -253,7 +253,7 @@ describe('propagar não depende de renomear', () => {
     await prisma.projeto.create({ data: { nome: 'P2', responsavel: 'MARCIA GONCALVES' } })
     await prisma.projeto.create({ data: { nome: 'P3', responsavel: 'Outra Pessoa' } })
 
-    const r = await renomearColaborador(
+    const r = await salvarColaborador(
       {},
       fd({ colaboradorId: c.id, nome: 'Márcia Gonçalves', propagar: 'sim' }),
     )
@@ -280,7 +280,7 @@ describe('propagar não depende de renomear', () => {
       data: { nome: 'Arquivado', responsavel: 'Fabiano Jose', ativo: false },
     })
 
-    await renomearColaborador(
+    await salvarColaborador(
       {},
       fd({ colaboradorId: c.id, nome: 'Fabiano José', propagar: 'sim' }),
     )
@@ -295,7 +295,7 @@ describe('propagar não depende de renomear', () => {
     })
     await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Ana Silva' } })
 
-    const r = await renomearColaborador(
+    const r = await salvarColaborador(
       {},
       fd({ colaboradorId: c.id, nome: 'Ana Silva', propagar: 'sim' }),
     )
@@ -353,5 +353,116 @@ describe('a intenção clicada manda, não o estado lido', () => {
       select: { ativo: true },
     })
     expect(depois.ativo).toBe(true)
+  })
+})
+
+describe('área do colaborador', () => {
+  it('grava a área de quem se cadastrou pela tela e nasceu sem ela', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Fabiano Santos Garcia', clerkUserId: 'user_admin' },
+      select: { id: true, area: true },
+    })
+    expect(c.area).toBeNull()
+
+    const r = await salvarColaborador(
+      {},
+      fd({ colaboradorId: c.id, nome: 'Fabiano Santos Garcia', area: 'AGP' }),
+    )
+    expect(r.erroGeral).toBeUndefined()
+    expect(r.aviso).toContain('AGP')
+
+    const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
+    expect(depois.area).toBe('AGP')
+    expect(depois.nome).toBe('Fabiano Santos Garcia')
+  })
+
+  it('campo vazio remove a área, em vez de recusar', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Ana', area: 'APD' },
+      select: { id: true },
+    })
+
+    const r = await salvarColaborador({}, fd({ colaboradorId: c.id, nome: 'Ana', area: '' }))
+    expect(r.aviso).toContain('Área removida')
+    expect((await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })).area).toBeNull()
+  })
+
+  it('muda nome e área na mesma gravação', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Ana Souza', area: 'APD' },
+      select: { id: true },
+    })
+
+    const r = await salvarColaborador(
+      {},
+      fd({ colaboradorId: c.id, nome: 'Ana Sousa', area: 'ACT' }),
+    )
+    expect(r.aviso).toContain('Nome alterado')
+    expect(r.aviso).toContain('ACT')
+
+    const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
+    expect(depois).toMatchObject({ nome: 'Ana Sousa', area: 'ACT' })
+  })
+
+  /**
+   * O ponto que motivou a separação: `Colaborador.area` é o padrão de um card
+   * NOVO. Os cards já gravados guardam a área da semana deles, e reescrevê-los
+   * apagaria o registro de quem mudou de área no meio do ano.
+   */
+  it('não reescreve a área dos cards já salvos', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Ana', area: 'APD' },
+      select: { id: true },
+    })
+    await prisma.cardSemanal.create({
+      data: { colaboradorId: c.id, ano: 2026, semana: 39, area: 'APD' },
+    })
+
+    await salvarColaborador({}, fd({ colaboradorId: c.id, nome: 'Ana', area: 'ACT' }))
+
+    const card = await prisma.cardSemanal.findFirstOrThrow({ where: { colaboradorId: c.id } })
+    expect(card.area).toBe('APD')
+  })
+
+  it('não diz que mudou algo quando nada mudou', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Ana', area: 'APD' },
+      select: { id: true },
+    })
+
+    const r = await salvarColaborador({}, fd({ colaboradorId: c.id, nome: 'Ana', area: 'APD' }))
+    expect(r.aviso).toContain('Nada a alterar')
+  })
+
+  /**
+   * Um formulário sem o campo `area` não pode significar "apague a área". Se
+   * significasse, qualquer chamada antiga — uma aba aberta antes desta versão —
+   * limparia a área de quem veio da planilha, em silêncio.
+   */
+  it('formulário sem o campo area não apaga a área existente', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Ana', area: 'APD' },
+      select: { id: true },
+    })
+
+    await salvarColaborador({}, fd({ colaboradorId: c.id, nome: 'Ana' }))
+
+    expect((await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })).area).toBe('APD')
+  })
+
+  it('recusa área acima do limite sem tocar no nome', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Ana', area: 'APD' },
+      select: { id: true },
+    })
+
+    const r = await salvarColaborador(
+      {},
+      fd({ colaboradorId: c.id, nome: 'Ana Nova', area: 'a'.repeat(121) }),
+    )
+    expect(r.erroGeral).toContain('área')
+
+    const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
+    expect(depois).toMatchObject({ nome: 'Ana', area: 'APD' })
   })
 })

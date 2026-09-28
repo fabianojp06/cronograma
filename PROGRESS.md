@@ -30,9 +30,8 @@ no Log de decisões.
 
 | Pendência | Tipo | Consequência se ficar assim |
 |---|---|---|
-| **PR #8 não mergeado** (13 commits, três assuntos: auto-cadastro, fase 2, colaboradores) | processo | Nada dos blocos 11–12 está em produção. O histórico do PR não se lê sozinho. |
 | **Clerk em instância de *development*** | operacional | Limites de conta e chaves de teste. Ao promover, **registrar o app no Azure AD ANTES**, senão o login Microsoft quebra na troca de chaves. |
-| **Planilha real não importada em produção** | operacional | Ninguém tem card. O WIN que já bateu 3 semanas segue sem virar item do plano. |
+| **Planilha real não importada em produção** | operacional | Ninguém tem card. O WIN que já bateu 3 semanas segue sem virar item do plano. **Ensaio de 28/09 validou a importação ponta a ponta** — falta só rodar com a `DATABASE_URL` de produção, o que exige a máquina do usuário. |
 | **Sem trilha de auditoria para `Colaborador`** | código, fora de escopo | Quem desativou ou renomeou quem, e quando, não fica registrado. `HistoricoAlteracao` é só de `Acao`. |
 | **URLs órfãs do projeto `cronograma` desconectado** | operacional | Continuam no ar, protegidas por SSO. Não recebem deploy novo. |
 | **CI em `actions/checkout@v4` e `setup-node@v4`** | manutenção | Aviso de descontinuação do Node 20 a cada execução. Não quebra nada hoje. |
@@ -1784,3 +1783,193 @@ risco que motivou separar as duas marcas.
 
 `npm test` = **541 passando**. `npm run test:integracao` = **71 passando**
 (67 antes; +4 dos cenários de aba velha).
+
+### Blocos 11 e 12 em produção, e o CI parado (27/09/2026)
+
+**PR #9 mergeado** (`cd0acbf`), com os 13 commits conferidos um a um no `main`.
+Deploy de produção READY no commit do merge; o projeto duplicado segue
+desconectado. Em produção agora: `/wins/equipe`, os dois relatórios de WIN em
+`/dashboards` e `/colaboradores`.
+
+A migration `wins_desfecho_da_aparicao` foi aplicada — **por dedução da ordem do
+build**, não por leitura de log: `migrar-producao.ts` roda antes do `next build`
+e falha de migration aborta o build, então um deploy READY implica sucesso. Os
+logs da Vercel devolvem 403 de escopo neste token e a política de rede do
+ambiente bloqueia o app, então as duas vias diretas estão fechadas. Abrir
+`/wins` logado fecha a lacuna em um clique.
+
+**Um erro meu que vale registrar.** Durante várias mensagens eu afirmei que "o
+PR #8 está aberto com 13 commits e três assuntos", e recomendei separá-los antes
+de mergear. **O PR #8 já estava mergeado desde 25/09**, com apenas 2 commits (o
+auto-cadastro). Eu contei os commits da branch e presumi que estavam todos no
+PR, sem nunca reler o estado dele.
+
+Efeito prático: por horas, a fase 2 e a tela de colaboradores não estavam em
+nenhum PR — e portanto nunca estiveram a um clique de produção, como eu dava a
+entender. A lição é a mesma de outros erros desta sessão: **estado remoto se
+verifica, não se deduz do que está na máquina local.**
+
+Um PR mergeado não recebe trabalho novo, então o certo foi abrir o **PR #9**
+para os 12 commits que ficaram de fora.
+
+**O GitHub Actions não executa neste repositório desde 25/09.** Três evidências
+independentes, todas sobre o PR #9:
+
+- abrir o PR não disparou o workflow;
+- o push seguinte (evento `synchronize`) também não;
+- o **merge no `main`** — que dispara por `push` — também não.
+
+E o disparo manual terminou em `startup_failure` com **zero jobs criados**. O
+workflow está `active` e o YAML é válido (conferido com `yaml.safe_load`). Zero
+jobs significa que o Actions não conseguiu iniciar nada: normalmente cota de
+minutos esgotada ou bloqueio de faturamento, que não dá para verificar pelas
+ferramentas desta sessão. **Conferir em `github.com/settings/billing`.**
+
+Enquanto isso, o que substituiu o CI neste merge, rodado localmente: 541 testes
+unitários, 71 de integração contra Postgres real, `tsc`/`eslint`/`next build`
+limpos, e conferência visual nos dois temas. O CI roda `npm ci → lint → test →
+build`; a única coisa a mais seria o `npm ci` com `node_modules` limpo.
+
+O workflow ganhou `workflow_dispatch` no caminho — antes não havia como
+reexecutá-lo sem empurrar código, e as alternativas eram commit vazio ou fechar
+e reabrir o PR, ambas descartadas.
+
+### Ensaio da importação da planilha real do Card WIN (28/09/2026)
+- O usuário enviou a versão atual de `CARD_WIN_Semanal_-_Fabiano.xlsx` (agora com a
+  semana 40; a versão anterior ia até a 39). Arquivo em `dados/`, que é gitignored.
+- **Simulação + gravação ensaiadas contra um Postgres descartável local**, com as
+  migrations aplicadas por `prisma migrate deploy` — o mesmo caminho que produção usa.
+  Resultado: 1 colaborador (`Fabiano Garcia`), 1 card (2026/S40), 3 WINs.
+- **A regra das 3 semanas dispara no primeiro dia**, como o desenho previa: o WIN
+  "Desenvolvimento do documento de elicitação de requisitos — relatórios orçamentários"
+  entra com `aparicoesAnteriores = 3` (semanas 37, 38 e 39 da planilha) e o importador
+  já o marca `<-- JÁ DEVE SER PROMOVIDO`. Ele é exatamente o caso que motivou o par
+  `Win`/`WinSemana`: aparece na planilha com três grafias diferentes.
+- **Reimportação após promoção verificada com o arquivo real**, não só com fixture:
+  marcado o WIN recorrente como `PROMOVIDO` e rodada a importação de novo, o resultado
+  foi 3 linhas de `WinSemana` com 2 no card — a aparição promovida sobreviveu e não foi
+  recriada. É o cenário que a filtragem por `desfecho` nos três pontos do importador
+  existe para evitar.
+- Conferido que `prisma migrate deploy` preserva o que só existe em SQL: o índice
+  parcial `WinSemana_cardId_ordem_no_card` e a CHECK `WinSemana_ordem_entre_1_e_3`.
+- Verde: 541 testes unitários (39 arquivos) e 71 de integração (5 arquivos).
+- **Só a semana 40 é gravada**, por decisão já registrada: as semanas 31–39 servem
+  apenas para semear `aparicoesAnteriores`. Consequência a ter em mente — o histórico
+  navegável em `/wins/equipe` e os gráficos de `/dashboards` começam na semana 40.
+- **A gravação em produção continua pendente e é do usuário**: a leitura da credencial
+  do Railway é barrada por classificador de segurança nesta sessão, e não se contorna.
+  Comando, com a `DATABASE_URL` de produção no `.env` (ver `.env.example`):
+  `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --gravar`
+  (sem `--gravar` primeiro, para conferir).
+- Depois da importação, a tela "Quem é você?" de `/wins` passa a oferecer
+  `Fabiano Garcia` para vincular — é o que resolve a mensagem "Não há colaborador
+  disponível para vincular" vista em produção. **Vincular ao nome existente**, sem
+  redigitar outra grafia, senão nascem dois colaboradores para a mesma pessoa.
+
+### Campo de área e a divergência de nome que ela revelou (28/09/2026)
+
+Veio de uma observação do usuário no print de `/colaboradores`: a linha dizia
+"sem área" e não havia como preencher.
+
+- **Diagnóstico:** `Colaborador.area` só era escrito pelo importador. O
+  auto-cadastro grava `nome` e `clerkUserId`; o campo "Área" de `/wins` grava em
+  `CardSemanal.area`. Quem entrava pela tela ficava sem área para sempre — e,
+  como `/wins` preenche a Área com `cardAtual?.area ?? colaborador.area`, toda
+  semana nova abria vazia e a pessoa redigitava.
+- **Campo "Área" na tela `/colaboradores`**, no mesmo formulário do nome (o botão
+  "Renomear" virou "Editar", e `renomearColaborador` virou `salvarColaborador`).
+  Sugere as grafias já em uso, lidas do cadastro E dos cards.
+- **Um defeito que o próprio teste pegou antes do commit:** `FormData.get`
+  devolve `null` para campo ausente e `''` para campo vazio. Tratar os dois como
+  "remover" faria uma aba aberta antes desta versão apagar a área de quem veio da
+  planilha. Agora ausente vira `undefined` (o Prisma pula a coluna). Verificado
+  revertendo a correção: o teste falha com `expected null to be 'APD'`.
+- **A investigação revelou um bloqueio na importação pendente.** O cadastro de
+  produção diz "Fabiano Santos Garcia" e a planilha diz "Fabiano Garcia".
+  `chaveDoNome` cobre acento e caixa, não um nome do meio — não casa.
+  **Reproduzido contra o banco**, com a planilha real e o cadastro de produção:
+  sem correção, a importação cria duas pessoas, uma com o card e a área, outra
+  com a conta do Clerk e o projeto.
+- **Solução: `--colaborador="Nome no cadastro"`** no importador. As duas
+  alternativas custavam uma grafia (renomear o cadastro, ou editar a planilha a
+  cada versão nova) e nenhuma estava errada — então quem decide é uma pessoa, uma
+  vez, por argumento. Provado: com a flag, uma pessoa só, com nome preservado,
+  área da planilha, conta do Clerk, 1 card e 3 WINs. Nome inexistente aborta com
+  saída 1 e sem escrever nada.
+- **Conferência visual** nos dois modos, com o harness Vite+Playwright e as
+  Server Actions em stub. Pegou o que nenhum teste vê: o texto de ajuda estava em
+  `textFaint`, mais fraco que a explicação vizinha da caixa de seleção
+  (`textMuted`), e ocupava três linhas. Ajustado para uma linha e o mesmo peso.
+- Verde: 547 unitários (39 arquivos), 78 de integração (5 arquivos), `tsc`,
+  `eslint` e `next build`.
+- **Ainda pendente, e é do usuário:** a gravação em produção. O comando agora é
+  `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador "Fabiano Santos Garcia" --gravar`
+  (sem `--gravar` antes, para conferir). Esta versão precisa estar em produção
+  antes, senão a flag não existe lá.
+
+### Code-review do campo de área e da flag de importação (28/09/2026)
+
+Três achados, todos legítimos e todos corrigidos. O primeiro era grave.
+
+- **`--colaborador` só aceitava a forma `=`.** `--semana` e `--ano`, no mesmo
+  laço logo acima, aceitavam espaço — então `--colaborador "Fabiano Santos
+  Garcia"`, a forma que os vizinhos ensinam, caía no `continue` dos
+  sinalizadores desconhecidos e o nome era engolido pelo `arquivo ??=`.
+  **Reproduzido contra o banco**: a importação criava as duas pessoas e imprimia
+  "Gravado: 1 card, 3 WINs". Não era um erro, era um sucesso mentiroso — e
+  justamente na flag que existe para evitar a duplicação.
+  Corrigido extraindo a leitura para `src/lib/argumentos-importacao.ts`, puro e
+  com 13 testes. Agora as duas formas valem para todos os sinalizadores, e valor
+  faltando, valor vazio, sinalizador desconhecido ou dois arquivos abortam com
+  saída 1. Também fechada a brecha de `--colaborador --gravar` gravar uma pessoa
+  chamada "--gravar".
+- **A importação sobrescrevia `Colaborador.area`.** A área definida na tela nova
+  seria revertida pela importação seguinte, e zerada de vez se o cabeçalho da
+  planilha estivesse em branco — as semanas voltariam a abrir vazias, que é o
+  defeito que a tela veio consertar. Agora a planilha SEMEIA (só preenche cadastro
+  sem área) e avisa quando os dois divergem. Verificado: área `ACT` posta na tela
+  sobrevive à reimportação, o card recebe `AGP` da planilha, e a divergência é
+  relatada.
+- **A mensagem do catch dizia "renomear"** numa ação que agora salva nome e área.
+
+Verde: 560 unitários (40 arquivos), 78 de integração, `tsc`, `eslint` e
+`next build`. As formas que já funcionavam foram reconferidas uma a uma.
+
+### O CI voltou a rodar (28/09/2026)
+
+O `Lint, testes e build` executou no PR #10 — **primeira execução desde 25/09**,
+depois de três gatilhos independentes falharem e de um `workflow_dispatch` manual
+terminar em `startup_failure` com zero jobs.
+
+- Run 36424275759, job 108934275925: 40 arquivos, **560 testes**, os mesmos da
+  máquina local, incluindo o `argumentos-importacao.test.ts` recém-criado.
+- A guarda de migration se comportou como documentado:
+  `[migração] Build fora da Vercel (local ou CI) — migration não se aplica aqui.`
+- Build compilou, TypeScript passou, 12 páginas geradas.
+- Nada foi mexido no workflow desde o `startup_failure`, então a causa era mesmo
+  externa ao repositório — coerente com a hipótese de minutos/faturamento.
+- Único aviso: a descontinuação do Node 20 em `actions/checkout@v4` e
+  `setup-node@v4`, que continua na lista de manutenção.
+
+A pendência **"GitHub Actions não roda desde 25/09" foi removida** da tabela de
+aberto e do "Onde retomar". Os deploys de preview da Vercel, esses, nunca
+pararam — é por isso que o build vinha sendo conferido por lá.
+
+### Onde retomar
+
+1. **Importar a planilha real em produção** — ensaiada e validada em 28/09 contra
+   um Postgres descartável; falta rodar com a `DATABASE_URL` de produção, o que
+   só a máquina do usuário consegue fazer:
+   `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador "Fabiano Santos Garcia" --gravar`
+   (sem `--gravar` antes, para conferir). **A flag `--colaborador` não é
+   opcional aqui**: sem ela a importação cria uma segunda pessoa, porque a
+   planilha diz "Fabiano Garcia" e o cadastro diz "Fabiano Santos Garcia".
+   Exige esta versão já publicada. Sem ela ninguém tem card, e o WIN que já
+   bateu três semanas segue sem virar item do plano de ação. Importar **antes** de
+   as pessoas se cadastrarem evita divergência de grafia — embora a proteção
+   funcione nos dois sentidos.
+2. **Abrir `/wins` logado** para confirmar a migration pelo caminho direto.
+3. Promover o Clerk para produção, **registrando o app no Azure AD antes**.
+
+A branch `claude/peaceful-dijkstra-daoesm` foi reiniciada a partir do `main`
+depois do merge, como manda a regra de PR já mergeado, e está limpa.

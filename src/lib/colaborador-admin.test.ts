@@ -5,6 +5,7 @@ import {
   podeDesativar,
   projetosADivergir,
   projetosDaPessoa,
+  validarArea,
   validarRenomear,
 } from './colaborador-admin'
 
@@ -125,5 +126,51 @@ describe('lerAcaoAtivo', () => {
     expect(lerAcaoAtivo('')).toBeNull()
     expect(lerAcaoAtivo(null)).toBeNull()
     expect(lerAcaoAtivo(1)).toBeNull()
+  })
+})
+
+describe('validarArea', () => {
+  it('guarda a área como foi escrita, só normalizando espaço', () => {
+    expect(validarArea('  AGP  -  Gerenciamento de Programa ')).toEqual({
+      ok: true,
+      area: 'AGP - Gerenciamento de Programa',
+    })
+  })
+
+  it('preserva acento e caixa: a área é rótulo, não chave de identidade', () => {
+    expect(validarArea('Gestão de Pessoas')).toEqual({
+      ok: true,
+      area: 'Gestão de Pessoas',
+    })
+  })
+
+  // Vazio não é erro: "sem área" é o estado de quem se cadastrou pela tela, e
+  // precisa ser possível voltar a ele depois de ter preenchido.
+  it('trata vazio e só-espaço como remover a área, não como erro', () => {
+    expect(validarArea('')).toEqual({ ok: true, area: null })
+    expect(validarArea('   ')).toEqual({ ok: true, area: null })
+  })
+
+  /**
+   * Ausente não é vazio. `FormData.get` devolve `null` quando o formulário não
+   * traz o campo — o caso de uma aba aberta antes desta versão. Se isso fosse
+   * lido como "remover", ela apagaria em silêncio a área de quem veio da
+   * planilha. `undefined` é o que o Prisma entende como "não mexer".
+   */
+  it('trata campo ausente como não mexer, e não como remover', () => {
+    expect(validarArea(null)).toEqual({ ok: true, area: undefined })
+    expect(validarArea(undefined)).toEqual({ ok: true, area: undefined })
+    expect(validarArea(42)).toEqual({ ok: true, area: undefined })
+  })
+
+  it('recusa acima do limite da coluna', () => {
+    expect(validarArea('a'.repeat(120)).ok).toBe(true)
+    expect(validarArea('a'.repeat(121))).toEqual({ ok: false, erro: 'AREA_LONGA' })
+  })
+
+  // O limite vale sobre o texto JÁ normalizado: senão um campo de espaços
+  // repetidos seria recusado por um comprimento que não vai para o banco.
+  it('mede o limite depois de normalizar o espaço', () => {
+    expect(validarArea(`  ${'a'.repeat(120)}  `).ok).toBe(true)
   })
 })

@@ -3,6 +3,11 @@
  *
  *   npm run importar:card-win -- <arquivo.xlsx> [--semana 39] [--ano 2026] [--gravar]
  *
+ * `--colaborador "Nome no cadastro"` manda a planilha para um cadastro que já
+ * existe, quando a grafia dos dois lados difere além de acento e caixa (ex.:
+ * planilha "Fabiano Garcia", cadastro "Fabiano Santos Garcia"). Sem ele, o
+ * importador criaria uma segunda pessoa — ver `gravarNoBanco`.
+ *
  * Sem `--gravar` é simulação: mostra o que faria e não toca no banco. O padrão
  * é a semana mais recente encontrada no arquivo.
  *
@@ -24,52 +29,35 @@ import {
 } from '../src/lib/importacao-card-win'
 import { semanaDe } from '../src/lib/semana-ctcea'
 import { encontrarPorNome } from '../src/lib/colaborador-validacao'
+import { lerArgumentos } from '../src/lib/argumentos-importacao'
 import { DesfechoWin, StatusWin } from '../src/generated/prisma/enums'
 
 const require = createRequire(import.meta.url)
 
-const argumentos = process.argv.slice(2)
-const gravar = argumentos.includes('--gravar')
+const USO =
+  'Uso: npm run importar:card-win -- <arquivo.xlsx> [--semana N] [--ano AAAA] ' +
+  '[--colaborador "Nome no cadastro"] [--gravar]'
 
-/**
- * Lê os argumentos posicionalmente, pulando os sinalizadores **e** o valor que
- * `--semana` consome. Um `find(a => !a.startsWith('--'))` ingênuo pegaria o
- * "39" de `--semana 39` como se fosse o nome do arquivo.
- */
-const { arquivo, semanaPedida, anoPedido } = (() => {
-  let arquivo: string | undefined
-  let semanaPedida: number | null = null
-  let anoPedido: number | null = null
+// A leitura vive em `src/lib/argumentos-importacao.ts`, pura e coberta por
+// teste: o defeito que ela evita — um sinalizador descartado em silêncio — não
+// aparece como erro, aparece como importação bem-sucedida com os dados errados.
+const leitura = lerArgumentos(process.argv.slice(2))
+if (!leitura.ok) {
+  console.error(leitura.erro)
+  console.error(USO)
+  process.exit(1)
+}
 
-  const inteiro = (bruto: string | undefined, sinalizador: string, exemplo: string) => {
-    const valor = Number(bruto)
-    if (!Number.isInteger(valor)) {
-      console.error(`${sinalizador} precisa de um número inteiro. Ex.: ${sinalizador} ${exemplo}`)
-      process.exit(1)
-    }
-    return valor
-  }
-
-  for (let i = 0; i < argumentos.length; i += 1) {
-    const atual = argumentos[i]
-    if (atual === '--semana') {
-      semanaPedida = inteiro(argumentos[i + 1], '--semana', '39')
-      i += 1
-      continue
-    }
-    if (atual === '--ano') {
-      anoPedido = inteiro(argumentos[i + 1], '--ano', '2026')
-      i += 1
-      continue
-    }
-    if (atual.startsWith('--')) continue
-    arquivo ??= atual
-  }
-  return { arquivo, semanaPedida, anoPedido }
-})()
+const {
+  arquivo,
+  semana: semanaPedida,
+  ano: anoPedido,
+  colaborador: colaboradorPedido,
+  gravar,
+} = leitura.valores
 
 if (!arquivo) {
-  console.error('Uso: npm run importar:card-win -- <arquivo.xlsx> [--semana N] [--ano AAAA] [--gravar]')
+  console.error(USO)
   process.exit(1)
 }
 
@@ -179,23 +167,63 @@ async function gravarNoBanco() {
   // nova, a conta do Clerk ficaria na antiga, e o relatório por responsável
   // passaria a contar duas pessoas.
   const cadastrados = await prisma.colaborador.findMany({
-    select: { id: true, nome: true },
+    select: { id: true, nome: true, area: true },
   })
-  const existente = encontrarPorNome(cadastrados, nomeColaborador)
+
+  // `--colaborador=` diz, explicitamente, em qual cadastro esta planilha entra.
+  //
+  // `chaveDoNome` cobre acento e caixa, e só isso. Um nome do meio a mais —
+  // planilha "Fabiano Garcia", cadastro "Fabiano Santos Garcia" — não casa, e
+  // sem uma saída o importador criaria uma SEGUNDA pessoa: os cards novos num
+  // lado, a conta do Clerk e os projetos no outro, e o relatório por
+  // responsável contando dois. As duas alternativas custavam uma grafia (ou o
+  // cadastro é renomeado, ou a planilha é editada a cada versão nova), e
+  // nenhuma das duas está errada — por isso quem decide é uma pessoa, uma vez,
+  // por argumento, e não o script adivinhando por sobrenome em comum.
+  const existente = colaboradorPedido
+    ? encontrarPorNome(cadastrados, colaboradorPedido)
+    : encontrarPorNome(cadastrados, nomeColaborador)
+
+  if (colaboradorPedido && !existente) {
+    console.error(
+      `Não há colaborador cadastrado como "${colaboradorPedido}".\n` +
+        `Cadastrados: ${cadastrados.map((c) => `"${c.nome}"`).join(', ') || '(nenhum)'}`,
+    )
+    process.exit(1)
+  }
 
   if (existente && existente.nome !== nomeColaborador) {
     // Não renomeia por conta própria: o nome pode já ter ido para
     // `Projeto.responsavel` numa promoção. Avisa para um humano decidir.
     console.log(
-      `  (atenção: a planilha diz "${nomeColaborador}" e o cadastro diz ` +
-        `"${existente.nome}" — é a mesma pessoa, o cadastro foi mantido)`,
+      `  (a planilha diz "${nomeColaborador}" e o cadastro diz "${existente.nome}" — ` +
+        `${colaboradorPedido ? 'unificados por --colaborador' : 'é a mesma pessoa'}; ` +
+        'o cadastro foi mantido)',
+    )
+  }
+
+  // A área da planilha SEMEIA o cadastro, não o sobrescreve.
+  //
+  // `Colaborador.area` é o padrão de quem abre um card novo, e desde que exista
+  // a tela `/colaboradores` ele pode ter sido definido por uma pessoa.
+  // Sobrescrever a cada importação desfaria essa escolha em silêncio — e, pior,
+  // uma planilha com o cabeçalho de área em branco (`texto()` devolve null)
+  // zeraria o campo, e as semanas seguintes voltariam a abrir vazias. O card
+  // continua recebendo a área da planilha: ela é o cabeçalho daquela semana.
+  const semearArea = existente === undefined || existente.area === null
+
+  if (existente && existente.area !== null && cardOriginal.area !== null &&
+      existente.area !== cardOriginal.area) {
+    console.log(
+      `  (a planilha diz área "${cardOriginal.area}" e o cadastro diz ` +
+        `"${existente.area}" — o cadastro foi mantido; mude em /colaboradores)`,
     )
   }
 
   const colaborador = existente
     ? await prisma.colaborador.update({
         where: { id: existente.id },
-        data: { area: cardOriginal.area },
+        data: semearArea ? { area: cardOriginal.area } : {},
         select: { id: true },
       })
     : await prisma.colaborador.create({

@@ -1,5 +1,6 @@
 /**
- * Regras de administração de colaboradores — desativar, reativar e renomear.
+ * Regras de administração de colaboradores — desativar, reativar, renomear e
+ * definir a área.
  *
  * Módulo puro. A parte delicada não é a validação do nome (essa já existe em
  * `colaborador-validacao`), é o que renomear SIGNIFICA: `Colaborador.nome` já
@@ -8,7 +9,7 @@
  * defeito que o auto-cadastro veio evitar, chegando pela outra ponta.
  */
 
-import { chaveDoNome, validarNomeColaborador } from './colaborador-validacao'
+import { chaveDoNome, normalizarNome, validarNomeColaborador } from './colaborador-validacao'
 
 /** A intenção clicada, não o estado lido — ver `alternarAtivo`. */
 export const ACOES_ATIVO = ['desativar', 'reativar'] as const
@@ -20,12 +21,15 @@ export function lerAcaoAtivo(bruto: unknown): AcaoAtivo | null {
     : null
 }
 
+const TAMANHO_MAXIMO_AREA = 120
+
 export type ErroAdmin =
   | 'NOME_INVALIDO'
   | 'NOME_EM_USO'
   | 'NAO_ENCONTRADO'
   | 'AUTO_DESATIVACAO'
   | 'ESTADO_MUDOU'
+  | 'AREA_LONGA'
 
 export const MENSAGEM_ERRO_ADMIN: Record<ErroAdmin, string> = {
   NOME_INVALIDO: 'Nome inválido.',
@@ -37,6 +41,47 @@ export const MENSAGEM_ERRO_ADMIN: Record<ErroAdmin, string> = {
   ESTADO_MUDOU:
     'Alguém já alterou este colaborador enquanto a página estava aberta. ' +
     'Atualize e tente de novo.',
+  AREA_LONGA: `A área pode ter no máximo ${TAMANHO_MAXIMO_AREA} caracteres.`,
+}
+
+/**
+ * Valida a área da GIA do colaborador.
+ *
+ * **Vazio é um valor legítimo, não um erro.** "Sem área" é o estado de quem se
+ * cadastrou pela tela em vez de vir da planilha, e tem de ser possível voltar a
+ * ele — exigir preenchimento transformaria uma correção de rótulo em obrigação.
+ * Por isso devolve `null`, que é o que a coluna aceita.
+ *
+ * Não há lista fechada de valores. A planilha escreve a área por extenso
+ * ("AGP - Gerenciamento de Programa & Projetos"), e um `enum` obrigaria a
+ * traduzir os dois lados a cada área nova da GIA. A tela sugere as grafias já
+ * em uso, mesma ideia de sugerir os `responsavel` que já existem: convergir por
+ * sugestão, sem travar quem precisa de um valor novo.
+ *
+ * Só o espaço é normalizado. Acento e caixa ficam como a pessoa escreveu,
+ * porque a área é rótulo impresso no card e no comentário de promoção — aqui
+ * ela não é chave de identidade de ninguém, ao contrário do nome.
+ *
+ * **Campo ausente e campo vazio são coisas diferentes**, e a distinção não é
+ * teórica: `FormData.get` devolve `null` quando o formulário não traz o campo
+ * e `''` quando traz vazio. Uma aba aberta antes desta versão envia o
+ * formulário sem `area` — se ausente significasse "remover", ela apagaria em
+ * silêncio a área de quem veio da planilha. Por isso:
+ *
+ * - ausente  → `undefined`, que o Prisma já entende como "não mexer nesta coluna";
+ * - vazio    → `null`, que é remover;
+ * - com texto→ o texto.
+ */
+export function validarArea(
+  bruto: unknown,
+): { ok: true; area: string | null | undefined } | { ok: false; erro: ErroAdmin } {
+  if (typeof bruto !== 'string') return { ok: true, area: undefined }
+
+  const area = normalizarNome(bruto)
+  if (area === '') return { ok: true, area: null }
+  if (area.length > TAMANHO_MAXIMO_AREA) return { ok: false, erro: 'AREA_LONGA' }
+
+  return { ok: true, area }
 }
 
 export type Cadastrado = { id: string; nome: string }

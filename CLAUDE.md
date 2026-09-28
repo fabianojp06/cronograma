@@ -315,12 +315,58 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
   renomeia** o cadastro existente (o nome pode já ter ido para
   `Projeto.responsavel` numa promoção); avisa a divergência e deixa a decisão
   para quem roda.
+- **`chaveDoNome` cobre acento e caixa, e só isso** — um nome do meio a mais não
+  casa. Foi o caso real da primeira importação: planilha "Fabiano Garcia",
+  cadastro "Fabiano Santos Garcia", e o importador criaria uma SEGUNDA pessoa,
+  com os cards de um lado e a conta do Clerk e os projetos do outro. Por isso
+  `scripts/importar-card-win.ts` aceita `--colaborador="Nome no cadastro"`, que
+  diz explicitamente em qual cadastro a planilha entra. Não é o script
+  adivinhando por sobrenome em comum: "Ana Silva Costa" e "Ana Costa" podem ser
+  duas pessoas, e essa decisão é de quem roda. Nome inexistente aborta com a
+  lista dos cadastrados, antes de qualquer escrita.
+- **A leitura dos argumentos é pura e testada** (`src/lib/argumentos-importacao.ts`),
+  e não um laço dentro do script. A primeira versão de `--colaborador` só aceitava
+  a forma `=`, enquanto `--semana` e `--ano`, no mesmo laço, aceitavam espaço:
+  `--colaborador "Fabiano Santos Garcia"` era descartado em silêncio e a
+  importação criava a pessoa duplicada **relatando "Gravado: 1 card, 3 WINs"**.
+  Daí as duas regras: toda forma que um sinalizador aceita, todos aceitam; e
+  valor faltando, valor vazio ou sinalizador desconhecido abortam com saída 1,
+  nunca são ignorados.
+- **A área da planilha SEMEIA o cadastro, não o sobrescreve.** Desde que existe
+  a tela `/colaboradores`, `Colaborador.area` pode ter sido definido por uma
+  pessoa, e reimportar desfaria a escolha em silêncio — pior, uma planilha com o
+  cabeçalho de área em branco zeraria o campo e as semanas seguintes voltariam a
+  abrir vazias. O importador só preenche quando o cadastro está sem área, e avisa
+  quando as duas divergem. O `CardSemanal.area` continua vindo da planilha: ela é
+  o cabeçalho daquela semana.
 
 ### Administração de colaboradores (`/colaboradores`)
 
-Desativar, reativar e corrigir nome. Não há sistema de papéis: qualquer conta
-autenticada administra, coerente com o auto-cadastro — o Clerk já decide quem
-entra, e inventar papéis para três pessoas seria infraestrutura sem demanda.
+Desativar, reativar, corrigir nome e definir a área. Não há sistema de papéis:
+qualquer conta autenticada administra, coerente com o auto-cadastro — o Clerk já
+decide quem entra, e inventar papéis para três pessoas seria infraestrutura sem
+demanda.
+
+- **Esta tela é o único lugar que preenche `Colaborador.area` fora da
+  importação.** Quem se cadastra pela tela nasce sem área, e o campo não existia
+  em lugar nenhum: o auto-cadastro grava só `nome` e `clerkUserId`, e o campo
+  "Área" de `/wins` grava em `CardSemanal.area`, nunca no colaborador. O efeito
+  de ficar sem ela é silencioso — `/wins` preenche a Área com
+  `cardAtual?.area ?? colaborador.area`, então toda semana nova abria vazia e a
+  pessoa redigitava.
+- **Área ausente e área vazia são coisas diferentes**, e é `FormData` que as
+  distingue: `get('area')` devolve `null` quando o formulário não traz o campo e
+  `''` quando traz vazio. Ausente vira `undefined` (o Prisma pula a coluna) e
+  vazio vira `null` (remove). Tratar os dois como remoção faria uma aba aberta
+  antes desta versão apagar em silêncio a área de quem veio da planilha.
+- **Definir a área não reescreve os cards já salvos.** `Colaborador.area` é o
+  padrão de um card NOVO; cada card guarda a área da semana dele, e reescrevê-los
+  apagaria o registro de quem mudou de área no meio do ano.
+- **A área não tem lista fechada.** A planilha escreve por extenso ("AGP -
+  Gerenciamento de Programa & Projetos") e um `enum` obrigaria a traduzir os dois
+  lados a cada área nova da GIA. A tela sugere as grafias já em uso — lidas do
+  cadastro **e** dos cards, porque a importação escreve nos dois e a tela só no
+  cadastro; ler um só sugeriria metade das grafias.
 
 - **Renomear e alinhar `Projeto.responsavel` são independentes.** A propagação
   não anda de carona numa mudança de nome: quem desmarcou a caixa uma vez
