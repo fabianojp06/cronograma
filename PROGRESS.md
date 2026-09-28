@@ -30,7 +30,6 @@ no Log de decisões.
 
 | Pendência | Tipo | Consequência se ficar assim |
 |---|---|---|
-| **GitHub Actions não roda desde 25/09** | operacional, urgente | Todo merge entra sem a rede de segurança do pipeline. Ver a entrada de 27/09 no log. |
 | **Clerk em instância de *development*** | operacional | Limites de conta e chaves de teste. Ao promover, **registrar o app no Azure AD ANTES**, senão o login Microsoft quebra na troca de chaves. |
 | **Planilha real não importada em produção** | operacional | Ninguém tem card. O WIN que já bateu 3 semanas segue sem virar item do plano. **Ensaio de 28/09 validou a importação ponta a ponta** — falta só rodar com a `DATABASE_URL` de produção, o que exige a máquina do usuário. |
 | **Sem trilha de auditoria para `Colaborador`** | código, fora de escopo | Quem desativou ou renomeou quem, e quando, não fica registrado. `HistoricoAlteracao` é só de `Acao`. |
@@ -1936,11 +1935,29 @@ Três achados, todos legítimos e todos corrigidos. O primeiro era grave.
 Verde: 560 unitários (40 arquivos), 78 de integração, `tsc`, `eslint` e
 `next build`. As formas que já funcionavam foram reconferidas uma a uma.
 
+### O CI voltou a rodar (28/09/2026)
+
+O `Lint, testes e build` executou no PR #10 — **primeira execução desde 25/09**,
+depois de três gatilhos independentes falharem e de um `workflow_dispatch` manual
+terminar em `startup_failure` com zero jobs.
+
+- Run 36424275759, job 108934275925: 40 arquivos, **560 testes**, os mesmos da
+  máquina local, incluindo o `argumentos-importacao.test.ts` recém-criado.
+- A guarda de migration se comportou como documentado:
+  `[migração] Build fora da Vercel (local ou CI) — migration não se aplica aqui.`
+- Build compilou, TypeScript passou, 12 páginas geradas.
+- Nada foi mexido no workflow desde o `startup_failure`, então a causa era mesmo
+  externa ao repositório — coerente com a hipótese de minutos/faturamento.
+- Único aviso: a descontinuação do Node 20 em `actions/checkout@v4` e
+  `setup-node@v4`, que continua na lista de manutenção.
+
+A pendência **"GitHub Actions não roda desde 25/09" foi removida** da tabela de
+aberto e do "Onde retomar". Os deploys de preview da Vercel, esses, nunca
+pararam — é por isso que o build vinha sendo conferido por lá.
+
 ### Onde retomar
 
-1. **Conferir o faturamento do GitHub Actions.** É a pendência mais urgente:
-   sem CI, todo merge entra sem rede de segurança.
-2. **Importar a planilha real em produção** — ensaiada e validada em 28/09 contra
+1. **Importar a planilha real em produção** — ensaiada e validada em 28/09 contra
    um Postgres descartável; falta rodar com a `DATABASE_URL` de produção, o que
    só a máquina do usuário consegue fazer:
    `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador "Fabiano Santos Garcia" --gravar`
@@ -1951,8 +1968,8 @@ Verde: 560 unitários (40 arquivos), 78 de integração, `tsc`, `eslint` e
    bateu três semanas segue sem virar item do plano de ação. Importar **antes** de
    as pessoas se cadastrarem evita divergência de grafia — embora a proteção
    funcione nos dois sentidos.
-3. **Abrir `/wins` logado** para confirmar a migration pelo caminho direto.
-4. Promover o Clerk para produção, **registrando o app no Azure AD antes**.
+2. **Abrir `/wins` logado** para confirmar a migration pelo caminho direto.
+3. Promover o Clerk para produção, **registrando o app no Azure AD antes**.
 
 A branch `claude/peaceful-dijkstra-daoesm` foi reiniciada a partir do `main`
 depois do merge, como manda a regra de PR já mergeado, e está limpa.
