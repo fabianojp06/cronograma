@@ -35,6 +35,28 @@ export default async function ColaboradoresPage() {
     }),
   ])
 
+  // Sugestões de área: as grafias que já circulam, nos DOIS lugares que
+  // guardam área. A importação escreve no cadastro e no card; quem edita por
+  // esta tela mexe só no cadastro. Ler um só sugeriria metade das grafias, e é
+  // convergir na grafia que evita "AGP" e "AGP " virarem duas áreas na leitura
+  // de quem abre a tela — mesma ideia de sugerir os `responsavel` que já
+  // existem no auto-cadastro.
+  const [areasCadastro, areasCard] = await Promise.all([
+    prisma.colaborador.findMany({
+      where: { area: { not: null } },
+      select: { area: true },
+      distinct: ['area'],
+    }),
+    prisma.cardSemanal.findMany({
+      where: { area: { not: null } },
+      select: { area: true },
+      distinct: ['area'],
+    }),
+  ])
+  const areasEmUso = [
+    ...new Set([...areasCadastro, ...areasCard].map((a) => a.area!)),
+  ].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+
   const lista: ColaboradorAdmin[] = cadastrados.map((c) => ({
     id: c.id,
     nome: c.nome,
@@ -69,15 +91,21 @@ export default async function ColaboradoresPage() {
       ) : (
         <ul className="mt-8 space-y-2">
           {lista.map((colaborador) => (
-            <LinhaColaborador key={colaborador.id} colaborador={colaborador} />
+            <LinhaColaborador
+              key={colaborador.id}
+              colaborador={colaborador}
+              areasEmUso={areasEmUso}
+            />
           ))}
         </ul>
       )}
 
       <p className="mt-10 border-t border-border pt-6 text-xs text-textFaint">
         O nome vai para o responsável do projeto quando um WIN é promovido — por isso
-        renomear oferece atualizar os projetos junto. O comentário de promoção, que
-        também cita o nome, fica como estava: é registro do que aconteceu na época.
+        editar oferece atualizar os projetos junto. O comentário de promoção, que
+        também cita o nome, fica como estava: é registro do que aconteceu na época. A
+        área é só o padrão de quem abre um card novo; quem se cadastra por esta tela
+        nasce sem ela, e este é o único lugar que a preenche fora da importação.
       </p>
     </main>
   )

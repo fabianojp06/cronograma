@@ -9,6 +9,7 @@ import {
   MENSAGEM_ERRO_ADMIN,
   podeDesativar,
   projetosADivergir,
+  validarArea,
   validarRenomear,
 } from '@/lib/colaborador-admin'
 
@@ -20,7 +21,8 @@ function lerId(formData: FormData, campo: string): string | null {
 }
 
 /**
- * Renomeia um colaborador e/ou alinha `Projeto.responsavel` com o nome dele.
+ * Salva os dados de um colaborador: nome, área, e/ou o alinhamento de
+ * `Projeto.responsavel` com o nome dele.
  *
  * `Colaborador.nome` é copiado para `Projeto.responsavel` a cada promoção de
  * WIN, e renomear só de um lado parte a pessoa em duas no relatório por
@@ -39,8 +41,15 @@ function lerId(formData: FormData, campo: string): string | null {
  * O `comentario` do projeto também cita o nome ("Promovido do Card WIN de
  * Fulano…"), mas em prosa e como registro do que aconteceu na época. Não é
  * reescrito.
+ *
+ * **A área vai junto porque é o mesmo formulário, mas não propaga para nada.**
+ * `Colaborador.area` só serve de padrão ao abrir um card NOVO; os cards já
+ * gravados guardam a área que valia na semana deles, e reescrevê-los apagaria
+ * o registro de quem mudou de área no meio do ano. Quem se cadastra pela tela
+ * nasce sem área — este é o único lugar do sistema que preenche esse campo
+ * fora da importação.
  */
-export async function renomearColaborador(
+export async function salvarColaborador(
   _anterior: EstadoAdmin,
   formData: FormData,
 ): Promise<EstadoAdmin> {
@@ -54,16 +63,26 @@ export async function renomearColaborador(
 
   try {
     const cadastrados = await prisma.colaborador.findMany({
-      select: { id: true, nome: true },
+      select: { id: true, nome: true, area: true },
     })
     const validacao = validarRenomear(cadastrados, id, formData.get('nome'))
     if (!validacao.ok) return { erroGeral: MENSAGEM_ERRO_ADMIN[validacao.erro] }
 
-    const nomeAntigo = cadastrados.find((c) => c.id === id)!.nome
+    const area = validarArea(formData.get('area'))
+    if (!area.ok) return { erroGeral: MENSAGEM_ERRO_ADMIN[area.erro] }
+
+    const atual = cadastrados.find((c) => c.id === id)!
+    const nomeAntigo = atual.nome
+    // `undefined` quer dizer "o formulário não trouxe o campo" — nem mudou,
+    // nem vai para o `update` (o Prisma pula colunas `undefined`).
+    const areaMudou = area.area !== undefined && area.area !== atual.area
 
     const { renomeado, projetos } = await prisma.$transaction(async (tx) => {
-      if (validacao.mudou) {
-        await tx.colaborador.update({ where: { id }, data: { nome: validacao.nome } })
+      if (validacao.mudou || areaMudou) {
+        await tx.colaborador.update({
+          where: { id },
+          data: { nome: validacao.nome, area: area.area },
+        })
       }
       if (!propagar) return { renomeado: validacao.mudou, projetos: 0 }
 
@@ -100,21 +119,27 @@ export async function renomearColaborador(
       revalidatePath('/dashboards')
     } else if (renomeado) {
       // Mesmo sem tocar em projeto, o nome é impresso nos relatórios de WIN.
+      // A área não entra aqui: ela não aparece em relatório nenhum, só serve
+      // de padrão ao abrir um card novo — e `/wins` já foi revalidada acima.
       revalidatePath('/dashboards')
     }
 
-    if (!renomeado && projetos === 0) {
-      return { aviso: 'Nada a alterar: o nome já era esse e nenhum projeto divergia.' }
+    // O aviso é montado por composição, e não por uma árvore de condições: são
+    // três mudanças independentes, e enumerar as combinações daria oito ramos
+    // para dizer a mesma coisa.
+    const feitas: string[] = []
+    if (renomeado) feitas.push('Nome alterado')
+    if (areaMudou) {
+      feitas.push(area.area === null ? 'Área removida' : `Área definida como "${area.area}"`)
     }
-    if (!renomeado) {
-      return { aviso: `${projetos} projeto(s) tiveram o responsável alinhado ao cadastro.` }
+    if (projetos > 0) {
+      feitas.push(`${projetos} projeto(s) com o responsável alinhado ao cadastro`)
     }
-    return {
-      aviso:
-        projetos > 0
-          ? `Nome alterado, e ${projetos} projeto(s) tiveram o responsável atualizado.`
-          : 'Nome alterado.',
+
+    if (feitas.length === 0) {
+      return { aviso: 'Nada a alterar: os dados já eram esses e nenhum projeto divergia.' }
     }
+    return { aviso: `${feitas.join('; ')}.` }
   } catch (erro) {
     console.error('Falha ao renomear colaborador', erro)
     return { erroGeral: 'Não foi possível renomear. Tente novamente.' }

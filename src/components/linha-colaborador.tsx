@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react'
 
 import {
   alternarAtivo,
-  renomearColaborador,
+  salvarColaborador,
   type EstadoAdmin,
 } from '@/app/colaboradores/acoes-colaborador'
 
@@ -26,10 +26,17 @@ const classeCampo =
   'w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm text-text ' +
   'outline-none focus:border-accent focus:ring-1 focus:ring-accent'
 
-export function LinhaColaborador({ colaborador }: { colaborador: ColaboradorAdmin }) {
+export function LinhaColaborador({
+  colaborador,
+  areasEmUso,
+}: {
+  colaborador: ColaboradorAdmin
+  /** Grafias de área já usadas — sugestão, não lista fechada. */
+  areasEmUso: readonly string[]
+}) {
   const [editando, setEditando] = useState(false)
   const [estadoNome, acaoNome, salvando] = useActionState<EstadoAdmin, FormData>(
-    renomearColaborador,
+    salvarColaborador,
     {},
   )
   const [estadoAtivo, acaoAtivo, alternando] = useActionState<EstadoAdmin, FormData>(
@@ -46,17 +53,46 @@ export function LinhaColaborador({ colaborador }: { colaborador: ColaboradorAdmi
           {editando ? (
             <form action={acaoNome} className="space-y-2">
               <input type="hidden" name="colaboradorId" value={colaborador.id} />
-              <label className="sr-only" htmlFor={`nome-${colaborador.id}`}>
-                Nome de {colaborador.nome}
+              <label className="text-xs text-textMuted" htmlFor={`nome-${colaborador.id}`}>
+                Nome
               </label>
               <input
-                className={classeCampo}
+                className={`${classeCampo} mt-1`}
                 id={`nome-${colaborador.id}`}
                 name="nome"
                 defaultValue={colaborador.nome}
                 maxLength={120}
                 autoFocus
               />
+              <div>
+                <label
+                  className="text-xs text-textMuted"
+                  htmlFor={`area-${colaborador.id}`}
+                >
+                  Área
+                </label>
+                <input
+                  className={`${classeCampo} mt-1`}
+                  id={`area-${colaborador.id}`}
+                  name="area"
+                  defaultValue={colaborador.area ?? ''}
+                  list={`areas-${colaborador.id}`}
+                  maxLength={120}
+                  placeholder="ex.: AGP - Gerenciamento de Programa & Projetos"
+                />
+                <datalist id={`areas-${colaborador.id}`}>
+                  {areasEmUso.map((a) => (
+                    <option key={a} value={a} />
+                  ))}
+                </datalist>
+                {/* Mesmo tom da explicação da caixa abaixo: as duas são texto
+                    que precisa ser lido, não legenda de apoio. */}
+                <p className="mt-1 text-xs text-textMuted">
+                  Padrão ao abrir o card de uma semana nova. Os cards já salvos não
+                  mudam. Vazio remove.
+                </p>
+              </div>
+
               {colaborador.projetos > 0 ? (
                 <label className="flex items-start gap-2 text-xs text-textMuted">
                   <input
@@ -131,7 +167,7 @@ export function LinhaColaborador({ colaborador }: { colaborador: ColaboradorAdmi
               type="button"
               onClick={() => setEditando(true)}
             >
-              Renomear
+              Editar
             </button>
           )}
           <form action={acaoAtivo}>

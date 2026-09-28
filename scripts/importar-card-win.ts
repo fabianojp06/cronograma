@@ -3,6 +3,11 @@
  *
  *   npm run importar:card-win -- <arquivo.xlsx> [--semana 39] [--ano 2026] [--gravar]
  *
+ * `--colaborador="Nome no cadastro"` manda a planilha para um cadastro que já
+ * existe, quando a grafia dos dois lados difere além de acento e caixa (ex.:
+ * planilha "Fabiano Garcia", cadastro "Fabiano Santos Garcia"). Sem ele, o
+ * importador criaria uma segunda pessoa — ver `gravarNoBanco`.
+ *
  * Sem `--gravar` é simulação: mostra o que faria e não toca no banco. O padrão
  * é a semana mais recente encontrada no arquivo.
  *
@@ -36,10 +41,11 @@ const gravar = argumentos.includes('--gravar')
  * `--semana` consome. Um `find(a => !a.startsWith('--'))` ingênuo pegaria o
  * "39" de `--semana 39` como se fosse o nome do arquivo.
  */
-const { arquivo, semanaPedida, anoPedido } = (() => {
+const { arquivo, semanaPedida, anoPedido, colaboradorPedido } = (() => {
   let arquivo: string | undefined
   let semanaPedida: number | null = null
   let anoPedido: number | null = null
+  let colaboradorPedido: string | null = null
 
   const inteiro = (bruto: string | undefined, sinalizador: string, exemplo: string) => {
     const valor = Number(bruto)
@@ -62,14 +68,21 @@ const { arquivo, semanaPedida, anoPedido } = (() => {
       i += 1
       continue
     }
+    if (atual.startsWith('--colaborador=')) {
+      colaboradorPedido = atual.slice('--colaborador='.length).trim() || null
+      continue
+    }
     if (atual.startsWith('--')) continue
     arquivo ??= atual
   }
-  return { arquivo, semanaPedida, anoPedido }
+  return { arquivo, semanaPedida, anoPedido, colaboradorPedido }
 })()
 
 if (!arquivo) {
-  console.error('Uso: npm run importar:card-win -- <arquivo.xlsx> [--semana N] [--ano AAAA] [--gravar]')
+  console.error(
+    'Uso: npm run importar:card-win -- <arquivo.xlsx> [--semana N] [--ano AAAA] ' +
+      '[--colaborador="Nome no cadastro"] [--gravar]',
+  )
   process.exit(1)
 }
 
@@ -181,14 +194,36 @@ async function gravarNoBanco() {
   const cadastrados = await prisma.colaborador.findMany({
     select: { id: true, nome: true },
   })
-  const existente = encontrarPorNome(cadastrados, nomeColaborador)
+
+  // `--colaborador=` diz, explicitamente, em qual cadastro esta planilha entra.
+  //
+  // `chaveDoNome` cobre acento e caixa, e só isso. Um nome do meio a mais —
+  // planilha "Fabiano Garcia", cadastro "Fabiano Santos Garcia" — não casa, e
+  // sem uma saída o importador criaria uma SEGUNDA pessoa: os cards novos num
+  // lado, a conta do Clerk e os projetos no outro, e o relatório por
+  // responsável contando dois. As duas alternativas custavam uma grafia (ou o
+  // cadastro é renomeado, ou a planilha é editada a cada versão nova), e
+  // nenhuma das duas está errada — por isso quem decide é uma pessoa, uma vez,
+  // por argumento, e não o script adivinhando por sobrenome em comum.
+  const existente = colaboradorPedido
+    ? encontrarPorNome(cadastrados, colaboradorPedido)
+    : encontrarPorNome(cadastrados, nomeColaborador)
+
+  if (colaboradorPedido && !existente) {
+    console.error(
+      `Não há colaborador cadastrado como "${colaboradorPedido}".\n` +
+        `Cadastrados: ${cadastrados.map((c) => `"${c.nome}"`).join(', ') || '(nenhum)'}`,
+    )
+    process.exit(1)
+  }
 
   if (existente && existente.nome !== nomeColaborador) {
     // Não renomeia por conta própria: o nome pode já ter ido para
     // `Projeto.responsavel` numa promoção. Avisa para um humano decidir.
     console.log(
-      `  (atenção: a planilha diz "${nomeColaborador}" e o cadastro diz ` +
-        `"${existente.nome}" — é a mesma pessoa, o cadastro foi mantido)`,
+      `  (a planilha diz "${nomeColaborador}" e o cadastro diz "${existente.nome}" — ` +
+        `${colaboradorPedido ? 'unificados por --colaborador' : 'é a mesma pessoa'}; ` +
+        'o cadastro foi mantido)',
     )
   }
 

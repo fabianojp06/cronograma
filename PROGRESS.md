@@ -1867,6 +1867,47 @@ e reabrir o PR, ambas descartadas.
   disponível para vincular" vista em produção. **Vincular ao nome existente**, sem
   redigitar outra grafia, senão nascem dois colaboradores para a mesma pessoa.
 
+### Campo de área e a divergência de nome que ela revelou (28/09/2026)
+
+Veio de uma observação do usuário no print de `/colaboradores`: a linha dizia
+"sem área" e não havia como preencher.
+
+- **Diagnóstico:** `Colaborador.area` só era escrito pelo importador. O
+  auto-cadastro grava `nome` e `clerkUserId`; o campo "Área" de `/wins` grava em
+  `CardSemanal.area`. Quem entrava pela tela ficava sem área para sempre — e,
+  como `/wins` preenche a Área com `cardAtual?.area ?? colaborador.area`, toda
+  semana nova abria vazia e a pessoa redigitava.
+- **Campo "Área" na tela `/colaboradores`**, no mesmo formulário do nome (o botão
+  "Renomear" virou "Editar", e `renomearColaborador` virou `salvarColaborador`).
+  Sugere as grafias já em uso, lidas do cadastro E dos cards.
+- **Um defeito que o próprio teste pegou antes do commit:** `FormData.get`
+  devolve `null` para campo ausente e `''` para campo vazio. Tratar os dois como
+  "remover" faria uma aba aberta antes desta versão apagar a área de quem veio da
+  planilha. Agora ausente vira `undefined` (o Prisma pula a coluna). Verificado
+  revertendo a correção: o teste falha com `expected null to be 'APD'`.
+- **A investigação revelou um bloqueio na importação pendente.** O cadastro de
+  produção diz "Fabiano Santos Garcia" e a planilha diz "Fabiano Garcia".
+  `chaveDoNome` cobre acento e caixa, não um nome do meio — não casa.
+  **Reproduzido contra o banco**, com a planilha real e o cadastro de produção:
+  sem correção, a importação cria duas pessoas, uma com o card e a área, outra
+  com a conta do Clerk e o projeto.
+- **Solução: `--colaborador="Nome no cadastro"`** no importador. As duas
+  alternativas custavam uma grafia (renomear o cadastro, ou editar a planilha a
+  cada versão nova) e nenhuma estava errada — então quem decide é uma pessoa, uma
+  vez, por argumento. Provado: com a flag, uma pessoa só, com nome preservado,
+  área da planilha, conta do Clerk, 1 card e 3 WINs. Nome inexistente aborta com
+  saída 1 e sem escrever nada.
+- **Conferência visual** nos dois modos, com o harness Vite+Playwright e as
+  Server Actions em stub. Pegou o que nenhum teste vê: o texto de ajuda estava em
+  `textFaint`, mais fraco que a explicação vizinha da caixa de seleção
+  (`textMuted`), e ocupava três linhas. Ajustado para uma linha e o mesmo peso.
+- Verde: 547 unitários (39 arquivos), 78 de integração (5 arquivos), `tsc`,
+  `eslint` e `next build`.
+- **Ainda pendente, e é do usuário:** a gravação em produção. O comando agora é
+  `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador="Fabiano Santos Garcia" --gravar`
+  (sem `--gravar` antes, para conferir). Esta versão precisa estar em produção
+  antes, senão a flag não existe lá.
+
 ### Onde retomar
 
 1. **Conferir o faturamento do GitHub Actions.** É a pendência mais urgente:
@@ -1874,8 +1915,11 @@ e reabrir o PR, ambas descartadas.
 2. **Importar a planilha real em produção** — ensaiada e validada em 28/09 contra
    um Postgres descartável; falta rodar com a `DATABASE_URL` de produção, o que
    só a máquina do usuário consegue fazer:
-   `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --gravar`
-   (sem `--gravar` antes, para conferir). Sem ela ninguém tem card, e o WIN que já
+   `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador="Fabiano Santos Garcia" --gravar`
+   (sem `--gravar` antes, para conferir). **A flag `--colaborador` não é
+   opcional aqui**: sem ela a importação cria uma segunda pessoa, porque a
+   planilha diz "Fabiano Garcia" e o cadastro diz "Fabiano Santos Garcia".
+   Exige esta versão já publicada. Sem ela ninguém tem card, e o WIN que já
    bateu três semanas segue sem virar item do plano de ação. Importar **antes** de
    as pessoas se cadastrarem evita divergência de grafia — embora a proteção
    funcione nos dois sentidos.
