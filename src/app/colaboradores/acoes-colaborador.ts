@@ -141,8 +141,10 @@ export async function salvarColaborador(
     }
     return { aviso: `${feitas.join('; ')}.` }
   } catch (erro) {
-    console.error('Falha ao renomear colaborador', erro)
-    return { erroGeral: 'Não foi possível renomear. Tente novamente.' }
+    // A ação salva nome E área: dizer "renomear" mandaria quem só mexeu na
+    // área procurar o problema no campo errado.
+    console.error('Falha ao salvar colaborador', erro)
+    return { erroGeral: 'Não foi possível salvar. Tente novamente.' }
   }
 }
 

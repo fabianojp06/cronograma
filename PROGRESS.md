@@ -1904,9 +1904,37 @@ Veio de uma observação do usuário no print de `/colaboradores`: a linha dizia
 - Verde: 547 unitários (39 arquivos), 78 de integração (5 arquivos), `tsc`,
   `eslint` e `next build`.
 - **Ainda pendente, e é do usuário:** a gravação em produção. O comando agora é
-  `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador="Fabiano Santos Garcia" --gravar`
+  `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador "Fabiano Santos Garcia" --gravar`
   (sem `--gravar` antes, para conferir). Esta versão precisa estar em produção
   antes, senão a flag não existe lá.
+
+### Code-review do campo de área e da flag de importação (28/09/2026)
+
+Três achados, todos legítimos e todos corrigidos. O primeiro era grave.
+
+- **`--colaborador` só aceitava a forma `=`.** `--semana` e `--ano`, no mesmo
+  laço logo acima, aceitavam espaço — então `--colaborador "Fabiano Santos
+  Garcia"`, a forma que os vizinhos ensinam, caía no `continue` dos
+  sinalizadores desconhecidos e o nome era engolido pelo `arquivo ??=`.
+  **Reproduzido contra o banco**: a importação criava as duas pessoas e imprimia
+  "Gravado: 1 card, 3 WINs". Não era um erro, era um sucesso mentiroso — e
+  justamente na flag que existe para evitar a duplicação.
+  Corrigido extraindo a leitura para `src/lib/argumentos-importacao.ts`, puro e
+  com 13 testes. Agora as duas formas valem para todos os sinalizadores, e valor
+  faltando, valor vazio, sinalizador desconhecido ou dois arquivos abortam com
+  saída 1. Também fechada a brecha de `--colaborador --gravar` gravar uma pessoa
+  chamada "--gravar".
+- **A importação sobrescrevia `Colaborador.area`.** A área definida na tela nova
+  seria revertida pela importação seguinte, e zerada de vez se o cabeçalho da
+  planilha estivesse em branco — as semanas voltariam a abrir vazias, que é o
+  defeito que a tela veio consertar. Agora a planilha SEMEIA (só preenche cadastro
+  sem área) e avisa quando os dois divergem. Verificado: área `ACT` posta na tela
+  sobrevive à reimportação, o card recebe `AGP` da planilha, e a divergência é
+  relatada.
+- **A mensagem do catch dizia "renomear"** numa ação que agora salva nome e área.
+
+Verde: 560 unitários (40 arquivos), 78 de integração, `tsc`, `eslint` e
+`next build`. As formas que já funcionavam foram reconferidas uma a uma.
 
 ### Onde retomar
 
@@ -1915,7 +1943,7 @@ Veio de uma observação do usuário no print de `/colaboradores`: a linha dizia
 2. **Importar a planilha real em produção** — ensaiada e validada em 28/09 contra
    um Postgres descartável; falta rodar com a `DATABASE_URL` de produção, o que
    só a máquina do usuário consegue fazer:
-   `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador="Fabiano Santos Garcia" --gravar`
+   `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador "Fabiano Santos Garcia" --gravar`
    (sem `--gravar` antes, para conferir). **A flag `--colaborador` não é
    opcional aqui**: sem ela a importação cria uma segunda pessoa, porque a
    planilha diz "Fabiano Garcia" e o cadastro diz "Fabiano Santos Garcia".

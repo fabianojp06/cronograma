@@ -324,6 +324,21 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
   adivinhando por sobrenome em comum: "Ana Silva Costa" e "Ana Costa" podem ser
   duas pessoas, e essa decisão é de quem roda. Nome inexistente aborta com a
   lista dos cadastrados, antes de qualquer escrita.
+- **A leitura dos argumentos é pura e testada** (`src/lib/argumentos-importacao.ts`),
+  e não um laço dentro do script. A primeira versão de `--colaborador` só aceitava
+  a forma `=`, enquanto `--semana` e `--ano`, no mesmo laço, aceitavam espaço:
+  `--colaborador "Fabiano Santos Garcia"` era descartado em silêncio e a
+  importação criava a pessoa duplicada **relatando "Gravado: 1 card, 3 WINs"**.
+  Daí as duas regras: toda forma que um sinalizador aceita, todos aceitam; e
+  valor faltando, valor vazio ou sinalizador desconhecido abortam com saída 1,
+  nunca são ignorados.
+- **A área da planilha SEMEIA o cadastro, não o sobrescreve.** Desde que existe
+  a tela `/colaboradores`, `Colaborador.area` pode ter sido definido por uma
+  pessoa, e reimportar desfaria a escolha em silêncio — pior, uma planilha com o
+  cabeçalho de área em branco zeraria o campo e as semanas seguintes voltariam a
+  abrir vazias. O importador só preenche quando o cadastro está sem área, e avisa
+  quando as duas divergem. O `CardSemanal.area` continua vindo da planilha: ela é
+  o cabeçalho daquela semana.
 
 ### Administração de colaboradores (`/colaboradores`)
 
