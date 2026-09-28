@@ -32,7 +32,7 @@ no Log de decisões.
 |---|---|---|
 | **GitHub Actions não roda desde 25/09** | operacional, urgente | Todo merge entra sem a rede de segurança do pipeline. Ver a entrada de 27/09 no log. |
 | **Clerk em instância de *development*** | operacional | Limites de conta e chaves de teste. Ao promover, **registrar o app no Azure AD ANTES**, senão o login Microsoft quebra na troca de chaves. |
-| **Planilha real não importada em produção** | operacional | Ninguém tem card. O WIN que já bateu 3 semanas segue sem virar item do plano. |
+| **Planilha real não importada em produção** | operacional | Ninguém tem card. O WIN que já bateu 3 semanas segue sem virar item do plano. **Ensaio de 28/09 validou a importação ponta a ponta** — falta só rodar com a `DATABASE_URL` de produção, o que exige a máquina do usuário. |
 | **Sem trilha de auditoria para `Colaborador`** | código, fora de escopo | Quem desativou ou renomeou quem, e quando, não fica registrado. `HistoricoAlteracao` é só de `Acao`. |
 | **URLs órfãs do projeto `cronograma` desconectado** | operacional | Continuam no ar, protegidas por SSO. Não recebem deploy novo. |
 | **CI em `actions/checkout@v4` e `setup-node@v4`** | manutenção | Aviso de descontinuação do Node 20 a cada execução. Não quebra nada hoje. |
@@ -1835,14 +1835,50 @@ O workflow ganhou `workflow_dispatch` no caminho — antes não havia como
 reexecutá-lo sem empurrar código, e as alternativas eram commit vazio ou fechar
 e reabrir o PR, ambas descartadas.
 
+### Ensaio da importação da planilha real do Card WIN (28/09/2026)
+- O usuário enviou a versão atual de `CARD_WIN_Semanal_-_Fabiano.xlsx` (agora com a
+  semana 40; a versão anterior ia até a 39). Arquivo em `dados/`, que é gitignored.
+- **Simulação + gravação ensaiadas contra um Postgres descartável local**, com as
+  migrations aplicadas por `prisma migrate deploy` — o mesmo caminho que produção usa.
+  Resultado: 1 colaborador (`Fabiano Garcia`), 1 card (2026/S40), 3 WINs.
+- **A regra das 3 semanas dispara no primeiro dia**, como o desenho previa: o WIN
+  "Desenvolvimento do documento de elicitação de requisitos — relatórios orçamentários"
+  entra com `aparicoesAnteriores = 3` (semanas 37, 38 e 39 da planilha) e o importador
+  já o marca `<-- JÁ DEVE SER PROMOVIDO`. Ele é exatamente o caso que motivou o par
+  `Win`/`WinSemana`: aparece na planilha com três grafias diferentes.
+- **Reimportação após promoção verificada com o arquivo real**, não só com fixture:
+  marcado o WIN recorrente como `PROMOVIDO` e rodada a importação de novo, o resultado
+  foi 3 linhas de `WinSemana` com 2 no card — a aparição promovida sobreviveu e não foi
+  recriada. É o cenário que a filtragem por `desfecho` nos três pontos do importador
+  existe para evitar.
+- Conferido que `prisma migrate deploy` preserva o que só existe em SQL: o índice
+  parcial `WinSemana_cardId_ordem_no_card` e a CHECK `WinSemana_ordem_entre_1_e_3`.
+- Verde: 541 testes unitários (39 arquivos) e 71 de integração (5 arquivos).
+- **Só a semana 40 é gravada**, por decisão já registrada: as semanas 31–39 servem
+  apenas para semear `aparicoesAnteriores`. Consequência a ter em mente — o histórico
+  navegável em `/wins/equipe` e os gráficos de `/dashboards` começam na semana 40.
+- **A gravação em produção continua pendente e é do usuário**: a leitura da credencial
+  do Railway é barrada por classificador de segurança nesta sessão, e não se contorna.
+  Comando, com a `DATABASE_URL` de produção no `.env` (ver `.env.example`):
+  `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --gravar`
+  (sem `--gravar` primeiro, para conferir).
+- Depois da importação, a tela "Quem é você?" de `/wins` passa a oferecer
+  `Fabiano Garcia` para vincular — é o que resolve a mensagem "Não há colaborador
+  disponível para vincular" vista em produção. **Vincular ao nome existente**, sem
+  redigitar outra grafia, senão nascem dois colaboradores para a mesma pessoa.
+
 ### Onde retomar
 
 1. **Conferir o faturamento do GitHub Actions.** É a pendência mais urgente:
    sem CI, todo merge entra sem rede de segurança.
-2. **Importar a planilha real em produção** (`npm run importar:card-win -- <arquivo> --ano 2026 --gravar`).
-   Sem ela ninguém tem card, e o WIN que já bateu três semanas segue sem virar
-   item do plano de ação. Importar **antes** de as pessoas se cadastrarem evita
-   divergência de grafia — embora a proteção funcione nos dois sentidos.
+2. **Importar a planilha real em produção** — ensaiada e validada em 28/09 contra
+   um Postgres descartável; falta rodar com a `DATABASE_URL` de produção, o que
+   só a máquina do usuário consegue fazer:
+   `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --gravar`
+   (sem `--gravar` antes, para conferir). Sem ela ninguém tem card, e o WIN que já
+   bateu três semanas segue sem virar item do plano de ação. Importar **antes** de
+   as pessoas se cadastrarem evita divergência de grafia — embora a proteção
+   funcione nos dois sentidos.
 3. **Abrir `/wins` logado** para confirmar a migration pelo caminho direto.
 4. Promover o Clerk para produção, **registrando o app no Azure AD antes**.
 
