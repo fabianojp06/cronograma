@@ -177,6 +177,29 @@ sem Next, cada um com seu `.test.ts` — igual ao resto de `src/lib/`. Os relat�
 partem das mesmas funções do painel consolidado (`montarLinhas`, `resumirAcoes`):
 painel e dashboard nunca podem somar diferente.
 
+## Desempenho de `/dashboards`
+
+A página lê todos os projetos com todas as ações e agrega em memória a cada
+acesso, sem cache. `scripts/medir-dashboards.ts` mede o custo de servidor (consulta
++ agregação, sem renderização nem rede) em escalas crescentes, **só contra banco
+local** — ele semeia e apaga dados e recusa qualquer `DATABASE_URL` que não seja
+localhost. Medição de 18/11/2026, mediana de 5 rodadas:
+
+| ações | consulta | agregação | total |
+|---:|---:|---:|---:|
+| 300 | 18 ms | 3 ms | 21 ms |
+| 2.000 | 27 ms | 24 ms | 51 ms |
+| 9.000 | 94 ms | 123 ms | 217 ms |
+| 30.000 | 816 ms | 661 ms | 1,5 s |
+
+**Decisão: sem cache por enquanto.** Até uns 10 mil ações o custo fica abaixo de
+meio segundo; cache traria invalidação (cada mutação teria de revalidar) por um
+ganho que ninguém sente. **Gatilho para voltar ao assunto:** a carteira passar de
+~10 mil ações, ou o servidor passar de ~1 s. A ordem de ataque, nesse caso:
+agregar no banco (`groupBy`) em vez de trazer as linhas; só depois cache. Os
+números reais de produção não foram medidos — o log da Vercel Hobby guarda 1 hora
+e não traz duração; conte as ações de produção antes de decidir.
+
 ## Matriz de Priorização (`/priorizacao`)
 
 Substitui a planilha `Matriz de Priorização: Benefício x Esforço (Ponderado por
