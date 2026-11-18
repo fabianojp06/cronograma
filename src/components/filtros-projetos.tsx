@@ -1,4 +1,8 @@
+'use client'
+
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useTransition, type FormEvent } from 'react'
 
 import { ROTULO_STATUS_AGREGADO, STATUS_AGREGADOS } from '@/lib/projeto-resumo'
 import { periodoAtivo, type Periodo } from '@/lib/filtro-periodo'
@@ -13,6 +17,11 @@ const classeRotulo = 'block text-sm font-medium text-textMuted'
 /**
  * Form com `method="get"`: os filtros viram query string, a tela fica linkável
  * e continua funcionando sem JavaScript — a listagem é um Server Component.
+ *
+ * Com JavaScript, o envio é interceptado para navegar dentro de uma transição:
+ * enquanto a página nova é calculada no servidor (os Dashboards fazem várias
+ * consultas), `pending` mostra o spinner no botão e um aviso no centro da tela.
+ * Sem isso o clique parecia não ter feito nada.
  */
 export function FiltrosProjetos({
   filtros,
@@ -31,8 +40,46 @@ export function FiltrosProjetos({
   /** Quando presente, mostra os campos De/Até (só os Dashboards usam). */
   periodo?: Periodo
 }) {
+  const router = useRouter()
+  const [pending, iniciarTransicao] = useTransition()
+
+  function navegar(destino: string) {
+    iniciarTransicao(() => router.push(destino))
+  }
+
+  function aoEnviar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    const dados = new FormData(evento.currentTarget)
+    const query = new URLSearchParams()
+    for (const [chave, valor] of dados) {
+      if (typeof valor === 'string' && valor.trim() !== '') query.set(chave, valor.trim())
+    }
+    const texto = query.toString()
+    navegar(texto === '' ? acao : `${acao}?${texto}`)
+  }
+
   return (
-    <form className="mt-6 border-l-2 border-accent pl-4" method="get" action={acao}>
+    <form
+      aria-busy={pending}
+      className="mt-6 border-l-2 border-accent pl-4"
+      method="get"
+      action={acao}
+      onSubmit={aoEnviar}
+    >
+      {pending ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-bg/60 backdrop-blur-[1px]"
+          role="status"
+        >
+          <div className="flex items-center gap-3 rounded-md border border-border bg-surface px-5 py-4 shadow-lg">
+            <span
+              aria-hidden="true"
+              className="size-6 animate-spin rounded-full border-2 border-accent/30 border-t-accent"
+            />
+            <span className="text-sm font-medium text-text">Atualizando…</span>
+          </div>
+        </div>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className={classeRotulo} htmlFor="equipe">
@@ -146,13 +193,27 @@ export function FiltrosProjetos({
 
       <div className="mt-4 flex items-center gap-3">
         <button
-          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-onAccent"
+          className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-onAccent disabled:opacity-60"
+          disabled={pending}
           type="submit"
         >
-          Filtrar
+          {pending ? (
+            <span
+              aria-hidden="true"
+              className="size-4 animate-spin rounded-full border-2 border-onAccent/40 border-t-onAccent"
+            />
+          ) : null}
+          {pending ? 'Filtrando…' : 'Filtrar'}
         </button>
         {algumFiltroAtivo(filtros) || (periodo !== undefined && periodoAtivo(periodo)) ? (
-          <Link className="text-sm text-textMuted hover:text-text" href={acao}>
+          <Link
+            className="text-sm text-textMuted hover:text-text"
+            href={acao}
+            onClick={(evento) => {
+              evento.preventDefault()
+              navegar(acao)
+            }}
+          >
             Limpar filtros
           </Link>
         ) : null}
