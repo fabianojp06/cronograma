@@ -52,3 +52,7 @@ next-env.d.ts
 
 # log do loop autônomo (autoloop.sh / autoloop.ps1): gerado a cada rodada
 /autoloop.log
+
+# Playwright
+/test-results/
+/playwright-report/

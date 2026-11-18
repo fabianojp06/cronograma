@@ -528,6 +528,32 @@ denunciou. Toda mudança nas ações de `/wins` roda os dois.
   razão da guarda de migrations: o preview usa o banco de produção e avisaria
   colaboradores reais. Envio pela API HTTP do Resend, sem SDK.
 
+## Teste de navegador (Playwright)
+
+`npm run test:e2e` sobe o sistema construído de verdade (`next build` + `next
+start`) contra um Postgres descartável e dirige um Chromium pelos fluxos
+principais (`tests/e2e/`): criar ação, editar, conflito de edição e filtro de
+período. Existe porque `tsc`, `eslint` e centenas de testes verdes deixaram passar
+defeitos que só a página aberta mostra — o primeiro uso já achou um erro 500 que
+estava em produção (um arquivo `'use server'` exportando uma constante).
+
+- **Entra sem conta de Clerk por um falso, trocado na configuração, não por uma
+  exceção no código.** `E2E_AUTH_FALSA=1` faz o `next.config.ts` apontar
+  `@clerk/nextjs` e `@clerk/nextjs/server` para `tests/e2e/falso/`. O código de
+  domínio chama `auth()` como sempre. Os módulos falsos **recusam carregar na
+  Vercel**: ligar a variável por engano num deploy derruba o build em vez de
+  publicar um sistema sem login.
+- **Só banco local**: `tests/e2e/banco.ts` apaga as tabelas e recusa qualquer
+  `DATABASE_URL` que não seja localhost. Usa `pg` puro porque o cliente Prisma
+  gerado é ESM com `import.meta` e o carregador do Playwright o trata como
+  CommonJS.
+- Local: banco descartável como na seção de testes de integração, depois
+  `DATABASE_URL=postgresql://postgres:teste@127.0.0.1:57432/cronograma npm run test:e2e`.
+  Precisa das bibliotecas do Chromium (`npx playwright install-deps chromium`).
+- No CI é o job `navegador`, separado do de lint/testes/build.
+- Teste novo de tela vai em `tests/e2e/*.spec.ts` (o `*.spec.ts` não é pego pelo
+  Vitest, que só lê `*.test.ts`).
+
 ## Registro de erros
 
 `registrarFalha(origem, erro)` (`src/lib/registrar-erro.ts`) substitui o
