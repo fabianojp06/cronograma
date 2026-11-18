@@ -3,6 +3,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
+import { registrarFalha } from '@/lib/registrar-erro'
 import { prisma } from '@/lib/prisma'
 import { proximoNumero, refazerNaColisao } from '@/lib/acao-validacao'
 import { ehSemanaValida, type SemanaCtcea } from '@/lib/semana-ctcea'
@@ -201,7 +202,7 @@ export async function salvarWin(
       })
     })
   } catch (erro) {
-    console.error('Falha ao salvar WIN', erro)
+    await registrarFalha('Falha ao salvar WIN', erro)
     return { erroGeral: 'Não foi possível salvar o WIN. Tente novamente.' }
   }
 
@@ -265,7 +266,7 @@ export async function removerWinDaSemana(formData: FormData): Promise<void> {
       })
     })
   } catch (erro) {
-    console.error('Falha ao remover WIN da semana', erro)
+    await registrarFalha('Falha ao remover WIN da semana', erro)
     return
   }
 
@@ -424,7 +425,7 @@ export async function promoverWin(
     if (erro instanceof Error && erro.message === 'PROJETO_INEXISTENTE') {
       return { erroGeral: 'Projeto não encontrado ou excluído.' }
     }
-    console.error('Falha ao promover WIN', erro)
+    await registrarFalha('Falha ao promover WIN', erro)
     return { erroGeral: 'Não foi possível promover o WIN. Tente novamente.' }
   }
 }
@@ -461,7 +462,7 @@ export async function salvarCard(
       update: validacao.dados,
     })
   } catch (erro) {
-    console.error('Falha ao salvar card', erro)
+    await registrarFalha('Falha ao salvar card', erro)
     return { erroGeral: 'Não foi possível salvar o card. Tente novamente.' }
   }
 
@@ -510,7 +511,7 @@ async function emailDaConta(): Promise<string | null> {
     const validacao = validarEmail(usuario?.primaryEmailAddress?.emailAddress ?? '')
     return validacao.ok ? (validacao.email ?? null) : null
   } catch (erro) {
-    console.error('Falha ao ler o e-mail da conta', erro)
+    await registrarFalha('Falha ao ler o e-mail da conta', erro)
     return null
   }
 }
@@ -532,7 +533,7 @@ async function semearEmailDaConta(colaboradorId: string): Promise<void> {
       data: { email },
     })
   } catch (erro) {
-    console.error('Falha ao gravar o e-mail do colaborador', erro)
+    await registrarFalha('Falha ao gravar o e-mail do colaborador', erro)
   }
 }
 
@@ -579,7 +580,7 @@ export async function vincularColaborador(
     }
     await semearEmailDaConta(colaboradorId)
   } catch (erro) {
-    console.error('Falha ao vincular colaborador', erro)
+    await registrarFalha('Falha ao vincular colaborador', erro)
     return { erroGeral: 'Não foi possível vincular. Tente novamente.' }
   }
 
@@ -661,7 +662,7 @@ export async function repetirWin(
 
     await prisma.winSemana.create({ data: { winId: win.id, cardId: card.id, ordem } })
   } catch (erro) {
-    console.error('Falha ao repetir WIN', erro)
+    await registrarFalha('Falha ao repetir WIN', erro)
     return { erroGeral: 'Não foi possível repetir o WIN. Tente novamente.' }
   }
 
@@ -748,7 +749,7 @@ export async function encerrarWin(
       }),
     ])
   } catch (erro) {
-    console.error('Falha ao encerrar WIN', erro)
+    await registrarFalha('Falha ao encerrar WIN', erro)
     return { erroGeral: 'Não foi possível encerrar o WIN. Tente novamente.' }
   }
 
@@ -821,7 +822,7 @@ export async function cadastrarColaborador(
     const email = await emailDaConta()
     await prisma.colaborador.create({ data: { nome, clerkUserId: userId, email } })
   } catch (erro) {
-    console.error('Falha ao cadastrar colaborador', erro)
+    await registrarFalha('Falha ao cadastrar colaborador', erro)
     return { erroGeral: 'Não foi possível cadastrar. Tente novamente.' }
   }
 

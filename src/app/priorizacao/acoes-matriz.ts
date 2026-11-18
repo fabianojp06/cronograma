@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 
 import { MENSAGEM_SEM_PERMISSAO } from '@/lib/administracao'
 import { contaPodeAdministrar } from '@/lib/administracao-servidor'
+import { registrarFalha } from '@/lib/registrar-erro'
 import { prisma } from '@/lib/prisma'
 import { CRITERIOS } from '@/lib/matriz-criterios'
 import {
@@ -63,7 +64,7 @@ export async function salvarAvaliacao(
       update: dados,
     })
   } catch (erro) {
-    console.error('Falha ao salvar avaliação', erro)
+    await registrarFalha('Falha ao salvar avaliação', erro)
     return { erroGeral: 'Não foi possível salvar a avaliação. Tente novamente.' }
   }
 
@@ -110,7 +111,7 @@ export async function salvarPesos(
       }),
     )
   } catch (erro) {
-    console.error('Falha ao salvar pesos', erro)
+    await registrarFalha('Falha ao salvar pesos', erro)
     return { erroGeral: 'Não foi possível salvar os pesos. Tente novamente.' }
   }
 

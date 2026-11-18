@@ -3,6 +3,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
+import { registrarFalha } from '@/lib/registrar-erro'
 import { prisma } from '@/lib/prisma'
 import {
   MENSAGEM_ERRO_ADMINISTRADOR,
@@ -163,7 +164,7 @@ export async function salvarColaborador(
   } catch (erro) {
     // A ação salva nome E área: dizer "renomear" mandaria quem só mexeu na
     // área procurar o problema no campo errado.
-    console.error('Falha ao salvar colaborador', erro)
+    await registrarFalha('Falha ao salvar colaborador', erro)
     return { erroGeral: 'Não foi possível salvar. Tente novamente.' }
   }
 }
@@ -241,7 +242,7 @@ export async function alternarAtivo(
         : `${alvo.nome} voltou a ficar ativo.`,
     }
   } catch (erro) {
-    console.error('Falha ao alternar colaborador', erro)
+    await registrarFalha('Falha ao alternar colaborador', erro)
     return { erroGeral: 'Não foi possível alterar. Tente novamente.' }
   }
 }
@@ -309,7 +310,7 @@ export async function alternarAdministrador(
         : `${alvo.nome} deixou de ser administrador.`,
     }
   } catch (erro) {
-    console.error('Falha ao alternar administrador', erro)
+    await registrarFalha('Falha ao alternar administrador', erro)
     return { erroGeral: 'Não foi possível alterar. Tente novamente.' }
   }
 }

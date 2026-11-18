@@ -3,6 +3,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
+import { registrarFalha } from '@/lib/registrar-erro'
 import { prisma } from '@/lib/prisma'
 import { lerIdProjeto } from '@/lib/projeto-edicao'
 import {
@@ -97,7 +98,7 @@ async function avisarResponsavel(entrada: {
     })
     return mensagemDoAviso(responsavel, await enviarEmail(responsavel.email, mensagem))
   } catch (erro) {
-    console.error('Falha ao avisar o responsável', erro)
+    await registrarFalha('Falha ao avisar o responsável', erro)
     return mensagemDoAviso(responsavel, { enviado: false, motivo: 'FALHA_NO_ENVIO' })
   }
 }
@@ -195,7 +196,7 @@ export async function criarAcao(
       }
     }
   } catch (erro) {
-    console.error('Falha ao criar ação', erro)
+    await registrarFalha('Falha ao criar ação', erro)
     return { erroGeral: 'Não foi possível salvar a ação. Tente novamente.' }
   }
 
@@ -337,7 +338,7 @@ export async function atualizarAcao(
     if (erro instanceof ConflitoDeEdicao) {
       return { erroGeral: MENSAGEM_CONFLITO_EDICAO, conflito: true }
     }
-    console.error('Falha ao atualizar ação', erro)
+    await registrarFalha('Falha ao atualizar ação', erro)
     return { erroGeral: 'Não foi possível salvar a ação. Tente novamente.' }
   }
 }
@@ -407,7 +408,7 @@ export async function registrarRealizado(
       },
     }
   } catch (erro) {
-    console.error('Falha ao registrar realizado da ação', erro)
+    await registrarFalha('Falha ao registrar realizado da ação', erro)
     return { erroGeral: 'Não foi possível registrar o realizado. Tente novamente.' }
   }
 }

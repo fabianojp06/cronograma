@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 
 import { MENSAGEM_SEM_PERMISSAO } from '@/lib/administracao'
 import { contaPodeAdministrar } from '@/lib/administracao-servidor'
+import { registrarFalha } from '@/lib/registrar-erro'
 import { prisma } from '@/lib/prisma'
 import {
   confirmacaoValida,
@@ -52,7 +53,7 @@ export async function criarProjeto(
     })
     id = projeto.id
   } catch (erro) {
-    console.error('Falha ao criar projeto', erro)
+    await registrarFalha('Falha ao criar projeto', erro)
     return { erroGeral: 'Não foi possível salvar o projeto. Tente novamente.' }
   }
 
@@ -100,7 +101,7 @@ export async function atualizarProjeto(
       revalidatePath(`/projetos/${id}`)
     }
   } catch (erro) {
-    console.error('Falha ao atualizar projeto', erro)
+    await registrarFalha('Falha ao atualizar projeto', erro)
     return { erroGeral: 'Não foi possível salvar o projeto. Tente novamente.' }
   }
 
@@ -151,7 +152,7 @@ export async function excluirProjeto(
       return { erroGeral: 'Projeto não encontrado ou já excluído.' }
     }
   } catch (erro) {
-    console.error('Falha ao excluir projeto', erro)
+    await registrarFalha('Falha ao excluir projeto', erro)
     return { erroGeral: 'Não foi possível excluir o projeto. Tente novamente.' }
   }
 
