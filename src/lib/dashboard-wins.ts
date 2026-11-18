@@ -166,11 +166,20 @@ const ordinal = ({ ano, semana }: SemanaCtcea) => ano * 100 + semana
 export function winsReincidentes(
   wins: readonly WinParaRecorrencia[],
   minimoAparicoes = 2,
+  /**
+   * Recorte por período: só conta as aparições nas semanas aceitas. As
+   * `aparicoesAnteriores` ficam de fora, porque vêm de antes do sistema e não
+   * têm semana para serem situadas. A `situacao` continua sendo a do WIN
+   * inteiro — ela descreve o WIN, não o período.
+   */
+  naSemana?: (semana: SemanaCtcea) => boolean,
 ): WinRecorrente[] {
   return wins
     .map((win) => {
-      const ordenadas = [...win.aparicoes].sort((a, b) => ordinal(a) - ordinal(b))
-      const aparicoes = Math.max(0, win.aparicoesAnteriores) + ordenadas.length
+      const todas = [...win.aparicoes].sort((a, b) => ordinal(a) - ordinal(b))
+      const totalDoWin = Math.max(0, win.aparicoesAnteriores) + todas.length
+      const ordenadas = naSemana ? todas.filter(naSemana) : todas
+      const aparicoes = naSemana ? ordenadas.length : totalDoWin
       return {
         winId: win.winId,
         descricao: win.descricao,
@@ -182,7 +191,7 @@ export function winsReincidentes(
         ultimaSemana: ordenadas[ordenadas.length - 1] ?? null,
         situacao: situacaoDoWin({
           aparicoesAnteriores: 0,
-          registros: aparicoes,
+          registros: totalDoWin,
           promovidoEm: win.promovidoEm,
           encerradoEm: win.encerradoEm,
         }),

@@ -192,3 +192,40 @@ describe('winsReincidentes', () => {
     expect(r.ultimaSemana).toEqual(S(39))
   })
 })
+
+describe('winsReincidentes com recorte por semana', () => {
+  const win = {
+    winId: 'w1',
+    descricao: 'Relatório',
+    colaborador: 'Ana',
+    aparicoesAnteriores: 2,
+    promovidoEm: null,
+    encerradoEm: null,
+    projetoId: null,
+    aparicoes: [
+      { ano: 2026, semana: 10 },
+      { ano: 2026, semana: 11 },
+      { ano: 2026, semana: 20 },
+    ],
+  }
+
+  it('conta só as aparições das semanas aceitas e ignora as anteriores ao sistema', () => {
+    const [linha] = winsReincidentes([win], 2, (s) => s.semana <= 11)
+    expect(linha.aparicoes).toBe(2)
+    expect(linha.ultimaSemana).toEqual({ ano: 2026, semana: 11 })
+  })
+
+  it('abaixo do mínimo no período, o WIN sai do relatório', () => {
+    expect(winsReincidentes([win], 2, (s) => s.semana === 20)).toEqual([])
+  })
+
+  it('a situação continua sendo a do WIN inteiro', () => {
+    const inteiro = winsReincidentes([win])[0]
+    const [recorte] = winsReincidentes([win], 2, (s) => s.semana <= 11)
+    expect(recorte.situacao).toEqual(inteiro.situacao)
+  })
+
+  it('sem recorte, soma as anteriores como sempre', () => {
+    expect(winsReincidentes([win])[0].aparicoes).toBe(5)
+  })
+})

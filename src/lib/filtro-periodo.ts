@@ -9,6 +9,7 @@
  * fica de fora; a tela informa quantas foram.
  */
 
+import { periodoDaSemana, semanaAnterior as semanaAnteriorDe, semanaDe, semanaSeguinte, type SemanaCtcea } from './semana-ctcea'
 import type { EntradaFiltros } from './projeto-filtros'
 
 export type Periodo = {
@@ -99,4 +100,81 @@ export function recortarPorPeriodo<A extends AcaoDatada, P extends { acoes: A[] 
     if (acoes.length > 0) recortados.push({ ...projeto, acoes })
   }
   return { projetos: recortados, semDataPrevista }
+}
+
+// ---------------------------------------------------------------------------
+// Auditoria e Card WIN: o período vale por data da alteração e por semana.
+// ---------------------------------------------------------------------------
+
+const MS_POR_DIA = 24 * 60 * 60 * 1000
+/** O sistema é da CTCEA (Brasil): "dia" de uma alteração é o dia em Brasília. */
+const DESLOCAMENTO_BRASILIA_MS = 3 * 60 * 60 * 1000
+
+function meiaNoiteBrasilia(aaaammdd: string): number {
+  return Date.parse(`${aaaammdd}T00:00:00.000Z`) + DESLOCAMENTO_BRASILIA_MS
+}
+
+/**
+ * Limites do período para uma coluna de instante (`alteradoEm`), no formato do
+ * `where` do Prisma: `gte` no começo do dia `de` e `lt` no começo do dia
+ * seguinte a `ate`, ambos em horário de Brasília — uma alteração às 22h de
+ * 31/03 ainda é de 31/03, embora em UTC já seja 01/04.
+ */
+export function limitesDoInstante(periodo: Periodo): { gte?: Date; lt?: Date } {
+  return {
+    ...(periodo.de !== null ? { gte: new Date(meiaNoiteBrasilia(periodo.de)) } : {}),
+    ...(periodo.ate !== null
+      ? { lt: new Date(meiaNoiteBrasilia(periodo.ate) + MS_POR_DIA) }
+      : {}),
+  }
+}
+
+const ordinal = ({ ano, semana }: SemanaCtcea) => ano * 100 + semana
+
+function diaUTC(texto: string): Date {
+  return new Date(`${texto}T00:00:00.000Z`)
+}
+
+/** A semana (domingo a sábado) toca o período. */
+export function semanaNoPeriodo(semana: SemanaCtcea, periodo: Periodo): boolean {
+  if (!periodoAtivo(periodo)) return true
+  const { inicio, fim } = periodoDaSemana(semana)
+  if (periodo.de !== null && dia(fim) < periodo.de) return false
+  if (periodo.ate !== null && dia(inicio) > periodo.ate) return false
+  return true
+}
+
+/**
+ * As semanas exibidas na conclusão semanal, da mais antiga para a mais nova.
+ *
+ * Sem filtro: as `padrao` últimas até `semanaAtual`. Com filtro: de `de` até
+ * `ate`, sem passar da semana atual (semana futura é sempre vazia). Só `ate`:
+ * as `padrao` semanas que terminam nele. Só `de`: dele até a semana atual.
+ * O gráfico é limitado às `maximo` semanas mais recentes do intervalo.
+ */
+export function janelaDoPeriodo(
+  periodo: Periodo,
+  semanaAtual: SemanaCtcea,
+  padrao = 12,
+  maximo = 52,
+): SemanaCtcea[] {
+  const fimBruto = periodo.ate !== null ? semanaDe(diaUTC(periodo.ate)) : semanaAtual
+  const fim = ordinal(fimBruto) > ordinal(semanaAtual) ? semanaAtual : fimBruto
+
+  const semanas: SemanaCtcea[] = []
+  if (periodo.de !== null) {
+    let atual = semanaDe(diaUTC(periodo.de))
+    while (ordinal(atual) <= ordinal(fim)) {
+      semanas.push(atual)
+      atual = semanaSeguinte(atual)
+    }
+  } else {
+    // `semanaAnterior` atravessa a virada de ano; por isso constrói de trás.
+    let atual = fim
+    for (let i = 0; i < padrao; i += 1) {
+      semanas.unshift(atual)
+      atual = semanaAnteriorDe(atual)
+    }
+  }
+  return semanas.slice(-maximo)
 }

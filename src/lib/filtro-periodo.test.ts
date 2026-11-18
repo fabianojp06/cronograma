@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import {
   acaoNoPeriodo,
+  janelaDoPeriodo,
   lerPeriodo,
+  limitesDoInstante,
   periodoAtivo,
   recortarPorPeriodo,
+  semanaNoPeriodo,
 } from './filtro-periodo'
 
 const d = (s: string) => new Date(`${s}T00:00:00.000Z`)
@@ -106,5 +109,86 @@ describe('recortarPorPeriodo', () => {
   it('não altera a entrada', () => {
     recortarPorPeriodo(projetos, { de: '2026-03-01', ate: '2026-03-31' })
     expect(projetos[0].acoes).toHaveLength(2)
+  })
+})
+
+describe('limitesDoInstante', () => {
+  it('usa o dia de Brasília: começa às 03:00Z e termina no começo do dia seguinte', () => {
+    const l = limitesDoInstante({ de: '2026-03-01', ate: '2026-03-31' })
+    expect(l.gte?.toISOString()).toBe('2026-03-01T03:00:00.000Z')
+    expect(l.lt?.toISOString()).toBe('2026-04-01T03:00:00.000Z')
+  })
+
+  it('22h de 31/03 em Brasília (01:00Z de 01/04) ainda está dentro', () => {
+    const l = limitesDoInstante({ de: null, ate: '2026-03-31' })
+    expect(new Date('2026-04-01T01:00:00Z') < l.lt!).toBe(true)
+  })
+
+  it('período aberto devolve só o limite existente', () => {
+    expect(limitesDoInstante({ de: '2026-03-01', ate: null })).not.toHaveProperty('lt')
+    expect(limitesDoInstante({ de: null, ate: '2026-03-31' })).not.toHaveProperty('gte')
+  })
+})
+
+describe('semanaNoPeriodo', () => {
+  // Semana 10/2026: domingo 01/03 a sábado 07/03.
+  const s10 = { ano: 2026, semana: 10 }
+  it('inclui semana que toca o período, mesmo em parte', () => {
+    expect(semanaNoPeriodo(s10, { de: '2026-03-07', ate: '2026-03-20' })).toBe(true)
+    expect(semanaNoPeriodo(s10, { de: '2026-02-01', ate: '2026-03-01' })).toBe(true)
+  })
+  it('exclui semana fora', () => {
+    expect(semanaNoPeriodo(s10, { de: '2026-03-08', ate: null })).toBe(false)
+    expect(semanaNoPeriodo(s10, { de: null, ate: '2026-02-28' })).toBe(false)
+  })
+  it('sem filtro tudo entra', () => {
+    expect(semanaNoPeriodo(s10, { de: null, ate: null })).toBe(true)
+  })
+})
+
+describe('janelaDoPeriodo', () => {
+  const atual = { ano: 2026, semana: 40 }
+  const chaves = (j: { ano: number; semana: number }[]) => j.map((s) => `${s.ano}-${s.semana}`)
+
+  it('sem filtro: as 12 últimas até a atual (como antes)', () => {
+    const j = janelaDoPeriodo({ de: null, ate: null }, atual)
+    expect(j).toHaveLength(12)
+    expect(j[11]).toEqual(atual)
+    expect(j[0]).toEqual({ ano: 2026, semana: 29 })
+  })
+
+  it('com de e ate: só as semanas do intervalo', () => {
+    // 01/03/2026 é a semana 10; 22/03 a semana 13.
+    expect(chaves(janelaDoPeriodo({ de: '2026-03-01', ate: '2026-03-22' }, atual))).toEqual([
+      '2026-10',
+      '2026-11',
+      '2026-12',
+      '2026-13',
+    ])
+  })
+
+  it('não passa da semana atual', () => {
+    const j = janelaDoPeriodo({ de: '2026-09-20', ate: '2027-12-31' }, atual)
+    expect(j[j.length - 1]).toEqual(atual)
+  })
+
+  it('só de: vai até a semana atual', () => {
+    const j = janelaDoPeriodo({ de: '2026-09-13', ate: null }, atual)
+    expect(j[j.length - 1]).toEqual(atual)
+    expect(j.length).toBeGreaterThan(1)
+  })
+
+  it('período inteiramente no futuro: janela vazia', () => {
+    expect(janelaDoPeriodo({ de: '2027-06-01', ate: '2027-07-01' }, atual)).toEqual([])
+  })
+
+  it('atravessa a virada de ano pelo calendário da CTCEA', () => {
+    const j = janelaDoPeriodo({ de: '2025-12-20', ate: '2026-01-10' }, atual)
+    expect(j.map((s) => `${s.ano}-${s.semana}`)).toContain('2026-1')
+    expect(j[0].ano).toBe(2025)
+  })
+
+  it('limita ao máximo de semanas mais recentes', () => {
+    expect(janelaDoPeriodo({ de: '2025-01-01', ate: null }, atual)).toHaveLength(52)
   })
 })
