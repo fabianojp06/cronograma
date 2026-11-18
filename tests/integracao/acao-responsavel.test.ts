@@ -11,6 +11,19 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@clerk/nextjs/server', () => ({ auth: async () => ({ userId: 'user_prova' }) }))
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
 
+// O envio real nunca roda em teste: as chamadas ficam registradas aqui, e o
+// resultado devolvido é controlado caso a caso.
+const envio = vi.hoisted(() => ({
+  chamadas: [] as { para: string; assunto: string; texto: string }[],
+  resultado: { enviado: true } as { enviado: true } | { enviado: false; motivo: string },
+}))
+vi.mock('@/lib/enviar-email', () => ({
+  enviarEmail: async (para: string, mensagem: { assunto: string; texto: string }) => {
+    envio.chamadas.push({ para, assunto: mensagem.assunto, texto: mensagem.texto })
+    return envio.resultado
+  },
+}))
+
 const { prisma } = await import('@/lib/prisma')
 const { criarAcao, atualizarAcao, registrarRealizado } = await import(
   '@/app/projetos/acoes-acao'
@@ -27,6 +40,8 @@ let ana: string
 let marcia: string
 
 beforeEach(async () => {
+  envio.chamadas = []
+  envio.resultado = { enviado: true }
   await prisma.historicoAlteracao.deleteMany()
   await prisma.winSemana.deleteMany()
   await prisma.win.deleteMany()
@@ -165,5 +180,85 @@ describe('trocar o responsável', () => {
       (h) => h.campo,
     )
     expect(campos).not.toContain('responsavel')
+  })
+})
+
+describe('aviso por e-mail ao responsável', () => {
+  beforeEach(async () => {
+    await prisma.colaborador.update({ where: { id: ana }, data: { email: 'ana@ctcea.org.br' } })
+  })
+
+  it('avisa ao criar a ação com responsável', async () => {
+    const r = await criarAcao(
+      {},
+      fd({ id: projetoId, descricao: 'Levantar inventário', responsavelId: ana }),
+    )
+
+    expect(envio.chamadas).toHaveLength(1)
+    expect(envio.chamadas[0]).toMatchObject({ para: 'ana@ctcea.org.br' })
+    expect(envio.chamadas[0].assunto).toContain('Projeto de prova')
+    expect(envio.chamadas[0].texto).toContain('Uma nova ação foi cadastrada')
+    expect(envio.chamadas[0].texto).toContain('Levantar inventário')
+    expect(r.aviso).toBe('Aviso enviado para ana@ctcea.org.br.')
+  })
+
+  it('não envia a quem não tem e-mail, e diz isso', async () => {
+    const r = await criarAcao(
+      {},
+      fd({ id: projetoId, descricao: 'X', responsavelId: marcia }),
+    )
+    expect(envio.chamadas).toHaveLength(0)
+    expect(r.aviso).toContain('Márcia Gonçalves não tem e-mail cadastrado')
+  })
+
+  it('ação sem responsável não avisa ninguém', async () => {
+    const r = await criarAcao({}, fd({ id: projetoId, descricao: 'X', responsavelId: '' }))
+    expect(envio.chamadas).toHaveLength(0)
+    expect(r.aviso).toBeUndefined()
+  })
+
+  it('avisa quem PASSOU a ser responsável na edição', async () => {
+    await prisma.colaborador.update({ where: { id: marcia }, data: { email: 'marcia@ctcea.org.br' } })
+    const id = await criar({ responsavelId: ana })
+    envio.chamadas = []
+
+    const r = await atualizarAcao({}, edicao(id, { responsavelId: marcia }))
+
+    expect(envio.chamadas).toHaveLength(1)
+    expect(envio.chamadas[0]).toMatchObject({ para: 'marcia@ctcea.org.br' })
+    expect(envio.chamadas[0].texto).toContain('Você passou a ser o responsável')
+    expect(r.aviso).toBe('Aviso enviado para marcia@ctcea.org.br.')
+  })
+
+  it('salvar de novo com a mesma pessoa não reenvia', async () => {
+    const id = await criar({ responsavelId: ana })
+    envio.chamadas = []
+
+    const r = await atualizarAcao({}, edicao(id, { responsavelId: ana, status: 'EM_CURSO_25' }))
+
+    expect(envio.chamadas).toHaveLength(0)
+    expect(r.aviso).toBeUndefined()
+  })
+
+  it('tirar o responsável não avisa ninguém', async () => {
+    const id = await criar({ responsavelId: ana })
+    envio.chamadas = []
+
+    await atualizarAcao({}, edicao(id, { responsavelId: '' }))
+    expect(envio.chamadas).toHaveLength(0)
+  })
+
+  // O aviso é consequência de salvar, não condição.
+  it('falha no envio não desfaz a ação, e a tela é avisada', async () => {
+    envio.resultado = { enviado: false, motivo: 'FALHA_NO_ENVIO' }
+
+    const r = await criarAcao(
+      {},
+      fd({ id: projetoId, descricao: 'Levantar inventário', responsavelId: ana }),
+    )
+
+    expect(r.criada).toBeDefined()
+    expect(await prisma.acao.count()).toBe(1)
+    expect(r.aviso).toContain('Não foi possível enviar o aviso')
   })
 })

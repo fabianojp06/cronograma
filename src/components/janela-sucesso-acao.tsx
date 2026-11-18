@@ -13,9 +13,12 @@ import { useState } from 'react'
 export function JanelaSucessoAcao({
   criada,
   projetoId,
+  aviso,
 }: {
   criada?: { id: string; numero: number; descricao: string }
   projetoId: string
+  /** O que aconteceu com o e-mail ao responsável, quando houve um. */
+  aviso?: string
 }) {
   const [dispensada, setDispensada] = useState<string | null>(null)
   if (!criada || dispensada === criada.id) return null
@@ -41,6 +44,7 @@ export function JanelaSucessoAcao({
         <p className="mt-2 text-sm text-textMuted">
           Ação <strong className="text-text">{criada.numero}</strong> — {criada.descricao}
         </p>
+        {aviso ? <p className="mt-2 text-sm text-textMuted">{aviso}</p> : null}
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <button
             autoFocus
