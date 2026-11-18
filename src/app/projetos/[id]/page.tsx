@@ -35,6 +35,7 @@ export default async function ProjetoPage({ params }: PageProps<'/projetos/[id]'
           previstoTermino: true,
           realizadoInicio: true,
           realizadoTermino: true,
+          responsavel: { select: { nome: true } },
         },
       },
     },
@@ -47,6 +48,8 @@ export default async function ProjetoPage({ params }: PageProps<'/projetos/[id]'
   const acoes: LinhaGantt[] = projeto.acoes.map((acao) => ({
     ...acao,
     status: acao.status as StatusAcao,
+    responsavel: acao.responsavel?.nome ?? null,
+    href: `/projetos/${projeto.id}/acoes/${acao.id}/editar`,
   }))
 
   return (

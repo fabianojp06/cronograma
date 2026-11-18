@@ -15,6 +15,7 @@ export const ROTULO_CAMPO_AUDITADO: Record<CampoAuditado, string> = {
   previstoTermino: 'Término previsto',
   realizadoInicio: 'Início realizado',
   realizadoTermino: 'Término realizado',
+  responsavel: 'Responsável',
 }
 
 /** Campos cuja alteração caracteriza replanejamento (mexer no plano, não no fato). */

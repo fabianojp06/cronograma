@@ -4,6 +4,7 @@ import {
   CAMPOS_DATA,
   ehColisaoDeNumero,
   lerDataISO,
+  lerResponsavelId,
   proximoNumero,
   ROTULOS_STATUS,
   refazerNaColisao,
@@ -203,5 +204,29 @@ describe('refazerNaColisao', () => {
     })
     await expect(refazerNaColisao(operacao)).rejects.toThrow('banco fora do ar')
     expect(operacao).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('lerResponsavelId', () => {
+  function fd(campos: Record<string, string>) {
+    const f = new FormData()
+    for (const [k, v] of Object.entries(campos)) f.set(k, v)
+    return f
+  }
+
+  it('devolve o id escolhido', () => {
+    expect(lerResponsavelId(fd({ responsavelId: 'colab-1' }))).toBe('colab-1')
+  })
+
+  it('trata vazio como "sem responsável"', () => {
+    expect(lerResponsavelId(fd({ responsavelId: '' }))).toBeNull()
+    expect(lerResponsavelId(fd({ responsavelId: '  ' }))).toBeNull()
+  })
+
+  // Uma aba aberta antes desta versão não traz o campo; ler isso como "sem
+  // responsável" apagaria o de quem já tinha, em silêncio.
+  it('trata campo ausente como "não mexer"', () => {
+    expect(lerResponsavelId(fd({ descricao: 'x' }))).toBeUndefined()
+    expect(lerResponsavelId({})).toBeUndefined()
   })
 })

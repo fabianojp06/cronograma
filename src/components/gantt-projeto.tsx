@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
 import {
@@ -25,6 +26,10 @@ export type LinhaGantt = AcaoNaGrade & {
   numero: number
   descricao: string
   status: StatusAcao
+  /** Nome do responsável pela ação, quando houver. */
+  responsavel?: string | null
+  /** Tela de edição da ação; sem ele, a descrição não é link. */
+  href?: string
 }
 
 /** Largura de cada coluna-semana; casada com o `repeat()` do grid. */
@@ -279,11 +284,25 @@ function Grade({ acoes, hoje }: { acoes: LinhaGantt[]; hoje: Date }) {
                   className="sticky left-0 z-20 flex flex-col justify-center gap-0.5 border-b border-borderSoft bg-surface px-4 py-2"
                   style={{ gridRow: `${linhaPrevisto} / span 2` }}
                 >
-                  <span className="truncate" title={acao.descricao}>
-                    <span className="tabular-nums text-textFaint">{acao.numero}.</span>{' '}
-                    {acao.descricao}
+                  {acao.href ? (
+                    <Link
+                      className="truncate hover:text-accent hover:underline"
+                      href={acao.href}
+                      title={`Editar: ${acao.descricao}`}
+                    >
+                      <span className="tabular-nums text-textFaint">{acao.numero}.</span>{' '}
+                      {acao.descricao}
+                    </Link>
+                  ) : (
+                    <span className="truncate" title={acao.descricao}>
+                      <span className="tabular-nums text-textFaint">{acao.numero}.</span>{' '}
+                      {acao.descricao}
+                    </span>
+                  )}
+                  <span className="truncate text-textMuted">
+                    {ROTULOS_STATUS[acao.status]}
+                    {acao.responsavel ? ` · ${acao.responsavel}` : null}
                   </span>
-                  <span className="text-textMuted">{ROTULOS_STATUS[acao.status]}</span>
                 </div>
 
                 {/* Fundo das duas sublinhas — dá a raia de cada ação. */}

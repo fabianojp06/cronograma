@@ -1,0 +1,148 @@
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+
+import { FormularioAcao, type ValoresAcao } from '@/components/formulario-acao'
+import { serializarValor } from '@/lib/acao-historico'
+import { type StatusAcao } from '@/lib/acao-validacao'
+import { rotularCampo } from '@/lib/dashboard-auditoria'
+import { formatarValorHistorico, rotularAutor } from '@/lib/historico-exibicao'
+import { prisma } from '@/lib/prisma'
+
+export const metadata = { title: 'Editar ação — Cronograma CTCEA' }
+
+const formatoMomento = new Intl.DateTimeFormat('pt-BR', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+  timeZone: 'America/Sao_Paulo',
+})
+
+export default async function EditarAcaoPage({
+  params,
+}: PageProps<'/projetos/[id]/acoes/[acaoId]/editar'>) {
+  const { id, acaoId } = await params
+
+  // Mesma regra de `atualizarAcao`: ação de projeto excluído não é editável. O
+  // `projetoId` no filtro impede abrir a ação de um projeto pela URL de outro.
+  const acao = await prisma.acao.findFirst({
+    where: { id: acaoId, projetoId: id, projeto: { ativo: true } },
+    select: {
+      id: true,
+      numero: true,
+      descricao: true,
+      status: true,
+      previstoInicio: true,
+      previstoTermino: true,
+      realizadoInicio: true,
+      realizadoTermino: true,
+      responsavelId: true,
+      responsavel: { select: { nome: true, ativo: true, email: true } },
+      projeto: { select: { id: true, nome: true, referencia: true } },
+      historico: {
+        orderBy: { alteradoEm: 'desc' },
+        select: {
+          id: true,
+          campo: true,
+          valorAntigo: true,
+          valorNovo: true,
+          alteradoEm: true,
+          alteradoPor: true,
+        },
+      },
+    },
+  })
+  if (!acao) notFound()
+
+  const ativos = await prisma.colaborador.findMany({
+    where: { ativo: true },
+    orderBy: { nome: 'asc' },
+    select: { id: true, nome: true, email: true },
+  })
+  const responsaveis = ativos.map((c) => ({
+    id: c.id,
+    nome: c.nome,
+    temEmail: c.email !== null,
+  }))
+  // O responsável atual entra na lista mesmo desativado: sem ele, o `select`
+  // abriria em "Sem responsável" e salvar outro campo o apagaria em silêncio.
+  if (acao.responsavelId && acao.responsavel && !acao.responsavel.ativo) {
+    responsaveis.unshift({
+      id: acao.responsavelId,
+      nome: `${acao.responsavel.nome} (inativo)`,
+      temEmail: acao.responsavel.email !== null,
+    })
+  }
+
+  // O histórico guarda o `userId` do Clerk; o nome vem do colaborador da conta.
+  const contas = [
+    ...new Set(acao.historico.map((h) => h.alteradoPor).filter((c): c is string => c !== null)),
+  ]
+  const autores = await prisma.colaborador.findMany({
+    where: { clerkUserId: { in: contas } },
+    select: { clerkUserId: true, nome: true },
+  })
+  const nomePorConta = new Map(autores.map((a) => [a.clerkUserId!, a.nome]))
+
+  const valores: ValoresAcao = {
+    id: acao.id,
+    descricao: acao.descricao,
+    status: acao.status as StatusAcao,
+    responsavelId: acao.responsavelId,
+    previstoInicio: serializarValor(acao.previstoInicio),
+    previstoTermino: serializarValor(acao.previstoTermino),
+    realizadoInicio: serializarValor(acao.realizadoInicio),
+    realizadoTermino: serializarValor(acao.realizadoTermino),
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-6xl px-6 py-12">
+      <p className="text-sm font-medium uppercase tracking-wide text-accent">
+        {acao.projeto.referencia ?? 'Projeto'}
+      </p>
+      <h1 className="mt-2 font-display text-2xl font-extrabold">
+        Ação <span className="tabular-nums">{acao.numero}</span>
+      </h1>
+      <p className="mt-2 text-sm text-textMuted">
+        Projeto{' '}
+        <Link className="text-text hover:text-accent" href={`/projetos/${acao.projeto.id}`}>
+          <strong>{acao.projeto.nome}</strong>
+        </Link>
+        . Toda mudança de status, datas ou responsável fica registrada no histórico.
+      </p>
+
+      <div className="grid gap-x-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <FormularioAcao projetoId={acao.projeto.id} responsaveis={responsaveis} acao={valores} />
+
+        <aside aria-labelledby="titulo-historico" className="mt-8">
+          <h2 className="font-display text-base font-bold" id="titulo-historico">
+            Histórico de alterações
+          </h2>
+          {acao.historico.length === 0 ? (
+            <p className="mt-3 text-sm text-textMuted">
+              Nenhuma alteração desde a criação da ação.
+            </p>
+          ) : (
+            <ol className="mt-3 space-y-3">
+              {acao.historico.map((linha) => (
+                <li className="border-l-2 border-borderSoft pl-3 text-sm" key={linha.id}>
+                  <p className="font-medium text-text">{rotularCampo(linha.campo)}</p>
+                  <p className="text-textMuted">
+                    {formatarValorHistorico(linha.campo, linha.valorAntigo)}
+                    <span aria-hidden="true"> → </span>
+                    <span className="sr-only"> para </span>
+                    <span className="text-text">
+                      {formatarValorHistorico(linha.campo, linha.valorNovo)}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-textFaint">
+                    {formatoMomento.format(linha.alteradoEm)} ·{' '}
+                    {rotularAutor(linha.alteradoPor, nomePorConta)}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </aside>
+      </div>
+    </main>
+  )
+}
