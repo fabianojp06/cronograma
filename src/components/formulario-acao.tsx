@@ -1,29 +1,26 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { useActionState } from "react";
+import Link from 'next/link'
+import { useActionState } from 'react'
 
-import {
-  criarAcao,
-  type EstadoFormularioAcao,
-} from "@/app/projetos/acoes-acao";
-import { JanelaSucessoAcao } from "@/components/janela-sucesso-acao";
+import { criarAcao, type EstadoFormularioAcao } from '@/app/projetos/acoes-acao'
+import { JanelaSucessoAcao } from '@/components/janela-sucesso-acao'
 import {
   ROTULOS_STATUS,
   STATUS_ACAO,
   type ErrosAcao,
-} from "@/lib/acao-validacao";
+} from '@/lib/acao-validacao'
 
-const ESTADO_INICIAL: EstadoFormularioAcao = {};
+const ESTADO_INICIAL: EstadoFormularioAcao = {}
 
-const classeRotulo = "block text-sm font-medium text-textMuted";
+const classeRotulo = 'block text-sm font-medium text-textMuted'
 const classeCampo =
-  "mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text " +
-  "outline-none placeholder:text-textFaint focus:border-accent focus:ring-1 focus:ring-accent";
+  'mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text ' +
+  'outline-none placeholder:text-textFaint focus:border-accent focus:ring-1 focus:ring-accent'
 
 function Erro({ mensagem }: { mensagem?: string }) {
-  if (!mensagem) return null;
-  return <p className="mt-1 text-sm text-warn">{mensagem}</p>;
+  if (!mensagem) return null
+  return <p className="mt-1 text-sm text-warn">{mensagem}</p>
 }
 
 function CampoData({
@@ -31,9 +28,9 @@ function CampoData({
   rotulo,
   erros,
 }: {
-  nome: keyof ErrosAcao;
-  rotulo: string;
-  erros?: ErrosAcao;
+  nome: keyof ErrosAcao
+  rotulo: string
+  erros?: ErrosAcao
 }) {
   return (
     <div>
@@ -43,7 +40,7 @@ function CampoData({
       <input className={classeCampo} id={nome} name={nome} type="date" />
       <Erro mensagem={erros?.[nome]} />
     </div>
-  );
+  )
 }
 
 /**
@@ -51,8 +48,8 @@ function CampoData({
  * atribuído pela Server Action dentro do projeto.
  */
 export function FormularioAcao({ projetoId }: { projetoId: string }) {
-  const [estado, acao, enviando] = useActionState(criarAcao, ESTADO_INICIAL);
-  const erros = estado.erros;
+  const [estado, acao, enviando] = useActionState(criarAcao, ESTADO_INICIAL)
+  const erros = estado.erros
 
   return (
     <>
@@ -107,16 +104,8 @@ export function FormularioAcao({ projetoId }: { projetoId: string }) {
         <section className="border-l-2 border-previsto pl-4">
           <h2 className="font-display text-base font-bold">Previsto</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <CampoData
-              nome="previstoInicio"
-              rotulo="Início previsto"
-              erros={erros}
-            />
-            <CampoData
-              nome="previstoTermino"
-              rotulo="Término previsto"
-              erros={erros}
-            />
+            <CampoData nome="previstoInicio" rotulo="Início previsto" erros={erros} />
+            <CampoData nome="previstoTermino" rotulo="Término previsto" erros={erros} />
           </div>
         </section>
 
@@ -126,16 +115,8 @@ export function FormularioAcao({ projetoId }: { projetoId: string }) {
             Opcional na criação — normalmente preenchido conforme a ação avança.
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <CampoData
-              nome="realizadoInicio"
-              rotulo="Início realizado"
-              erros={erros}
-            />
-            <CampoData
-              nome="realizadoTermino"
-              rotulo="Término realizado"
-              erros={erros}
-            />
+            <CampoData nome="realizadoInicio" rotulo="Início realizado" erros={erros} />
+            <CampoData nome="realizadoTermino" rotulo="Término realizado" erros={erros} />
           </div>
         </section>
 
@@ -152,16 +133,13 @@ export function FormularioAcao({ projetoId }: { projetoId: string }) {
                 className="size-4 animate-spin rounded-full border-2 border-onAccent/40 border-t-onAccent"
               />
             ) : null}
-            {enviando ? "Salvando…" : "Salvar ação"}
+            {enviando ? 'Salvando…' : 'Salvar ação'}
           </button>
-          <Link
-            className="text-sm text-textMuted hover:text-text"
-            href="/projetos"
-          >
+          <Link className="text-sm text-textMuted hover:text-text" href="/projetos">
             Cancelar
           </Link>
         </div>
       </form>
     </>
-  );
+  )
 }
