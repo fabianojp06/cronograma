@@ -342,10 +342,22 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
 
 ### Administração de colaboradores (`/colaboradores`)
 
-Desativar, reativar, corrigir nome e definir a área. Não há sistema de papéis:
-qualquer conta autenticada administra, coerente com o auto-cadastro — o Clerk já
-decide quem entra, e inventar papéis para três pessoas seria infraestrutura sem
-demanda.
+Desativar, reativar, corrigir nome e definir a área. Há um único papel,
+**administrador** (`Colaborador.administrador`), que exclui projeto, edita os
+pesos da matriz e gerencia colaboradores. O resto segue aberto a qualquer conta
+autenticada, coerente com o auto-cadastro — o Clerk já decide quem entra.
+
+- **Enquanto não existir administrador ATIVO, todos podem** (`administracao.ts`).
+  É o estado de antes do papel e evita o sistema nascer trancado; a restrição
+  liga sozinha quando a primeira pessoa é promovida. Quem promove OUTRA pessoa
+  nesse estado perde o acesso — a tela avisa para começar por si mesmo.
+- **A guarda está na Server Action**, não só na tela: uma Server Action é um POST
+  que qualquer conta consegue forjar. A tela esconde os controles; a ação
+  recusa (`contaPodeAdministrar`).
+- **O último administrador não sai**: remover o papel ou desativá-lo devolveria
+  o sistema a "todos podem" sem ninguém ter decidido isso. Administrador
+  desativado não conta.
+- Promover age pela intenção clicada (`promover`/`remover`), como desativar.
 
 - **Esta tela é o único lugar que preenche `Colaborador.area` fora da
   importação.** Quem se cadastra pela tela nasce sem área, e o campo não existia

@@ -4,6 +4,8 @@ import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
+import { MENSAGEM_SEM_PERMISSAO } from '@/lib/administracao'
+import { contaPodeAdministrar } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
 import {
   confirmacaoValida,
@@ -126,6 +128,8 @@ export async function excluirProjeto(
   if (!userId) {
     return { erroGeral: 'Sessão expirada. Entre novamente para excluir o projeto.' }
   }
+
+  if (!(await contaPodeAdministrar(userId))) return { erroGeral: MENSAGEM_SEM_PERMISSAO }
 
   const id = lerIdProjeto(formData)
   if (!id) return { erroGeral: 'Projeto não identificado. Recarregue a página.' }

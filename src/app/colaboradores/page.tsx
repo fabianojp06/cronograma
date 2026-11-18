@@ -1,6 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 
 import { LinhaColaborador, type ColaboradorAdmin } from '@/components/linha-colaborador'
+import { podeAdministrar, semAdministradores } from '@/lib/administracao'
+import { situacaoAdmin } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
 import { projetosADivergir, projetosDaPessoa } from '@/lib/colaborador-admin'
 
@@ -9,6 +11,9 @@ export const metadata = { title: 'Colaboradores — Cronograma CTCEA' }
 export default async function ColaboradoresPage() {
   const { userId } = await auth()
   if (!userId) return null
+
+  const situacao = await situacaoAdmin(userId)
+  const podeEditar = podeAdministrar(situacao)
 
   const [cadastrados, projetos] = await Promise.all([
     prisma.colaborador.findMany({
@@ -19,6 +24,7 @@ export default async function ColaboradoresPage() {
         area: true,
         email: true,
         ativo: true,
+        administrador: true,
         clerkUserId: true,
         _count: { select: { cards: true, wins: true } },
       },
@@ -64,6 +70,7 @@ export default async function ColaboradoresPage() {
     area: c.area,
     email: c.email,
     ativo: c.ativo,
+    administrador: c.administrador,
     vinculado: c.clerkUserId !== null,
     cards: c._count.cards,
     wins: c._count.wins,
@@ -86,6 +93,21 @@ export default async function ColaboradoresPage() {
         cobrada na lista de quem falta.
       </p>
 
+      {semAdministradores(situacao) ? (
+        <p className="mt-6 border-l-2 border-warn bg-surface py-3 pl-4 text-sm text-text">
+          Nenhum administrador definido: hoje qualquer pessoa pode excluir projetos,
+          editar os pesos da matriz e gerenciar colaboradores. Torne administrador
+          quem deve ter esse acesso — <strong className="font-medium">comece por você</strong>,
+          porque, depois que a primeira pessoa for promovida, só administradores
+          fazem isso.
+        </p>
+      ) : !podeEditar ? (
+        <p className="mt-6 border-l-2 border-borderSoft bg-surface py-3 pl-4 text-sm text-textMuted">
+          Só administradores editam colaboradores. Para pedir alteração, fale com um
+          deles: {lista.filter((c) => c.administrador && c.ativo).map((c) => c.nome).join(', ')}.
+        </p>
+      ) : null}
+
       {lista.length === 0 ? (
         <p className="mt-8 border-l-2 border-borderSoft bg-surface py-3 pl-4 text-sm text-textMuted">
           Ninguém cadastrado ainda. O primeiro cadastro acontece na tela Card WIN.
@@ -97,6 +119,7 @@ export default async function ColaboradoresPage() {
               key={colaborador.id}
               colaborador={colaborador}
               areasEmUso={areasEmUso}
+              podeEditar={podeEditar}
             />
           ))}
         </ul>

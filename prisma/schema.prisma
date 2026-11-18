@@ -178,6 +178,10 @@ model Colaborador {
   /// editável em /colaboradores — quem veio da planilha nunca fez login.
   email       String?
   ativo       Boolean @default(true)
+  /// Pode excluir projeto, editar os pesos da matriz e gerenciar colaboradores.
+  /// Enquanto NINGUÉM for administrador, todos podem (o comportamento de antes
+  /// desta coluna) — assim o sistema não nasce trancado. Ver `administracao.ts`.
+  administrador Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

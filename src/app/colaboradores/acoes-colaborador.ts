@@ -5,6 +5,12 @@ import { revalidatePath } from 'next/cache'
 
 import { prisma } from '@/lib/prisma'
 import {
+  MENSAGEM_ERRO_ADMINISTRADOR,
+  MENSAGEM_SEM_PERMISSAO,
+  podeDeixarDeSerAdministrador,
+} from '@/lib/administracao'
+import { contaPodeAdministrar } from '@/lib/administracao-servidor'
+import {
   lerAcaoAtivo,
   MENSAGEM_ERRO_ADMIN,
   podeDesativar,
@@ -60,6 +66,8 @@ export async function salvarColaborador(
 ): Promise<EstadoAdmin> {
   const { userId } = await auth()
   if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
+
+  if (!(await contaPodeAdministrar(userId))) return { erroGeral: MENSAGEM_SEM_PERMISSAO }
 
   const id = lerId(formData, 'colaboradorId')
   if (!id) return { erroGeral: MENSAGEM_ERRO_ADMIN.NAO_ENCONTRADO }
@@ -186,6 +194,8 @@ export async function alternarAtivo(
   const { userId } = await auth()
   if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
 
+  if (!(await contaPodeAdministrar(userId))) return { erroGeral: MENSAGEM_SEM_PERMISSAO }
+
   const id = lerId(formData, 'colaboradorId')
   if (!id) return { erroGeral: MENSAGEM_ERRO_ADMIN.NAO_ENCONTRADO }
 
@@ -196,11 +206,17 @@ export async function alternarAtivo(
   try {
     const alvo = await prisma.colaborador.findUnique({
       where: { id },
-      select: { nome: true },
+      select: { nome: true, administrador: true, ativo: true },
     })
     if (!alvo) return { erroGeral: MENSAGEM_ERRO_ADMIN.NAO_ENCONTRADO }
 
     if (desativando) {
+      const totalAdmins = await prisma.colaborador.count({
+        where: { administrador: true, ativo: true },
+      })
+      const ultimo = podeDeixarDeSerAdministrador(alvo, totalAdmins)
+      if (!ultimo.ok) return { erroGeral: MENSAGEM_ERRO_ADMINISTRADOR[ultimo.erro] }
+
       const quemPede = await prisma.colaborador.findFirst({
         where: { clerkUserId: userId },
         select: { id: true },
@@ -226,6 +242,74 @@ export async function alternarAtivo(
     }
   } catch (erro) {
     console.error('Falha ao alternar colaborador', erro)
+    return { erroGeral: 'Não foi possível alterar. Tente novamente.' }
+  }
+}
+
+/**
+ * Promove ou remove o papel de administrador, **pela intenção clicada** (mesmo
+ * motivo de `alternarAtivo`: negar o que se leu inverteria o pedido se outra
+ * pessoa mexeu no meio).
+ *
+ * Só administrador mexe — e, enquanto não existe nenhum, qualquer conta, que é
+ * como a primeira pessoa é promovida. Quem promove OUTRA pessoa nesse estado
+ * liga a restrição e deixa de poder administrar; a tela avisa isso.
+ *
+ * Só colaborador ativo pode ser promovido, e o último administrador não pode
+ * ser removido: voltaria ao "todos podem" sem ninguém ter decidido isso.
+ */
+export async function alternarAdministrador(
+  _anterior: EstadoAdmin,
+  formData: FormData,
+): Promise<EstadoAdmin> {
+  const { userId } = await auth()
+  if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
+  if (!(await contaPodeAdministrar(userId))) return { erroGeral: MENSAGEM_SEM_PERMISSAO }
+
+  const id = lerId(formData, 'colaboradorId')
+  if (!id) return { erroGeral: MENSAGEM_ERRO_ADMIN.NAO_ENCONTRADO }
+
+  const intencao = formData.get('acao')
+  if (intencao !== 'promover' && intencao !== 'remover') {
+    return { erroGeral: MENSAGEM_ERRO_ADMIN.NAO_ENCONTRADO }
+  }
+  const promovendo = intencao === 'promover'
+
+  try {
+    const alvo = await prisma.colaborador.findUnique({
+      where: { id },
+      select: { nome: true, ativo: true, administrador: true },
+    })
+    if (!alvo) return { erroGeral: MENSAGEM_ERRO_ADMIN.NAO_ENCONTRADO }
+
+    if (promovendo) {
+      if (!alvo.ativo) {
+        return { erroGeral: 'Só um colaborador ativo pode ser administrador.' }
+      }
+    } else {
+      const totalAdmins = await prisma.colaborador.count({
+        where: { administrador: true, ativo: true },
+      })
+      const ultimo = podeDeixarDeSerAdministrador(alvo, totalAdmins)
+      if (!ultimo.ok) return { erroGeral: MENSAGEM_ERRO_ADMINISTRADOR[ultimo.erro] }
+    }
+
+    const { count } = await prisma.colaborador.updateMany({
+      where: { id, administrador: !promovendo },
+      data: { administrador: promovendo },
+    })
+    if (count === 0) return { erroGeral: MENSAGEM_ERRO_ADMIN.ESTADO_MUDOU }
+
+    revalidatePath('/colaboradores')
+    revalidatePath('/priorizacao/pesos')
+    revalidatePath('/projetos', 'layout')
+    return {
+      aviso: promovendo
+        ? `${alvo.nome} agora é administrador.`
+        : `${alvo.nome} deixou de ser administrador.`,
+    }
+  } catch (erro) {
+    console.error('Falha ao alternar administrador', erro)
     return { erroGeral: 'Não foi possível alterar. Tente novamente.' }
   }
 }
