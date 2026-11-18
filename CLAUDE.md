@@ -468,6 +468,25 @@ que não acumulava, promoção que não liberava a vaga e remoção deixando `Wi
 órfão passaram por `tsc`, por `eslint` e por 461 testes verdes. Só o banco
 denunciou. Toda mudança nas ações de `/wins` roda os dois.
 
+## Responsável pela ação e aviso por e-mail
+
+`Acao.responsavelId` aponta para `Colaborador`; o e-mail sai de
+`Colaborador.email` (semeado pelo Clerk no vínculo, editável em `/colaboradores`).
+
+- **O histórico grava o NOME do responsável**, não o id (`campo = 'responsavel'`):
+  um id no painel não diz nada, e o nome registra quem respondia na época.
+- **Só colaborador ativo pode ser escolhido — exceto o responsável atual.** Se ele
+  foi desativado depois, a tela de edição o mantém na lista "(inativo)" e salvar
+  outro campo não o apaga nem dá erro.
+- **Campo ausente não mexe** (`lerResponsavelId` → `undefined`), vazio remove.
+- **O aviso sai ao criar com responsável e ao TROCAR para outra pessoa.** Salvar
+  de novo com a mesma pessoa ou tirar o responsável não envia nada.
+- **O aviso nunca derruba a gravação.** `enviarEmail` não lança; a tela recebe a
+  frase do que aconteceu (`mensagemDoAviso`), inclusive "não tem e-mail".
+- **Só produção envia** (`email-config.ts`, `VERCEL_ENV=production`), pela mesma
+  razão da guarda de migrations: o preview usa o banco de produção e avisaria
+  colaboradores reais. Envio pela API HTTP do Resend, sem SDK.
+
 ## Migrations em produção
 
 O `build` roda `scripts/migrar-producao.ts` antes do `next build`, e esse script

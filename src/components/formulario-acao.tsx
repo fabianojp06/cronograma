@@ -104,7 +104,11 @@ export function FormularioAcao({
 
   return (
     <>
-      {editando ? null : <JanelaSucessoAcao criada={estado.criada} projetoId={projetoId} />}
+      {editando ? null : <JanelaSucessoAcao
+          criada={estado.criada}
+          projetoId={projetoId}
+          aviso={estado.aviso}
+        />}
       <form action={enviar} className="mt-8 space-y-6" key={estado.criada?.id}>
         <input type="hidden" name="id" value={valores?.id ?? projetoId} />
 
@@ -113,7 +117,7 @@ export function FormularioAcao({
             className="border-l-2 border-realizado bg-surface py-2 pl-3 text-sm text-text"
             role="status"
           >
-            Alterações salvas.
+            Alterações salvas.{estado.aviso ? ` ${estado.aviso}` : null}
           </p>
         ) : null}
 
