@@ -117,7 +117,7 @@ export type EstadoFormularioAcao = {
   conflito?: boolean
 }
 
-export const MENSAGEM_CONFLITO_EDICAO =
+const MENSAGEM_CONFLITO_EDICAO =
   'Esta ação foi alterada por outra pessoa depois que você abriu a tela, e o que ela salvou ' +
   'não foi sobrescrito. Recarregue a ação para ver a versão atual e refaça a sua alteração.'
 
