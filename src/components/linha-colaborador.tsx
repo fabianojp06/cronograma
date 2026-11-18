@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 
 import {
+  alternarAdministrador,
   alternarAtivo,
   salvarColaborador,
   type EstadoAdmin,
@@ -15,6 +16,7 @@ export type ColaboradorAdmin = {
   area: string | null
   email: string | null
   ativo: boolean
+  administrador: boolean
   vinculado: boolean
   cards: number
   wins: number
@@ -31,10 +33,13 @@ const classeCampo =
 export function LinhaColaborador({
   colaborador,
   areasEmUso,
+  podeEditar,
 }: {
   colaborador: ColaboradorAdmin
   /** Grafias de área já usadas — sugestão, não lista fechada. */
   areasEmUso: readonly string[]
+  /** Só administrador edita; os demais veem a lista sem os controles. */
+  podeEditar: boolean
 }) {
   const [editando, setEditando] = useState(false)
   const [estadoNome, acaoNome, salvando] = useActionState<EstadoAdmin, FormData>(
@@ -43,6 +48,10 @@ export function LinhaColaborador({
   )
   const [estadoAtivo, acaoAtivo, alternando] = useActionState<EstadoAdmin, FormData>(
     alternarAtivo,
+    {},
+  )
+  const [estadoPapel, acaoPapel, alternandoPapel] = useActionState<EstadoAdmin, FormData>(
+    alternarAdministrador,
     {},
   )
 
@@ -172,6 +181,9 @@ export function LinhaColaborador({
                 {colaborador.ativo ? null : (
                   <span className="ml-2 text-xs font-normal text-textFaint">inativo</span>
                 )}
+                {colaborador.administrador ? (
+                  <span className="ml-2 text-xs font-normal text-accent">administrador</span>
+                ) : null}
               </p>
               <p className="mt-0.5 text-xs text-textFaint">
                 {colaborador.area ?? 'sem área'} ·{' '}
@@ -186,6 +198,7 @@ export function LinhaColaborador({
           )}
         </div>
 
+        {podeEditar ? (
         <div className="flex items-center gap-3">
           {editando ? null : (
             <button
@@ -213,10 +226,27 @@ export function LinhaColaborador({
               {colaborador.ativo ? 'Desativar' : 'Reativar'}
             </button>
           </form>
+          {colaborador.ativo || colaborador.administrador ? (
+            <form action={acaoPapel}>
+              <Processando ativo={alternandoPapel} texto="Atualizando administrador…" />
+              <input type="hidden" name="colaboradorId" value={colaborador.id} />
+              <button
+                className="inline-flex items-center gap-2 text-xs text-textMuted hover:text-accent disabled:opacity-60"
+                type="submit"
+                name="acao"
+                value={colaborador.administrador ? 'remover' : 'promover'}
+                disabled={alternandoPapel}
+              >
+                {alternandoPapel ? <Spinner className="size-3" /> : null}
+                {colaborador.administrador ? 'Remover administrador' : 'Tornar administrador'}
+              </button>
+            </form>
+          ) : null}
         </div>
+        ) : null}
       </div>
 
-      {[estadoNome, estadoAtivo].map((estado, i) =>
+      {[estadoNome, estadoAtivo, estadoPapel].map((estado, i) =>
         estado.erroGeral ? (
           <p key={i} className="mt-2 text-xs text-warn">
             {estado.erroGeral}

@@ -1,7 +1,10 @@
 import Link from 'next/link'
 
+import { auth } from '@clerk/nextjs/server'
+
 import { FormularioPesos } from '@/components/formulario-pesos'
 import { montarPesos, pesosSaoPadrao } from '@/lib/matriz-validacao'
+import { contaPodeAdministrar } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'Pesos dos critérios — Cronograma CTCEA' }
@@ -11,6 +14,8 @@ export default async function PesosPage() {
     select: { criterio: true, peso: true },
   })
   const pesos = montarPesos(linhas)
+  const { userId } = await auth()
+  const podeEditar = userId !== null && (await contaPodeAdministrar(userId))
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
@@ -38,7 +43,14 @@ export default async function PesosPage() {
         )}
       </p>
 
-      <FormularioPesos pesos={pesos} />
+      {podeEditar ? (
+        <FormularioPesos pesos={pesos} />
+      ) : (
+        <p className="mt-8 border-l-2 border-borderSoft bg-surface py-3 pl-4 text-sm text-textMuted">
+          Só administradores editam os pesos. Peça a um administrador (Colaboradores
+          mostra quem são).
+        </p>
+      )}
 
       <p className="mt-10 border-t border-border pt-6 text-sm text-textMuted">
         O GUT não tem peso configurável: ele é o produto G × U × T. A planilha

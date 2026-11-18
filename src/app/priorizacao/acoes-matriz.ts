@@ -3,6 +3,8 @@
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
+import { MENSAGEM_SEM_PERMISSAO } from '@/lib/administracao'
+import { contaPodeAdministrar } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
 import { CRITERIOS } from '@/lib/matriz-criterios'
 import {
@@ -90,6 +92,8 @@ export async function salvarPesos(
   if (!userId) {
     return { erroGeral: 'Sessão expirada. Entre novamente para salvar os pesos.' }
   }
+
+  if (!(await contaPodeAdministrar(userId))) return { erroGeral: MENSAGEM_SEM_PERMISSAO }
 
   const validacao = validarPesos(formData)
   if (!validacao.ok) return { erros: validacao.erros }

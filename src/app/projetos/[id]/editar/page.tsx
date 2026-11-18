@@ -1,8 +1,10 @@
+import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ExcluirProjeto } from '@/components/excluir-projeto'
 import { FormularioProjeto } from '@/components/formulario-projeto'
+import { contaPodeAdministrar } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
 import { valoresIniciais } from '@/lib/projeto-edicao'
 
@@ -33,6 +35,9 @@ export default async function EditarProjetoPage({
 
   if (!projeto) notFound()
 
+  const { userId } = await auth()
+  const podeExcluir = userId !== null && (await contaPodeAdministrar(userId))
+
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
       <p className="text-sm font-medium uppercase tracking-wide text-accent">
@@ -49,7 +54,13 @@ export default async function EditarProjetoPage({
       <FormularioProjeto
         projeto={{ id: projeto.id, valores: valoresIniciais(projeto) }}
       />
-      <ExcluirProjeto id={projeto.id} nome={projeto.nome} />
+      {podeExcluir ? (
+        <ExcluirProjeto id={projeto.id} nome={projeto.nome} />
+      ) : (
+        <p className="mt-10 border-t border-border pt-6 text-sm text-textMuted">
+          Só administradores excluem projetos.
+        </p>
+      )}
     </main>
   )
 }
