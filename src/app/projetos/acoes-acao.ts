@@ -25,6 +25,7 @@ import {
 import { enviarEmail } from '@/lib/enviar-email'
 import {
   CAMPOS_AUDITADOS,
+  ConflitoDeEdicao,
   gravarAcaoComHistorico,
   serializarValor,
   type EstadoAuditado,
@@ -105,12 +106,30 @@ export type EstadoFormularioAcao = {
   /** Preenchido só no sucesso — a UI confirma sem sair da tela. */
   criada?: { id: string; numero: number; descricao: string }
   /** Preenchido só no sucesso da edição. */
-  salva?: { id: string; numero: number; descricao: string }
+  salva?: { id: string; numero: number; descricao: string; versao?: string }
   erros?: ErrosAcao
   /** Erro que não pertence a um campo específico (falha de banco, sessão). */
   erroGeral?: string
   /** O que aconteceu com o aviso por e-mail ao responsável, quando houve um. */
   aviso?: string
+  /** A edição não foi gravada porque outra pessoa alterou a ação antes. */
+  conflito?: boolean
+}
+
+export const MENSAGEM_CONFLITO_EDICAO =
+  'Esta ação foi alterada por outra pessoa depois que você abriu a tela, e o que ela salvou ' +
+  'não foi sobrescrito. Recarregue a ação para ver a versão atual e refaça a sua alteração.'
+
+/**
+ * Versão (`updatedAt`) que o formulário de edição viu. Ausente ou ilegível =
+ * sem conferência: uma aba aberta antes desta versão não manda o campo, e
+ * recusar tudo o que não traz a versão travaria quem já estava editando.
+ */
+function lerVersao(formData: FormData): Date | undefined {
+  const bruto = formData.get('versao')
+  if (typeof bruto !== 'string' || bruto === '') return undefined
+  const data = new Date(bruto)
+  return Number.isNaN(data.getTime()) ? undefined : data
 }
 
 /**
@@ -277,8 +296,9 @@ export async function atualizarAcao(
 
     // Ausente (`undefined`) fica fora dos dois objetos: o Prisma pula a coluna
     // e o histórico não compara o campo — não mexer não é apagar.
-    await gravarAcaoComHistorico(prisma, {
+    const gravacao = await gravarAcaoComHistorico(prisma, {
       acaoId,
+      versaoEsperada: lerVersao(formData),
       atual: estadoAuditado(atual),
       dados: { ...validacao.dados, responsavelId },
       novos:
@@ -305,10 +325,18 @@ export async function atualizarAcao(
       : undefined
 
     return {
-      salva: { id: acaoId, numero: atual.numero, descricao: validacao.dados.descricao },
+      salva: {
+        id: acaoId,
+        numero: atual.numero,
+        descricao: validacao.dados.descricao,
+        ...(gravacao.versao ? { versao: gravacao.versao.toISOString() } : {}),
+      },
       ...(aviso ? { aviso } : {}),
     }
   } catch (erro) {
+    if (erro instanceof ConflitoDeEdicao) {
+      return { erroGeral: MENSAGEM_CONFLITO_EDICAO, conflito: true }
+    }
     console.error('Falha ao atualizar ação', erro)
     return { erroGeral: 'Não foi possível salvar a ação. Tente novamente.' }
   }
