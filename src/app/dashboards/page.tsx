@@ -20,7 +20,6 @@ import {
 } from '@/lib/dashboard-auditoria'
 import { RELATORIOS, type Relatorio } from '@/lib/dashboard-catalogo'
 import {
-  janelaDeSemanas,
   taxaDeConclusao,
   winsReincidentes,
 } from '@/lib/dashboard-wins'
@@ -46,7 +45,14 @@ import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { formatarDataBR } from '@/lib/formatacao'
 import { resumirPainel } from '@/lib/painel-consolidado'
 import { prisma } from '@/lib/prisma'
-import { lerPeriodo, periodoAtivo, recortarPorPeriodo } from '@/lib/filtro-periodo'
+import {
+  janelaDoPeriodo,
+  lerPeriodo,
+  limitesDoInstante,
+  periodoAtivo,
+  recortarPorPeriodo,
+  semanaNoPeriodo,
+} from '@/lib/filtro-periodo'
 import { filtrarPorStatus, lerFiltros, whereProjetoAtivo } from '@/lib/projeto-filtros'
 import { montarLinhas, opcoesDistintas } from '@/lib/projetos-listagem'
 import type { StatusAcao } from '@/lib/acao-validacao'
@@ -115,13 +121,13 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
       where: { ativo: true },
       select: { equipe: true, categoria: true, responsavel: true },
     }),
-    // A auditoria NÃO segue os filtros da carteira: a pergunta é "o que mudou
-    // no sistema", e recortá-la por equipe esconderia justamente o que se quer
-    // fiscalizar. Limitada às últimas alterações para não crescer sem teto.
-    // Os relatórios de Card WIN NÃO seguem os filtros da carteira: equipe,
-    // natureza e prioridade são dimensões de `Projeto`, e um WIN não tem
-    // nenhuma delas. Mexer num filtro deixaria estes números parados, o que
-    // leria como bug.
+    // Auditoria e Card WIN NÃO seguem os filtros da carteira (equipe,
+    // responsável, categoria, status): a auditoria pergunta "o que mudou no
+    // sistema", e um WIN não tem equipe, natureza nem prioridade — mexer num
+    // desses filtros deixaria os números parados, o que leria como bug. Só o
+    // PERÍODO vale para eles: a auditoria recorta pela data da alteração (no
+    // banco, para o teto de 500 não cortar o intervalo escolhido) e o Card WIN
+    // pelas semanas que tocam o período.
     prisma.winSemana.findMany({
       select: {
         status: true,
@@ -142,6 +148,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
       },
     }),
     prisma.historicoAlteracao.findMany({
+      where: periodoAtivo(periodo) ? { alteradoEm: limitesDoInstante(periodo) } : undefined,
       orderBy: { alteradoEm: 'desc' },
       take: 500,
       select: {
@@ -174,7 +181,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
       status: r.status,
       desfecho: r.desfecho,
     })),
-    janelaDeSemanas(semanaAtual, 12),
+    janelaDoPeriodo(periodo, semanaAtual),
     semanaAtual,
   )
   const reincidentes = winsReincidentes(
@@ -188,6 +195,8 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
       projetoId: w.projetoId,
       aparicoes: w.registros.map((r) => r.card),
     })),
+    2,
+    periodoAtivo(periodo) ? (semana) => semanaNoPeriodo(semana, periodo) : undefined,
   )
   const resumoPorId = new Map(linhas.map((linha) => [linha.id, linha.resumo]))
   const visiveis = projetos.filter((projeto) => resumoPorId.has(projeto.id))
@@ -259,8 +268,9 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
       </p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Dashboards</h1>
       <p className="mt-2 max-w-3xl text-sm text-textMuted">
-        Relatórios sobre a carteira de projetos. Os filtros abaixo, incluindo o período, valem para todas
-        as seções, exceto as de <strong className="font-medium">Card WIN</strong> e as de
+        Relatórios sobre a carteira de projetos. O <strong className="font-medium">período</strong>{' '}
+        vale para todas as seções. Equipe, responsável, categoria e status valem para
+        todas, exceto as de <strong className="font-medium">Card WIN</strong> e as de
         auditoria, que sempre olham o sistema inteiro — equipe, natureza e prioridade
         são dimensões de projeto, e um WIN não tem nenhuma delas.
       </p>
@@ -276,7 +286,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
 
       {periodoAtivo(periodo) ? (
         <p className="mt-3 text-sm text-textMuted" role="status">
-          Período aplicado às seções da carteira.
+          Período aplicado. A auditoria usa a data da alteração e o Card WIN, as semanas que tocam o intervalo.
           {semDataPrevista > 0
             ? ` ${semDataPrevista} ${semDataPrevista === 1 ? 'ação sem data prevista ficou' : 'ações sem data prevista ficaram'} de fora.`
             : null}
@@ -525,7 +535,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
 
         <DashboardSecao relatorio={rel('wins-conclusao')}>
           {conclusaoSemanal.every((s) => s.total === 0) ? (
-            <SemDados>Nenhum WIN registrado nas últimas 12 semanas.</SemDados>
+            <SemDados>{periodoAtivo(periodo) ? 'Nenhum WIN registrado nas semanas do período.' : 'Nenhum WIN registrado nas últimas 12 semanas.'}</SemDados>
           ) : (
             <>
               <GraficoWinsSemana semanas={conclusaoSemanal} />
