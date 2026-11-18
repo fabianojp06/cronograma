@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   CAMPOS_AUDITADOS,
   alteracoesDeAcao,
+  ConflitoDeEdicao,
   gravarAcaoComHistorico,
   serializarValor,
   type ClienteGravacaoAcao,
@@ -39,14 +40,20 @@ function clienteFalso() {
   const createMany: ClienteTransacaoAcao['historicoAlteracao']['createMany'] = vi.fn(
     async () => ({}),
   )
+  const updateMany: ClienteTransacaoAcao['acao']['updateMany'] = vi.fn(async () => ({
+    count: 1,
+  }))
+  const findUnique: ClienteTransacaoAcao['acao']['findUnique'] = vi.fn(async () => ({
+    updatedAt: new Date('2026-03-10T12:00:00.000Z'),
+  }))
   const transacional: ClienteTransacaoAcao = {
-    acao: { update },
+    acao: { update, updateMany, findUnique },
     historicoAlteracao: { createMany },
   }
   const cliente: ClienteGravacaoAcao = {
     $transaction: async (fn) => fn(transacional),
   }
-  return { cliente, update, createMany }
+  return { cliente, update, updateMany, createMany }
 }
 
 describe('CAMPOS_AUDITADOS', () => {
@@ -248,5 +255,53 @@ describe('gravarAcaoComHistorico', () => {
 
     expect(alteracoes).toEqual([])
     expect(createMany).not.toHaveBeenCalled()
+  })
+})
+
+describe('gravarAcaoComHistorico com versão esperada', () => {
+  const VERSAO = new Date('2026-03-10T10:00:00.000Z')
+
+  it('grava pela versão e devolve a nova', async () => {
+    const { cliente, update, updateMany } = clienteFalso()
+
+    const { versao } = await gravarAcaoComHistorico(cliente, {
+      acaoId: 'acao-1',
+      atual: ATUAL,
+      dados: { ...DADOS, status: 'EM_CURSO_25' },
+      versaoEsperada: VERSAO,
+    })
+
+    expect(update).not.toHaveBeenCalled()
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'acao-1', updatedAt: VERSAO },
+      data: expect.any(Object),
+    })
+    expect(versao).toEqual(new Date('2026-03-10T12:00:00.000Z'))
+  })
+
+  it('lança conflito e não grava histórico quando a versão mudou', async () => {
+    const { cliente, updateMany, createMany } = clienteFalso()
+    vi.mocked(updateMany).mockResolvedValueOnce({ count: 0 })
+
+    await expect(
+      gravarAcaoComHistorico(cliente, {
+        acaoId: 'acao-1',
+        atual: ATUAL,
+        dados: { ...DADOS, status: 'CONCLUIDO' },
+        versaoEsperada: VERSAO,
+      }),
+    ).rejects.toBeInstanceOf(ConflitoDeEdicao)
+    expect(createMany).not.toHaveBeenCalled()
+  })
+
+  it('sem versão esperada, grava como sempre e não devolve versão', async () => {
+    const { cliente, update } = clienteFalso()
+    const { versao } = await gravarAcaoComHistorico(cliente, {
+      acaoId: 'acao-1',
+      atual: ATUAL,
+      dados: DADOS,
+    })
+    expect(update).toHaveBeenCalledOnce()
+    expect(versao).toBeNull()
   })
 })

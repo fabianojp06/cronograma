@@ -68,6 +68,8 @@ export type ValoresAcao = {
   descricao: string
   status: StatusAcao
   responsavelId: string | null
+  /** `updatedAt` ao abrir a edição — a gravação confere que ainda é essa. */
+  versao: string
 } & { [C in CampoData]: string | null }
 
 /**
@@ -113,6 +115,11 @@ export function FormularioAcao({
       <form action={enviar} className="mt-8 space-y-6" key={estado.criada?.id}>
         <Processando ativo={enviando} texto="Salvando ação…" />
         <input type="hidden" name="id" value={valores?.id ?? projetoId} />
+        {/* Depois de salvar, a versão passa a ser a que a gravação devolveu —
+            senão a pessoa conflitaria com o próprio save. */}
+        {valores ? (
+          <input type="hidden" name="versao" value={estado.salva?.versao ?? valores.versao} />
+        ) : null}
 
         {estado.salva ? (
           <p
@@ -126,6 +133,18 @@ export function FormularioAcao({
         {estado.erroGeral ? (
           <p className="border-l-2 border-warn bg-surface py-2 pl-3 text-sm text-warn">
             {estado.erroGeral}
+            {estado.conflito && valores ? (
+              <>
+                {' '}
+                <button
+                  className="font-medium underline"
+                  type="button"
+                  onClick={() => window.location.reload()}
+                >
+                  Recarregar a ação
+                </button>
+              </>
+            ) : null}
           </p>
         ) : null}
 

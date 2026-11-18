@@ -495,6 +495,12 @@ denunciou. Toda mudança nas ações de `/wins` roda os dois.
   de novo com a mesma pessoa ou tirar o responsável não envia nada.
 - **O aviso nunca derruba a gravação.** `enviarEmail` não lança; a tela recebe a
   frase do que aconteceu (`mensagemDoAviso`), inclusive "não tem e-mail".
+- **Edição conferida por versão (`updatedAt`).** O formulário de edição manda a
+  versão que viu e `gravarAcaoComHistorico` grava com `updateMany where
+  { id, updatedAt }`: conferir e gravar são um comando só, e `count = 0` lança
+  `ConflitoDeEdicao` de dentro da transação, sem escrever nem o histórico. O save
+  devolve a nova versão para a pessoa não conflitar com o próprio save. Campo
+  ausente ou ilegível = sem conferência (aba antiga, apontamento de realizado).
 - **Só produção envia** (`email-config.ts`, `VERCEL_ENV=production`), pela mesma
   razão da guarda de migrations: o preview usa o banco de produção e avisaria
   colaboradores reais. Envio pela API HTTP do Resend, sem SDK.

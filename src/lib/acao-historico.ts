@@ -82,6 +82,14 @@ export function alteracoesDeAcao(
 export type ClienteTransacaoAcao = {
   acao: {
     update(args: { where: { id: string }; data: Record<string, unknown> }): Promise<unknown>
+    updateMany(args: {
+      where: { id: string; updatedAt: Date }
+      data: Record<string, unknown>
+    }): Promise<{ count: number }>
+    findUnique(args: {
+      where: { id: string }
+      select: { updatedAt: true }
+    }): Promise<{ updatedAt: Date } | null>
   }
   historicoAlteracao: {
     createMany(args: { data: LinhaHistoricoGravada[] }): Promise<unknown>
@@ -97,6 +105,23 @@ type LinhaHistoricoGravada = LinhaHistorico & { acaoId: string }
 export type ResultadoGravacaoAcao = {
   /** Linhas efetivamente gravadas em `HistoricoAlteracao`. */
   alteracoes: LinhaHistorico[]
+  /**
+   * Nova versão (`updatedAt`) da Ação depois da gravação. Só vem quando a
+   * gravação foi condicionada a uma `versaoEsperada`; o formulário a usa como
+   * a versão da próxima edição, para a pessoa não conflitar com o próprio save.
+   */
+  versao: Date | null
+}
+
+/**
+ * Outra pessoa gravou a Ação depois que esta edição começou. Lançada de dentro
+ * da transação, então nada é escrito — nem o histórico.
+ */
+export class ConflitoDeEdicao extends Error {
+  constructor() {
+    super('A ação foi alterada por outra pessoa depois que a edição começou.')
+    this.name = 'ConflitoDeEdicao'
+  }
 }
 
 /**
@@ -121,6 +146,13 @@ export async function gravarAcaoComHistorico(
      */
     novos?: Partial<EstadoAuditado>
     alteradoPor?: string | null
+    /**
+     * `updatedAt` que a pessoa viu ao abrir a edição. Com ele, a gravação só
+     * acontece se a Ação ainda estiver nessa versão (`ConflitoDeEdicao` se
+     * não): sem isso a última pessoa a salvar sobrescreve a outra em silêncio.
+     * Ausente = sem conferência (apontamento de realizado, abas antigas).
+     */
+    versaoEsperada?: Date
   },
 ): Promise<ResultadoGravacaoAcao> {
   const alteracoes = alteracoesDeAcao(
@@ -129,14 +161,30 @@ export async function gravarAcaoComHistorico(
     entrada.alteradoPor ?? null,
   )
 
-  await cliente.$transaction(async (tx) => {
-    await tx.acao.update({ where: { id: entrada.acaoId }, data: entrada.dados })
+  const versao = await cliente.$transaction(async (tx) => {
+    if (entrada.versaoEsperada) {
+      // A versão vai no `where`: conferir e gravar são UM comando, sem janela
+      // entre ler e escrever para outra pessoa passar.
+      const { count } = await tx.acao.updateMany({
+        where: { id: entrada.acaoId, updatedAt: entrada.versaoEsperada },
+        data: entrada.dados,
+      })
+      if (count === 0) throw new ConflitoDeEdicao()
+    } else {
+      await tx.acao.update({ where: { id: entrada.acaoId }, data: entrada.dados })
+    }
     if (alteracoes.length > 0) {
       await tx.historicoAlteracao.createMany({
         data: alteracoes.map((linha) => ({ ...linha, acaoId: entrada.acaoId })),
       })
     }
+    if (!entrada.versaoEsperada) return null
+    const gravada = await tx.acao.findUnique({
+      where: { id: entrada.acaoId },
+      select: { updatedAt: true },
+    })
+    return gravada?.updatedAt ?? null
   })
 
-  return { alteracoes }
+  return { alteracoes, versao }
 }

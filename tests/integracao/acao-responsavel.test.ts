@@ -262,3 +262,70 @@ describe('aviso por e-mail ao responsável', () => {
     expect(r.aviso).toContain('Não foi possível enviar o aviso')
   })
 })
+
+describe('conflito de edição', () => {
+  const versaoDe = async (id: string) =>
+    (await prisma.acao.findUniqueOrThrow({ where: { id } })).updatedAt.toISOString()
+
+  it('grava quando a versão é a que a pessoa viu, e devolve a nova', async () => {
+    const id = await criar()
+    const versao = await versaoDe(id)
+
+    const r = await atualizarAcao({}, edicao(id, { versao, status: 'EM_CURSO_25' }))
+
+    expect(r.erroGeral).toBeUndefined()
+    expect(r.salva?.versao).toBeDefined()
+    expect(r.salva?.versao).not.toBe(versao)
+    expect(r.salva?.versao).toBe(await versaoDe(id))
+  })
+
+  it('a pessoa pode salvar de novo com a versão que o save devolveu', async () => {
+    const id = await criar()
+    const primeira = await atualizarAcao(
+      {},
+      edicao(id, { versao: await versaoDe(id), status: 'EM_CURSO_25' }),
+    )
+    const segunda = await atualizarAcao(
+      {},
+      edicao(id, { versao: primeira.salva!.versao!, status: 'EM_CURSO_50' }),
+    )
+    expect(segunda.erroGeral).toBeUndefined()
+  })
+
+  it('recusa quando outra pessoa salvou antes, sem sobrescrever nem gravar histórico', async () => {
+    const id = await criar()
+    const versaoAntiga = await versaoDe(id)
+
+    await atualizarAcao({}, edicao(id, { versao: versaoAntiga, status: 'EM_CURSO_25' }))
+    const historicoAntes = await prisma.historicoAlteracao.count()
+
+    const r = await atualizarAcao({}, edicao(id, { versao: versaoAntiga, status: 'CONCLUIDO' }))
+
+    expect(r.conflito).toBe(true)
+    expect(r.erroGeral).toContain('alterada por outra pessoa')
+    expect((await prisma.acao.findUniqueOrThrow({ where: { id } })).status).toBe('EM_CURSO_25')
+    expect(await prisma.historicoAlteracao.count()).toBe(historicoAntes)
+  })
+
+  it('o apontamento de realizado também invalida uma edição aberta', async () => {
+    const id = await criar()
+    const versaoAntiga = await versaoDe(id)
+    await registrarRealizado({}, fd({ id, realizadoInicio: '2026-03-02' }))
+
+    const r = await atualizarAcao({}, edicao(id, { versao: versaoAntiga }))
+    expect(r.conflito).toBe(true)
+  })
+
+  it('formulário sem versão (aba antiga) grava sem conferência', async () => {
+    const id = await criar()
+    const r = await atualizarAcao({}, edicao(id, { status: 'EM_CURSO_25' }))
+    expect(r.erroGeral).toBeUndefined()
+    expect(r.conflito).toBeUndefined()
+  })
+
+  it('versão ilegível é ignorada, como se não viesse', async () => {
+    const id = await criar()
+    const r = await atualizarAcao({}, edicao(id, { versao: 'lixo', status: 'EM_CURSO_25' }))
+    expect(r.erroGeral).toBeUndefined()
+  })
+})

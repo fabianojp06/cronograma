@@ -35,6 +35,7 @@ export default async function EditarAcaoPage({
       realizadoInicio: true,
       realizadoTermino: true,
       responsavelId: true,
+      updatedAt: true,
       responsavel: { select: { nome: true, ativo: true, email: true } },
       projeto: { select: { id: true, nome: true, referencia: true } },
       historico: {
@@ -87,6 +88,7 @@ export default async function EditarAcaoPage({
     descricao: acao.descricao,
     status: acao.status as StatusAcao,
     responsavelId: acao.responsavelId,
+    versao: acao.updatedAt.toISOString(),
     previstoInicio: serializarValor(acao.previstoInicio),
     previstoTermino: serializarValor(acao.previstoTermino),
     realizadoInicio: serializarValor(acao.realizadoInicio),
