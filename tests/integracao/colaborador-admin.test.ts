@@ -466,3 +466,51 @@ describe('área do colaborador', () => {
     expect(depois).toMatchObject({ nome: 'Ana', area: 'APD' })
   })
 })
+
+describe('e-mail do colaborador', () => {
+  it('grava o e-mail de quem veio da planilha, normalizado', async () => {
+    const c = await prisma.colaborador.create({ data: { nome: 'Ana' }, select: { id: true } })
+
+    const r = await salvarColaborador(
+      {},
+      fd({ colaboradorId: c.id, nome: 'Ana', email: ' Ana.Souza@CTCEA.org.br ' }),
+    )
+    expect(r.aviso).toContain('ana.souza@ctcea.org.br')
+    const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
+    expect(depois.email).toBe('ana.souza@ctcea.org.br')
+  })
+
+  it('campo vazio remove o e-mail', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Ana', email: 'ana@ctcea.org.br' },
+      select: { id: true },
+    })
+
+    const r = await salvarColaborador({}, fd({ colaboradorId: c.id, nome: 'Ana', email: '' }))
+    expect(r.aviso).toContain('E-mail removido')
+    expect((await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })).email).toBeNull()
+  })
+
+  it('formulário sem o campo email não apaga o e-mail existente', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Ana', email: 'ana@ctcea.org.br' },
+      select: { id: true },
+    })
+
+    await salvarColaborador({}, fd({ colaboradorId: c.id, nome: 'Ana', area: 'APD' }))
+    const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
+    expect(depois.email).toBe('ana@ctcea.org.br')
+  })
+
+  it('recusa e-mail inválido sem gravar nada', async () => {
+    const c = await prisma.colaborador.create({ data: { nome: 'Ana' }, select: { id: true } })
+
+    const r = await salvarColaborador(
+      {},
+      fd({ colaboradorId: c.id, nome: 'Ana Nova', email: 'ana@ctcea' }),
+    )
+    expect(r.erroGeral).toContain('E-mail inválido')
+    const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
+    expect(depois).toMatchObject({ nome: 'Ana', email: null })
+  })
+})

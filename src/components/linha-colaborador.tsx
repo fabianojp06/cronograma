@@ -12,6 +12,7 @@ export type ColaboradorAdmin = {
   id: string
   nome: string
   area: string | null
+  email: string | null
   ativo: boolean
   vinculado: boolean
   cards: number
@@ -93,6 +94,27 @@ export function LinhaColaborador({
                 </p>
               </div>
 
+              <div>
+                <label
+                  className="text-xs text-textMuted"
+                  htmlFor={`email-${colaborador.id}`}
+                >
+                  E-mail
+                </label>
+                <input
+                  className={`${classeCampo} mt-1`}
+                  id={`email-${colaborador.id}`}
+                  name="email"
+                  type="email"
+                  defaultValue={colaborador.email ?? ''}
+                  maxLength={254}
+                  placeholder="nome@ctcea.org.br"
+                />
+                <p className="mt-1 text-xs text-textMuted">
+                  Recebe os avisos de ação sob sua responsabilidade. Vazio remove.
+                </p>
+              </div>
+
               {colaborador.projetos > 0 ? (
                 <label className="flex items-start gap-2 text-xs text-textMuted">
                   <input
@@ -150,6 +172,7 @@ export function LinhaColaborador({
               </p>
               <p className="mt-0.5 text-xs text-textFaint">
                 {colaborador.area ?? 'sem área'} ·{' '}
+                {colaborador.email ?? 'sem e-mail'} ·{' '}
                 {colaborador.vinculado ? 'conta vinculada' : 'sem conta'} ·{' '}
                 {colaborador.cards} card(s), {colaborador.wins} WIN(s)
                 {colaborador.projetos > 0

@@ -14,6 +14,8 @@ const usuarioAtual = { userId: 'user_prova' as string | null }
 
 vi.mock('@clerk/nextjs/server', () => ({
   auth: async () => ({ userId: usuarioAtual.userId }),
+  // O vínculo tenta semear o e-mail da conta; aqui a conta não tem e-mail.
+  currentUser: async () => null,
 }))
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
 

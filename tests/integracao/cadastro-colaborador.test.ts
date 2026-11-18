@@ -7,15 +7,25 @@
 
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const usuarioAtual = { userId: 'user_novo' as string | null }
+const usuarioAtual = {
+  userId: 'user_novo' as string | null,
+  email: null as string | null,
+  falhaAoLerConta: false,
+}
 
 vi.mock('@clerk/nextjs/server', () => ({
   auth: async () => ({ userId: usuarioAtual.userId }),
+  currentUser: async () => {
+    if (usuarioAtual.falhaAoLerConta) throw new Error('Clerk fora do ar')
+    return usuarioAtual.email ? { primaryEmailAddress: { emailAddress: usuarioAtual.email } } : null
+  },
 }))
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
 
 const { prisma } = await import('@/lib/prisma')
-const { cadastrarColaborador, salvarWin } = await import('@/app/wins/acoes-win')
+const { cadastrarColaborador, salvarWin, vincularColaborador } = await import(
+  '@/app/wins/acoes-win'
+)
 const { periodoDaSemana } = await import('@/lib/semana-ctcea')
 
 function formulario(nome: string) {
@@ -26,6 +36,8 @@ function formulario(nome: string) {
 
 beforeEach(async () => {
   usuarioAtual.userId = 'user_novo'
+  usuarioAtual.email = null
+  usuarioAtual.falhaAoLerConta = false
   await prisma.winSemana.deleteMany()
   await prisma.win.deleteMany()
   await prisma.cardSemanal.deleteMany()
@@ -201,5 +213,70 @@ describe('vínculo com colaborador desativado não pode ser silencioso', () => {
       data: { nome: 'Fabiano José', clerkUserId: 'user_novo' },
     })
     expect(await cadastrarColaborador({}, formulario('Qualquer Nome'))).toEqual({})
+  })
+})
+
+describe('e-mail vindo da conta do Clerk', () => {
+  it('auto-cadastro grava o e-mail da conta, normalizado', async () => {
+    usuarioAtual.email = 'Fabiano.Garcia@CTCEA.org.br'
+    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({})
+
+    const criado = await prisma.colaborador.findFirstOrThrow({ select: { email: true } })
+    expect(criado.email).toBe('fabiano.garcia@ctcea.org.br')
+  })
+
+  it('reconhecer o cadastro da planilha semeia o e-mail que faltava', async () => {
+    await prisma.colaborador.create({ data: { nome: 'Fabiano José' } })
+    usuarioAtual.email = 'fabiano@ctcea.org.br'
+
+    expect(await cadastrarColaborador({}, formulario('fabiano jose'))).toEqual({})
+
+    const c = await prisma.colaborador.findFirstOrThrow({
+      select: { email: true, clerkUserId: true },
+    })
+    expect(c).toEqual({ email: 'fabiano@ctcea.org.br', clerkUserId: 'user_novo' })
+  })
+
+  // Semeia, não sobrescreve: o e-mail definido em /colaboradores é escolha de
+  // alguém, e vincular a conta não pode desfazê-la em silêncio.
+  it('vincular não sobrescreve um e-mail já definido', async () => {
+    const c = await prisma.colaborador.create({
+      data: { nome: 'Ana', email: 'ana.pessoal@ctcea.org.br' },
+      select: { id: true },
+    })
+    usuarioAtual.email = 'ana@ctcea.org.br'
+
+    const fd = new FormData()
+    fd.set('colaboradorId', c.id)
+    expect(await vincularColaborador({}, fd)).toEqual({})
+
+    const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
+    expect(depois).toMatchObject({ clerkUserId: 'user_novo', email: 'ana.pessoal@ctcea.org.br' })
+  })
+
+  it('vincular preenche o e-mail de quem não tinha', async () => {
+    const c = await prisma.colaborador.create({ data: { nome: 'Ana' }, select: { id: true } })
+    usuarioAtual.email = 'ana@ctcea.org.br'
+
+    const fd = new FormData()
+    fd.set('colaboradorId', c.id)
+    expect(await vincularColaborador({}, fd)).toEqual({})
+
+    const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
+    expect(depois.email).toBe('ana@ctcea.org.br')
+  })
+
+  // O e-mail é conveniência: se o Clerk falhar, a pessoa ainda precisa entrar.
+  it('falha ao ler a conta não impede o cadastro', async () => {
+    usuarioAtual.falhaAoLerConta = true
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({})
+
+    const criado = await prisma.colaborador.findFirstOrThrow({
+      select: { nome: true, clerkUserId: true, email: true },
+    })
+    expect(criado).toEqual({ nome: 'Fabiano José', clerkUserId: 'user_novo', email: null })
+    vi.restoreAllMocks()
   })
 })

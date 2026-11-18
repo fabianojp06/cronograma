@@ -30,6 +30,7 @@ export type ErroAdmin =
   | 'AUTO_DESATIVACAO'
   | 'ESTADO_MUDOU'
   | 'AREA_LONGA'
+  | 'EMAIL_INVALIDO'
 
 export const MENSAGEM_ERRO_ADMIN: Record<ErroAdmin, string> = {
   NOME_INVALIDO: 'Nome inválido.',
@@ -42,6 +43,7 @@ export const MENSAGEM_ERRO_ADMIN: Record<ErroAdmin, string> = {
     'Alguém já alterou este colaborador enquanto a página estava aberta. ' +
     'Atualize e tente de novo.',
   AREA_LONGA: `A área pode ter no máximo ${TAMANHO_MAXIMO_AREA} caracteres.`,
+  EMAIL_INVALIDO: 'E-mail inválido. Use o formato nome@dominio.',
 }
 
 /**
@@ -82,6 +84,45 @@ export function validarArea(
   if (area.length > TAMANHO_MAXIMO_AREA) return { ok: false, erro: 'AREA_LONGA' }
 
   return { ok: true, area }
+}
+
+/** Limite do RFC 5321 para um endereço completo. */
+const TAMANHO_MAXIMO_EMAIL = 254
+
+/**
+ * Formato mínimo: algo@algo.algo, sem espaço. Não tenta validar o RFC inteiro —
+ * quem decide se o endereço existe é o servidor de e-mail, e uma regra estrita
+ * demais recusaria endereços reais.
+ */
+const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * Normaliza um e-mail: tira espaços das pontas e põe em minúsculas, para que
+ * "Fulano@CTCEA.org.br" e "fulano@ctcea.org.br" não virem dois valores.
+ */
+export function normalizarEmail(bruto: string): string {
+  return bruto.trim().toLowerCase()
+}
+
+/**
+ * Valida o e-mail do colaborador, com a mesma distinção de `validarArea`:
+ *
+ * - ausente   → `undefined` (formulário sem o campo — não mexer na coluna);
+ * - vazio     → `null` (remover);
+ * - com texto → o e-mail normalizado, se o formato for válido.
+ */
+export function validarEmail(
+  bruto: unknown,
+): { ok: true; email: string | null | undefined } | { ok: false; erro: ErroAdmin } {
+  if (typeof bruto !== 'string') return { ok: true, email: undefined }
+
+  const email = normalizarEmail(bruto)
+  if (email === '') return { ok: true, email: null }
+  if (email.length > TAMANHO_MAXIMO_EMAIL || !FORMATO_EMAIL.test(email)) {
+    return { ok: false, erro: 'EMAIL_INVALIDO' }
+  }
+
+  return { ok: true, email }
 }
 
 export type Cadastrado = { id: string; nome: string }
