@@ -61,3 +61,58 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk
           CLERK_SECRET_KEY: sk_test_valor_descartavel_de_ci
+
+  # Teste de navegador: sobe o sistema construído de verdade contra um Postgres
+  # descartável, com o Clerk trocado por um falso (ver next.config.ts). Job
+  # separado para não atrasar o feedback de lint/testes — mas é ele que pega o
+  # que só aparece com a página aberta (um erro 500 de Server Action chegou à
+  # produção justamente por isso).
+  navegador:
+    name: Teste de navegador
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: teste
+          POSTGRES_DB: cronograma
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:teste@127.0.0.1:5432/cronograma
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Aplicar as migrations no banco descartável
+        run: npx prisma migrate deploy
+
+      - name: Instalar o Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Teste de navegador
+        run: npm run test:e2e
+
+      # Só em falha: o relatório traz screenshot e trace de cada teste que quebrou.
+      - name: Guardar o relatório de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 7

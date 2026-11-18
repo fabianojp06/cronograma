@@ -22,7 +22,8 @@
     "importar:cro-dep": "tsx scripts/importar-cro-dep.ts",
     "validar:importacao": "tsx scripts/validar-importacao.ts",
     "migrar:producao": "tsx scripts/migrar-producao.ts",
-    "importar:card-win": "tsx scripts/importar-card-win.ts"
+    "importar:card-win": "tsx scripts/importar-card-win.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@clerk/localizations": "^4.17.1",
@@ -35,6 +36,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24.13.5",
     "@types/react": "^19",
