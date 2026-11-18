@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — o .env.example é versionado de propósito (documenta as variáveis)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,15 +40,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-!.env.example
 
 # prisma client gerado
 /src/generated
 
-.vercel
-.env*
 
 # planilhas originais (dados internos, nunca versionar nem servir em public/)
 /dados/
 *.xlsx
 !tests/**/*.xlsx
+
+# log do loop autônomo (autoloop.sh / autoloop.ps1): gerado a cada rodada
+/autoloop.log
