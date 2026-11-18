@@ -46,6 +46,7 @@ import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { formatarDataBR } from '@/lib/formatacao'
 import { resumirPainel } from '@/lib/painel-consolidado'
 import { prisma } from '@/lib/prisma'
+import { lerPeriodo, periodoAtivo, recortarPorPeriodo } from '@/lib/filtro-periodo'
 import { filtrarPorStatus, lerFiltros, whereProjetoAtivo } from '@/lib/projeto-filtros'
 import { montarLinhas, opcoesDistintas } from '@/lib/projetos-listagem'
 import type { StatusAcao } from '@/lib/acao-validacao'
@@ -77,10 +78,12 @@ const FILTRO_DA_DIMENSAO: Partial<Record<Dimensao, string>> = {
 }
 
 export default async function DashboardsPage({ searchParams }: PageProps<'/dashboards'>) {
-  const filtros = lerFiltros(await searchParams)
+  const parametros = await searchParams
+  const filtros = lerFiltros(parametros)
+  const periodo = lerPeriodo(parametros)
   const hoje = inicioDeHojeUTC()
 
-  const [projetos, valores, registrosWin, winsTodos, historico] = await Promise.all([
+  const [projetosBrutos, valores, registrosWin, winsTodos, historico] = await Promise.all([
     prisma.projeto.findMany({
       where: whereProjetoAtivo(filtros),
       orderBy: [{ prioridade: 'asc' }, { nome: 'asc' }],
@@ -160,6 +163,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
     }),
   ])
 
+  const { projetos, semDataPrevista } = recortarPorPeriodo(projetosBrutos, periodo)
   const linhas = filtrarPorStatus(montarLinhas(projetos, hoje), filtros)
 
   const semanaAtual = semanaDe(hoje)
@@ -255,8 +259,8 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
       </p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Dashboards</h1>
       <p className="mt-2 max-w-3xl text-sm text-textMuted">
-        Relatórios sobre a carteira de projetos. Os filtros abaixo valem para todas as
-        seções, exceto as de <strong className="font-medium">Card WIN</strong> e as de
+        Relatórios sobre a carteira de projetos. Os filtros abaixo, incluindo o período, valem para todas
+        as seções, exceto as de <strong className="font-medium">Card WIN</strong> e as de
         auditoria, que sempre olham o sistema inteiro — equipe, natureza e prioridade
         são dimensões de projeto, e um WIN não tem nenhuma delas.
       </p>
@@ -267,7 +271,17 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
         categorias={opcoesDistintas(valores.map((v) => v.categoria))}
         responsaveis={opcoesDistintas(valores.map((v) => v.responsavel))}
         acao="/dashboards"
+        periodo={periodo}
       />
+
+      {periodoAtivo(periodo) ? (
+        <p className="mt-3 text-sm text-textMuted" role="status">
+          Período aplicado às seções da carteira.
+          {semDataPrevista > 0
+            ? ` ${semDataPrevista} ${semDataPrevista === 1 ? 'ação sem data prevista ficou' : 'ações sem data prevista ficaram'} de fora.`
+            : null}
+        </p>
+      ) : null}
 
       <DashboardIndice />
 
