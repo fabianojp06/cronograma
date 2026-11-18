@@ -6,6 +6,7 @@ import {
   projetosADivergir,
   projetosDaPessoa,
   validarArea,
+  validarEmail,
   validarRenomear,
 } from './colaborador-admin'
 
@@ -172,5 +173,42 @@ describe('validarArea', () => {
   // repetidos seria recusado por um comprimento que não vai para o banco.
   it('mede o limite depois de normalizar o espaço', () => {
     expect(validarArea(`  ${'a'.repeat(120)}  `).ok).toBe(true)
+  })
+})
+
+describe('validarEmail', () => {
+  it('normaliza espaço e caixa', () => {
+    expect(validarEmail('  Fulano.Silva@CTCEA.org.br ')).toEqual({
+      ok: true,
+      email: 'fulano.silva@ctcea.org.br',
+    })
+  })
+
+  it('trata vazio e só-espaço como remover o e-mail', () => {
+    expect(validarEmail('')).toEqual({ ok: true, email: null })
+    expect(validarEmail('   ')).toEqual({ ok: true, email: null })
+  })
+
+  // Mesma distinção da área: uma aba aberta antes desta versão não traz o
+  // campo, e ler isso como "remover" apagaria o e-mail semeado pelo Clerk.
+  it('trata campo ausente como "não mexer", não como remover', () => {
+    expect(validarEmail(null)).toEqual({ ok: true, email: undefined })
+    expect(validarEmail(undefined)).toEqual({ ok: true, email: undefined })
+  })
+
+  it.each([
+    'fulano',
+    'fulano@',
+    '@ctcea.org.br',
+    'fulano@ctcea',
+    'ful ano@ctcea.org.br',
+    'a@b@c.org',
+  ])('recusa formato inválido: %s', (email) => {
+    expect(validarEmail(email)).toEqual({ ok: false, erro: 'EMAIL_INVALIDO' })
+  })
+
+  it('recusa e-mail acima de 254 caracteres', () => {
+    const longo = `${'a'.repeat(250)}@x.br`
+    expect(validarEmail(longo)).toEqual({ ok: false, erro: 'EMAIL_INVALIDO' })
   })
 })

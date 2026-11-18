@@ -10,6 +10,7 @@ import {
   podeDesativar,
   projetosADivergir,
   validarArea,
+  validarEmail,
   validarRenomear,
 } from '@/lib/colaborador-admin'
 
@@ -48,6 +49,10 @@ function lerId(formData: FormData, campo: string): string | null {
  * o registro de quem mudou de área no meio do ano. Quem se cadastra pela tela
  * nasce sem área — este é o único lugar do sistema que preenche esse campo
  * fora da importação.
+ *
+ * **O e-mail segue a mesma regra da área** (ausente não mexe, vazio remove) e
+ * também não propaga: é para onde vão as notificações de responsável por ação.
+ * Quem fez login já o recebe do Clerk; quem veio da planilha só o ganha aqui.
  */
 export async function salvarColaborador(
   _anterior: EstadoAdmin,
@@ -63,7 +68,7 @@ export async function salvarColaborador(
 
   try {
     const cadastrados = await prisma.colaborador.findMany({
-      select: { id: true, nome: true, area: true },
+      select: { id: true, nome: true, area: true, email: true },
     })
     const validacao = validarRenomear(cadastrados, id, formData.get('nome'))
     if (!validacao.ok) return { erroGeral: MENSAGEM_ERRO_ADMIN[validacao.erro] }
@@ -71,17 +76,21 @@ export async function salvarColaborador(
     const area = validarArea(formData.get('area'))
     if (!area.ok) return { erroGeral: MENSAGEM_ERRO_ADMIN[area.erro] }
 
+    const email = validarEmail(formData.get('email'))
+    if (!email.ok) return { erroGeral: MENSAGEM_ERRO_ADMIN[email.erro] }
+
     const atual = cadastrados.find((c) => c.id === id)!
     const nomeAntigo = atual.nome
     // `undefined` quer dizer "o formulário não trouxe o campo" — nem mudou,
     // nem vai para o `update` (o Prisma pula colunas `undefined`).
     const areaMudou = area.area !== undefined && area.area !== atual.area
+    const emailMudou = email.email !== undefined && email.email !== atual.email
 
     const { renomeado, projetos } = await prisma.$transaction(async (tx) => {
-      if (validacao.mudou || areaMudou) {
+      if (validacao.mudou || areaMudou || emailMudou) {
         await tx.colaborador.update({
           where: { id },
-          data: { nome: validacao.nome, area: area.area },
+          data: { nome: validacao.nome, area: area.area, email: email.email },
         })
       }
       if (!propagar) return { renomeado: validacao.mudou, projetos: 0 }
@@ -125,12 +134,15 @@ export async function salvarColaborador(
     }
 
     // O aviso é montado por composição, e não por uma árvore de condições: são
-    // três mudanças independentes, e enumerar as combinações daria oito ramos
-    // para dizer a mesma coisa.
+    // mudanças independentes, e enumerar as combinações daria um ramo para cada
+    // uma delas para dizer a mesma coisa.
     const feitas: string[] = []
     if (renomeado) feitas.push('Nome alterado')
     if (areaMudou) {
       feitas.push(area.area === null ? 'Área removida' : `Área definida como "${area.area}"`)
+    }
+    if (emailMudou) {
+      feitas.push(email.email === null ? 'E-mail removido' : `E-mail definido como ${email.email}`)
     }
     if (projetos > 0) {
       feitas.push(`${projetos} projeto(s) com o responsável alinhado ao cadastro`)

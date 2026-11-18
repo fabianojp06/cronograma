@@ -167,6 +167,9 @@ model Colaborador {
   clerkUserId String? @unique
   /// Área da GIA — AGP, APD ou ACT. Serve de padrão ao abrir um card novo.
   area        String?
+  /// E-mail para notificações. Semeado pelo Clerk no vínculo da conta e
+  /// editável em /colaboradores — quem veio da planilha nunca fez login.
+  email       String?
   ativo       Boolean @default(true)
 
   createdAt DateTime @default(now())

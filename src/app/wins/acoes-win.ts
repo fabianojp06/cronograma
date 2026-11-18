@@ -1,6 +1,6 @@
 'use server'
 
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
 import { prisma } from '@/lib/prisma'
@@ -22,6 +22,7 @@ import {
   MENSAGEM_ERRO_NOME,
   validarNomeColaborador,
 } from '@/lib/colaborador-validacao'
+import { validarEmail } from '@/lib/colaborador-admin'
 import {
   lerDesfecho,
   podeAdicionarWin,
@@ -496,6 +497,45 @@ async function conferirVinculoExistente(
   return {}
 }
 
+/**
+ * E-mail principal da conta do Clerk (a conta Microsoft), já normalizado.
+ *
+ * Devolve `null` em vez de lançar: o e-mail é conveniência para as
+ * notificações, e uma falha ao lê-lo não pode impedir ninguém de se cadastrar
+ * ou de se vincular — o campo pode ser preenchido depois em /colaboradores.
+ */
+async function emailDaConta(): Promise<string | null> {
+  try {
+    const usuario = await currentUser()
+    const validacao = validarEmail(usuario?.primaryEmailAddress?.emailAddress ?? '')
+    return validacao.ok ? (validacao.email ?? null) : null
+  } catch (erro) {
+    console.error('Falha ao ler o e-mail da conta', erro)
+    return null
+  }
+}
+
+/**
+ * Preenche o e-mail do colaborador com o da conta, **só se estiver vazio**.
+ *
+ * Mesma regra da área na importação: semeia, não sobrescreve. Se alguém já
+ * definiu o e-mail em /colaboradores, o vínculo não desfaz a escolha.
+ * Roda depois do vínculo e fora da transação dele; se falhar, o vínculo já
+ * valeu e só o e-mail fica para ser preenchido à mão.
+ */
+async function semearEmailDaConta(colaboradorId: string): Promise<void> {
+  const email = await emailDaConta()
+  if (!email) return
+  try {
+    await prisma.colaborador.updateMany({
+      where: { id: colaboradorId, email: null },
+      data: { email },
+    })
+  } catch (erro) {
+    console.error('Falha ao gravar o e-mail do colaborador', erro)
+  }
+}
+
 export type EstadoVinculo = { erroGeral?: string }
 
 export async function vincularColaborador(
@@ -537,6 +577,7 @@ export async function vincularColaborador(
           'outra conta ou desativado. Atualize a página e escolha de novo.',
       }
     }
+    await semearEmailDaConta(colaboradorId)
   } catch (erro) {
     console.error('Falha ao vincular colaborador', erro)
     return { erroGeral: 'Não foi possível vincular. Tente novamente.' }
@@ -772,11 +813,13 @@ export async function cadastrarColaborador(
       if (count === 0) {
         return { erroGeral: 'Esse nome acabou de ser vinculado a outra conta. Tente de novo.' }
       }
+      await semearEmailDaConta(mesmaPessoa.id)
       revalidatePath('/wins')
       return {}
     }
 
-    await prisma.colaborador.create({ data: { nome, clerkUserId: userId } })
+    const email = await emailDaConta()
+    await prisma.colaborador.create({ data: { nome, clerkUserId: userId, email } })
   } catch (erro) {
     console.error('Falha ao cadastrar colaborador', erro)
     return { erroGeral: 'Não foi possível cadastrar. Tente novamente.' }
