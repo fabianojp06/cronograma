@@ -55,6 +55,12 @@ model Acao {
   realizadoTermino DateTime?
   duracaoDiasUteis Int? // calculado, não editável diretamente
 
+  /// Quem responde pela ação. Opcional: as ações importadas da planilha não
+  /// têm responsável individual. Desligar a pessoa não apaga a ação — o
+  /// colaborador é desativado, nunca excluído, mas o SetNull cobre o caso.
+  responsavelId String?
+  responsavel   Colaborador? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -63,6 +69,7 @@ model Acao {
 
   @@unique([projetoId, numero])
   @@index([projetoId])
+  @@index([responsavelId])
 }
 
 model HistoricoAlteracao {
@@ -177,6 +184,7 @@ model Colaborador {
 
   cards CardSemanal[]
   wins  Win[]
+  acoes Acao[]
 
   @@index([ativo])
 }

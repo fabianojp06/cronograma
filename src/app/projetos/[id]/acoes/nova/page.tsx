@@ -19,6 +19,18 @@ export default async function NovaAcaoPage({
   })
   if (!projeto) notFound()
 
+  // Só ativos: quem foi desativado não deveria receber ação nova.
+  const colaboradores = await prisma.colaborador.findMany({
+    where: { ativo: true },
+    orderBy: { nome: 'asc' },
+    select: { id: true, nome: true, email: true },
+  })
+  const responsaveis = colaboradores.map((c) => ({
+    id: c.id,
+    nome: c.nome,
+    temEmail: c.email !== null,
+  }))
+
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
       <p className="text-sm font-medium uppercase tracking-wide text-accent">
@@ -29,7 +41,7 @@ export default async function NovaAcaoPage({
         Projeto <strong className="text-text">{projeto.nome}</strong>. A numeração da
         ação é sequencial e atribuída automaticamente dentro do projeto.
       </p>
-      <FormularioAcao projetoId={projeto.id} />
+      <FormularioAcao projetoId={projeto.id} responsaveis={responsaveis} />
     </main>
   )
 }

@@ -21,6 +21,7 @@ const ATUAL: EstadoAuditado = {
   previstoTermino: dataUTC('2026-03-20'),
   realizadoInicio: null,
   realizadoTermino: null,
+  responsavel: null,
 }
 
 const DADOS: DadosAcao = {
@@ -49,8 +50,8 @@ function clienteFalso() {
 }
 
 describe('CAMPOS_AUDITADOS', () => {
-  it('cobre o status e as quatro datas exigidas pelo CLAUDE.md', () => {
-    expect(CAMPOS_AUDITADOS).toEqual(['status', ...CAMPOS_DATA])
+  it('cobre o status, as quatro datas e o responsável', () => {
+    expect(CAMPOS_AUDITADOS).toEqual(['status', ...CAMPOS_DATA, 'responsavel'])
   })
 })
 
@@ -200,5 +201,52 @@ describe('gravarAcaoComHistorico', () => {
     expect(transacao).toHaveBeenCalledOnce()
     expect(update).toHaveBeenCalledOnce()
     expect(createMany).toHaveBeenCalledOnce()
+  })
+
+  /**
+   * O banco grava o id; o histórico, o nome. `novos` é o que separa os dois:
+   * sem ele, comparar `dados` registraria o id no painel de histórico — ou,
+   * pior, não registraria nada, porque `responsavelId` não é campo auditado.
+   */
+  it('grava o id na ação e o NOME no histórico ao trocar o responsável', async () => {
+    const { cliente, update, createMany } = clienteFalso()
+
+    await gravarAcaoComHistorico(cliente, {
+      acaoId: 'acao-1',
+      atual: { ...ATUAL, responsavel: 'Ana Souza' },
+      dados: { ...DADOS, responsavelId: 'colab-2' },
+      novos: { ...DADOS, responsavel: 'Márcia Gonçalves' },
+      alteradoPor: 'user_1',
+    })
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'acao-1' },
+      data: { ...DADOS, responsavelId: 'colab-2' },
+    })
+    expect(createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          acaoId: 'acao-1',
+          campo: 'responsavel',
+          valorAntigo: 'Ana Souza',
+          valorNovo: 'Márcia Gonçalves',
+          alteradoPor: 'user_1',
+        },
+      ],
+    })
+  })
+
+  it('não registra o responsável quando o estado novo não o traz', async () => {
+    const { cliente, createMany } = clienteFalso()
+
+    const { alteracoes } = await gravarAcaoComHistorico(cliente, {
+      acaoId: 'acao-1',
+      atual: { ...ATUAL, responsavel: 'Ana Souza' },
+      dados: { ...DADOS },
+      novos: { ...DADOS },
+    })
+
+    expect(alteracoes).toEqual([])
+    expect(createMany).not.toHaveBeenCalled()
   })
 })

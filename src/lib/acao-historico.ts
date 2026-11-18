@@ -2,8 +2,8 @@
  * Trilha de auditoria de uma Ação — módulo puro quanto à regra, com um único
  * ponto de gravação que recebe o cliente Prisma por parâmetro.
  *
- * O CLAUDE.md trata isso como requisito central: **toda** mudança de `status`
- * ou de uma das quatro datas de uma Ação vira uma linha em
+ * O CLAUDE.md trata isso como requisito central: **toda** mudança de `status`,
+ * de uma das quatro datas ou do responsável de uma Ação vira uma linha em
  * `HistoricoAlteracao` com valor antigo e novo. Manter a regra aqui (e não
  * dentro da Server Action) permite testar sem banco, injetando um cliente
  * falso em `gravarAcaoComHistorico`.
@@ -11,8 +11,20 @@
 
 import { CAMPOS_DATA, type DadosAcao } from './acao-validacao'
 
-/** Campos da Ação cuja alteração precisa ser auditada, na ordem do SCHEMA.md. */
-export const CAMPOS_AUDITADOS = ['status', ...CAMPOS_DATA] as const satisfies readonly (keyof DadosAcao)[]
+/**
+ * Campos da Ação cuja alteração precisa ser auditada, na ordem do SCHEMA.md.
+ *
+ * `responsavel` não é coluna da Ação: o banco guarda `responsavelId`, mas o
+ * histórico grava o **nome** da pessoa. Um id no painel de histórico não diz
+ * nada a quem lê, e o nome registra quem respondia pela ação naquele momento —
+ * se a pessoa for renomeada depois, a linha antiga continua contando o que
+ * aconteceu, como o `comentario` da promoção de WIN.
+ */
+export const CAMPOS_AUDITADOS = [
+  'status',
+  ...CAMPOS_DATA,
+  'responsavel',
+] as const satisfies readonly (keyof DadosAcao | 'responsavel')[]
 
 export type CampoAuditado = (typeof CAMPOS_AUDITADOS)[number]
 
@@ -100,13 +112,20 @@ export async function gravarAcaoComHistorico(
   entrada: {
     acaoId: string
     atual: Partial<EstadoAuditado>
-    dados: Partial<EstadoAuditado> & Record<string, unknown>
+    /** O que vai para o `update` da Ação. */
+    dados: Record<string, unknown>
+    /**
+     * O estado novo, para comparar com `atual`. Só difere de `dados` quando
+     * um campo auditado não é coluna — o responsável é gravado como
+     * `responsavelId` e auditado pelo nome.
+     */
+    novos?: Partial<EstadoAuditado>
     alteradoPor?: string | null
   },
 ): Promise<ResultadoGravacaoAcao> {
   const alteracoes = alteracoesDeAcao(
     entrada.atual,
-    entrada.dados,
+    entrada.novos ?? (entrada.dados as Partial<EstadoAuditado>),
     entrada.alteradoPor ?? null,
   )
 

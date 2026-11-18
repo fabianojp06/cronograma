@@ -8,6 +8,7 @@ import { lerIdProjeto } from '@/lib/projeto-edicao'
 import {
   ehColisaoDeNumero,
   lerIdAcao,
+  lerResponsavelId,
   proximoNumero,
   TENTATIVAS_NUMERO,
   validarDadosAcao,
@@ -15,7 +16,38 @@ import {
   type StatusAcao,
 } from '@/lib/acao-validacao'
 import { validarRealizado, type ErrosRealizado } from '@/lib/acao-realizado'
-import { CAMPOS_AUDITADOS, gravarAcaoComHistorico } from '@/lib/acao-historico'
+import {
+  CAMPOS_AUDITADOS,
+  gravarAcaoComHistorico,
+  type EstadoAuditado,
+} from '@/lib/acao-historico'
+
+const MENSAGEM_RESPONSAVEL_INVALIDO =
+  'Escolha um colaborador ativo da lista, ou deixe sem responsável.'
+
+/**
+ * Confere o responsável escolhido e devolve o nome dele, que é o que entra no
+ * histórico. Só colaborador ATIVO pode ser escolhido — com uma exceção: o
+ * responsável que a ação JÁ tem. Se ele foi desativado depois, salvar a ação
+ * sem mexer nesse campo não pode virar erro, nem apagá-lo em silêncio.
+ *
+ * `undefined` (campo ausente) não consulta nada: não há o que conferir.
+ */
+async function conferirResponsavel(
+  responsavelId: string | null | undefined,
+  idAtual: string | null = null,
+): Promise<{ ok: true; nome: string | null | undefined } | { ok: false }> {
+  if (responsavelId === undefined) return { ok: true, nome: undefined }
+  if (responsavelId === null) return { ok: true, nome: null }
+
+  const colaborador = await prisma.colaborador.findUnique({
+    where: { id: responsavelId },
+    select: { nome: true, ativo: true },
+  })
+  if (!colaborador) return { ok: false }
+  if (!colaborador.ativo && responsavelId !== idAtual) return { ok: false }
+  return { ok: true, nome: colaborador.nome }
+}
 
 export type EstadoFormularioAcao = {
   /** Preenchido só no sucesso — a UI confirma sem sair da tela. */
@@ -50,8 +82,13 @@ export async function criarAcao(
   const validacao = validarDadosAcao(formData)
   if (!validacao.ok) return { erros: validacao.erros }
 
+  const responsavelId = lerResponsavelId(formData)
+
   let criada: { id: string; numero: number } | null = null
   try {
+    const responsavel = await conferirResponsavel(responsavelId)
+    if (!responsavel.ok) return { erros: { responsavelId: MENSAGEM_RESPONSAVEL_INVALIDO } }
+
     // Ação só entra em projeto ativo: um projeto excluído logicamente não
     // recebe registros novos.
     const projeto = await prisma.projeto.findFirst({
@@ -70,7 +107,7 @@ export async function criarAcao(
 
       try {
         const acao = await prisma.acao.create({
-          data: { projetoId, numero, ...validacao.dados },
+          data: { projetoId, numero, ...validacao.dados, responsavelId },
           select: { id: true, numero: true },
         })
         criada = acao
@@ -96,18 +133,42 @@ export async function criarAcao(
   }
 }
 
-/** `select` com o estado auditável da Ação — base do "valor antigo". */
-const SELECAO_AUDITADA = Object.fromEntries(
-  CAMPOS_AUDITADOS.map((campo) => [campo, true]),
-) as { [C in (typeof CAMPOS_AUDITADOS)[number]]: true }
+type CampoColuna = Exclude<(typeof CAMPOS_AUDITADOS)[number], 'responsavel'>
+
+/**
+ * `select` com o estado auditável da Ação — base do "valor antigo". O
+ * responsável vem pela relação, porque o histórico grava o nome dele.
+ */
+const SELECAO_AUDITADA = {
+  ...(Object.fromEntries(
+    CAMPOS_AUDITADOS.filter((campo) => campo !== 'responsavel').map((campo) => [campo, true]),
+  ) as { [C in CampoColuna]: true }),
+  responsavelId: true,
+  responsavel: { select: { nome: true } },
+} as const
+
+/** Achata o que `SELECAO_AUDITADA` trouxe para o formato que o histórico compara. */
+function estadoAuditado(atual: {
+  [C in CampoColuna]: Date | string | null
+} & { responsavel: { nome: string } | null }): EstadoAuditado {
+  const { responsavel, ...colunas } = atual
+  return {
+    status: colunas.status,
+    previstoInicio: colunas.previstoInicio,
+    previstoTermino: colunas.previstoTermino,
+    realizadoInicio: colunas.realizadoInicio,
+    realizadoTermino: colunas.realizadoTermino,
+    responsavel: responsavel?.nome ?? null,
+  }
+}
 
 /**
  * Atualiza uma Ação existente gravando a trilha de auditoria.
  *
- * Toda mudança de `status` ou de uma das quatro datas vira linha em
- * `HistoricoAlteracao` (valor antigo, valor novo, quem alterou, quando), na
- * mesma transação do `update` — requisito central do CLAUDE.md. Quem alterou
- * vem do `userId` do Clerk.
+ * Toda mudança de `status`, de uma das quatro datas ou do responsável vira
+ * linha em `HistoricoAlteracao` (valor antigo, valor novo, quem alterou,
+ * quando), na mesma transação do `update` — requisito central do CLAUDE.md.
+ * Quem alterou vem do `userId` do Clerk.
  */
 export async function atualizarAcao(
   _estadoAnterior: EstadoFormularioAcao,
@@ -135,10 +196,20 @@ export async function atualizarAcao(
 
     projetoId = atual.projetoId
 
+    const responsavelId = lerResponsavelId(formData)
+    const responsavel = await conferirResponsavel(responsavelId, atual.responsavelId)
+    if (!responsavel.ok) return { erros: { responsavelId: MENSAGEM_RESPONSAVEL_INVALIDO } }
+
+    // Ausente (`undefined`) fica fora dos dois objetos: o Prisma pula a coluna
+    // e o histórico não compara o campo — não mexer não é apagar.
     await gravarAcaoComHistorico(prisma, {
       acaoId,
-      atual,
-      dados: validacao.dados,
+      atual: estadoAuditado(atual),
+      dados: { ...validacao.dados, responsavelId },
+      novos:
+        responsavel.nome === undefined
+          ? validacao.dados
+          : { ...validacao.dados, responsavel: responsavel.nome },
       alteradoPor: userId,
     })
 
@@ -202,7 +273,7 @@ export async function registrarRealizado(
 
     const { alteracoes } = await gravarAcaoComHistorico(prisma, {
       acaoId,
-      atual,
+      atual: estadoAuditado(atual),
       dados: validacao.dados,
       alteradoPor: userId,
     })

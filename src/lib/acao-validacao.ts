@@ -41,7 +41,7 @@ export type DadosAcao = {
   status: StatusAcao
 } & { [C in CampoData]: Date | null }
 
-export type ErrosAcao = Partial<Record<keyof DadosAcao, string>>
+export type ErrosAcao = Partial<Record<keyof DadosAcao | 'responsavelId', string>>
 
 export type ResultadoValidacaoAcao =
   | { ok: true; dados: DadosAcao }
@@ -82,6 +82,27 @@ export function lerDataISO(valor: string): Date | null | undefined {
     return undefined
   }
   return data
+}
+
+/**
+ * Lê o responsável escolhido no formulário. Não confere se o colaborador
+ * existe — isso exige banco e fica na Server Action.
+ *
+ * Ausente e vazio são coisas diferentes, como na área do colaborador:
+ *
+ * - ausente   → `undefined`: o formulário não traz o campo (uma aba aberta
+ *   antes desta versão) e o responsável atual não pode ser apagado por isso;
+ * - vazio     → `null`: "sem responsável", escolhido de propósito;
+ * - com texto → o id do colaborador.
+ */
+export function lerResponsavelId(entrada: EntradaAcao): string | null | undefined {
+  const bruto =
+    typeof (entrada as FormData).get === 'function'
+      ? (entrada as FormData).get('responsavelId')
+      : (entrada as Record<string, FormDataEntryValue | null | undefined>).responsavelId
+  if (typeof bruto !== 'string') return undefined
+  const id = bruto.trim()
+  return id === '' ? null : id
 }
 
 function ehStatus(valor: string): valor is StatusAcao {
