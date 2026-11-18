@@ -42,7 +42,13 @@ export function GraficoWinsSemana({ semanas }: { semanas: ConclusaoSemanal[] }) 
   return (
     <div className="overflow-x-auto">
       <svg
-        className="min-w-full"
+        // Tamanho natural, nunca esticado: com `min-w-full` e poucas semanas (um
+        // período curto) o viewBox escalava até a largura da tela e a altura
+        // junto, e as barras ficavam gigantes. Com muitas semanas, o contêiner
+        // rola na horizontal.
+        className="max-w-none"
+        width={largura}
+        height={altura}
         viewBox={`0 0 ${largura} ${altura}`}
         role="img"
         aria-label="WINs por semana, empilhados por status e desfecho"
