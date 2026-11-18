@@ -7,6 +7,7 @@ import {
   salvarColaborador,
   type EstadoAdmin,
 } from '@/app/colaboradores/acoes-colaborador'
+import { Processando, Spinner } from '@/components/indicador-envio'
 
 export type ColaboradorAdmin = {
   id: string
@@ -53,6 +54,7 @@ export function LinhaColaborador({
         <div className="min-w-64 flex-1">
           {editando ? (
             <form action={acaoNome} className="space-y-2">
+              <Processando ativo={salvando} texto="Salvando colaborador…" />
               <input type="hidden" name="colaboradorId" value={colaborador.id} />
               <label className="text-xs text-textMuted" htmlFor={`nome-${colaborador.id}`}>
                 Nome
@@ -147,10 +149,11 @@ export function LinhaColaborador({
               ) : null}
               <div className="flex gap-2">
                 <button
-                  className="rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-onAccent disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-onAccent disabled:opacity-60"
                   type="submit"
                   disabled={salvando}
                 >
+                  {salvando ? <Spinner className="size-3" /> : null}
                   {salvando ? 'Salvando…' : 'Salvar'}
                 </button>
                 <button
@@ -194,17 +197,19 @@ export function LinhaColaborador({
             </button>
           )}
           <form action={acaoAtivo}>
+            <Processando ativo={alternando} texto="Atualizando colaborador…" />
             <input type="hidden" name="colaboradorId" value={colaborador.id} />
             {/* A intenção vai no valor do botão: a ação não deduz o que fazer
                 negando o estado que lê, senão um clique em "Desativar" pode
                 reativar alguém que outra pessoa já desativou. */}
             <button
-              className={`text-xs disabled:opacity-60 ${colaborador.ativo ? 'text-textMuted hover:text-warn' : 'text-accent hover:underline'}`}
+              className={`inline-flex items-center gap-2 text-xs disabled:opacity-60 ${colaborador.ativo ? 'text-textMuted hover:text-warn' : 'text-accent hover:underline'}`}
               type="submit"
               name="acao"
               value={colaborador.ativo ? 'desativar' : 'reativar'}
               disabled={alternando}
             >
+              {alternando ? <Spinner className="size-3" /> : null}
               {colaborador.ativo ? 'Desativar' : 'Reativar'}
             </button>
           </form>

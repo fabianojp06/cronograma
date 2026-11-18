@@ -10,6 +10,7 @@ import {
 } from '@/app/projetos/acoes-projeto'
 import type { ValoresProjeto } from '@/lib/projeto-edicao'
 import type { ErrosProjeto } from '@/lib/projeto-validacao'
+import { Processando, Spinner } from '@/components/indicador-envio'
 
 const ESTADO_INICIAL: EstadoFormularioProjeto = {}
 
@@ -61,6 +62,7 @@ export function FormularioProjeto({ projeto }: { projeto?: ProjetoEmEdicao }) {
 
   return (
     <form action={acao} className="mt-8 space-y-6" key={estado.criado?.id}>
+      <Processando ativo={enviando} texto="Salvando projeto…" />
       {projeto ? <input type="hidden" name="id" value={projeto.id} /> : null}
 
       {estado.criado ? (
@@ -179,10 +181,11 @@ export function FormularioProjeto({ projeto }: { projeto?: ProjetoEmEdicao }) {
 
       <div className="flex items-center gap-3">
         <button
-          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-onAccent disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-onAccent disabled:opacity-60"
           disabled={enviando}
           type="submit"
         >
+          {enviando ? <Spinner /> : null}
           {enviando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Salvar projeto'}
         </button>
         <Link className="text-sm text-textMuted hover:text-text" href="/projetos">

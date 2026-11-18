@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTransition, type FormEvent } from 'react'
 
 import { ROTULO_STATUS_AGREGADO, STATUS_AGREGADOS } from '@/lib/projeto-resumo'
+import { Processando, Spinner } from '@/components/indicador-envio'
 import { periodoAtivo, type Periodo } from '@/lib/filtro-periodo'
 import { algumFiltroAtivo, type FiltrosProjeto } from '@/lib/projeto-filtros'
 
@@ -66,20 +67,7 @@ export function FiltrosProjetos({
       action={acao}
       onSubmit={aoEnviar}
     >
-      {pending ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-bg/60 backdrop-blur-[1px]"
-          role="status"
-        >
-          <div className="flex items-center gap-3 rounded-md border border-border bg-surface px-5 py-4 shadow-lg">
-            <span
-              aria-hidden="true"
-              className="size-6 animate-spin rounded-full border-2 border-accent/30 border-t-accent"
-            />
-            <span className="text-sm font-medium text-text">Atualizando…</span>
-          </div>
-        </div>
-      ) : null}
+      <Processando ativo={pending} texto="Atualizando…" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className={classeRotulo} htmlFor="equipe">
@@ -197,12 +185,7 @@ export function FiltrosProjetos({
           disabled={pending}
           type="submit"
         >
-          {pending ? (
-            <span
-              aria-hidden="true"
-              className="size-4 animate-spin rounded-full border-2 border-onAccent/40 border-t-onAccent"
-            />
-          ) : null}
+          {pending ? <Spinner /> : null}
           {pending ? 'Filtrando…' : 'Filtrar'}
         </button>
         {algumFiltroAtivo(filtros) || (periodo !== undefined && periodoAtivo(periodo)) ? (
