@@ -8,6 +8,7 @@ import {
   type EstadoCadastroColaborador,
   type EstadoVinculo,
 } from '@/app/wins/acoes-win'
+import { Processando, Spinner } from '@/components/indicador-envio'
 
 export type ColaboradorLivre = { id: string; nome: string }
 
@@ -32,13 +33,14 @@ const classeCampo =
  * percebe.
  */
 function CadastrarColaborador({ sugestoes }: { sugestoes: string[] }) {
-  const [estado, acao] = useActionState<EstadoCadastroColaborador, FormData>(
+  const [estado, acao, enviando] = useActionState<EstadoCadastroColaborador, FormData>(
     cadastrarColaborador,
     {},
   )
 
   return (
     <form action={acao} className="mt-4 flex flex-wrap items-end gap-3">
+      <Processando ativo={enviando} texto="Cadastrando colaborador…" />
       <div>
         <label className="block text-xs text-textMuted" htmlFor="nome">
           Seu nome
@@ -61,9 +63,11 @@ function CadastrarColaborador({ sugestoes }: { sugestoes: string[] }) {
         ) : null}
       </div>
       <button
-        className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-onAccent"
+        className="inline-flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-onAccent"
         type="submit"
+        disabled={enviando}
       >
+        {enviando ? <Spinner /> : null}
         Cadastrar e usar o card
       </button>
       {estado.erroGeral ? (
@@ -87,7 +91,7 @@ export function VincularColaborador({
   livres: ColaboradorLivre[]
   sugestoes: string[]
 }) {
-  const [estado, acao] = useActionState<EstadoVinculo, FormData>(vincularColaborador, {})
+  const [estado, acao, enviando] = useActionState<EstadoVinculo, FormData>(vincularColaborador, {})
 
   return (
     <div className="mt-8 border-l-2 border-previsto bg-surface p-4">
@@ -103,6 +107,7 @@ export function VincularColaborador({
         </p>
       ) : (
         <form action={acao} className="mt-4 flex flex-wrap items-end gap-3">
+          <Processando ativo={enviando} texto="Vinculando colaborador…" />
           <div>
             <label className="block text-xs text-textMuted" htmlFor="colaboradorId">
               Colaborador
@@ -122,9 +127,11 @@ export function VincularColaborador({
             </select>
           </div>
           <button
-            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-onAccent"
+            className="inline-flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-onAccent"
             type="submit"
+            disabled={enviando}
           >
+            {enviando ? <Spinner /> : null}
             Vincular
           </button>
           {estado.erroGeral ? (

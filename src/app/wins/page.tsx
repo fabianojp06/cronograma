@@ -5,8 +5,8 @@ import { CardWin, type LinhaWin } from '@/components/card-win'
 import { EncerrarWin } from '@/components/encerrar-win'
 import { PromoverWin } from '@/components/promover-win'
 import { RepetirWin } from '@/components/repetir-win'
+import { TirarWin } from '@/components/tirar-win'
 import { VincularColaborador } from '@/components/vincular-colaborador'
-import { removerWinDaSemana } from '@/app/wins/acoes-win'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { formatarDataBR } from '@/lib/formatacao'
 import { prisma } from '@/lib/prisma'
@@ -295,15 +295,7 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
           <div className="mt-4 flex flex-wrap gap-2">
             {linhas.map((linha) => (
               <div key={linha.registroId} className="flex items-center gap-2">
-                <form action={removerWinDaSemana}>
-                  <input type="hidden" name="registroId" value={linha.registroId ?? ''} />
-                  <button
-                    className="text-xs text-textMuted hover:text-warn"
-                    type="submit"
-                  >
-                    Tirar WIN {String(linha.ordem).padStart(2, '0')} da semana
-                  </button>
-                </form>
+                <TirarWin registroId={linha.registroId ?? ''} ordem={linha.ordem} />
                 {linha.winId && linha.promovidoEm === null && linha.encerradoEm === null ? (
                   <>
                     <span className="text-xs text-textFaint">·</span>

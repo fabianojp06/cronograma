@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 
 import { repetirWin, type EstadoRepeticao } from '@/app/wins/acoes-win'
+import { Processando, Spinner } from '@/components/indicador-envio'
 
 /**
  * Traz um WIN da semana anterior para a semana atual.
@@ -26,14 +27,16 @@ export function RepetirWin({
 
   return (
     <form action={acao} className="mt-2">
+      <Processando ativo={enviando} texto="Repetindo WIN…" />
       <input type="hidden" name="winId" value={winId} />
       <input type="hidden" name="ano" value={semana.ano} />
       <input type="hidden" name="semana" value={semana.semana} />
       <button
-        className="text-xs font-medium text-accent hover:underline disabled:opacity-60"
+        className="inline-flex items-center gap-2 text-xs font-medium text-accent hover:underline disabled:opacity-60"
         type="submit"
         disabled={enviando}
       >
+        {enviando ? <Spinner className="size-3" /> : null}
         {enviando ? 'Repetindo…' : 'Repetir nesta semana'}
       </button>
       <span className="sr-only">{descricao}</span>

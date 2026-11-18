@@ -8,6 +8,7 @@ import {
   ROTULO_DESTINO,
   type DestinoPromocao,
 } from '@/lib/win-promocao'
+import { Processando, Spinner } from '@/components/indicador-envio'
 
 export type ProjetoOpcao = { id: string; nome: string }
 
@@ -44,6 +45,7 @@ export function PromoverWin({
 
   return (
     <form action={acao} className="border-l-2 border-warn bg-surface p-4">
+      <Processando ativo={enviando} texto="Promovendo WIN…" />
       <input type="hidden" name="winId" value={winId} />
       <input type="hidden" name="ano" value={semana.ano} />
       <input type="hidden" name="semana" value={semana.semana} />
@@ -99,10 +101,11 @@ export function PromoverWin({
       {estado.erroGeral ? <p className="mt-3 text-sm text-warn">{estado.erroGeral}</p> : null}
 
       <button
-        className="mt-4 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-onAccent disabled:opacity-60"
+        className="inline-flex items-center gap-2 mt-4 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-onAccent disabled:opacity-60"
         type="submit"
         disabled={enviando}
       >
+        {enviando ? <Spinner /> : null}
         {enviando ? 'Promovendo…' : 'Promover ao plano de ação'}
       </button>
     </form>

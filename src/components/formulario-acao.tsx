@@ -16,6 +16,7 @@ import {
   type ErrosAcao,
   type StatusAcao,
 } from '@/lib/acao-validacao'
+import { Processando } from '@/components/indicador-envio'
 
 const ESTADO_INICIAL: EstadoFormularioAcao = {}
 
@@ -110,6 +111,7 @@ export function FormularioAcao({
           aviso={estado.aviso}
         />}
       <form action={enviar} className="mt-8 space-y-6" key={estado.criada?.id}>
+        <Processando ativo={enviando} texto="Salvando ação…" />
         <input type="hidden" name="id" value={valores?.id ?? projetoId} />
 
         {estado.salva ? (

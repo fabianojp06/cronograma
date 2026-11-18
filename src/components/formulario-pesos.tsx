@@ -12,6 +12,7 @@ import {
 } from '@/lib/matriz-criterios'
 import type { PesosCriterios } from '@/lib/matriz-calculo'
 import { SOMA_EXIGIDA } from '@/lib/matriz-validacao'
+import { Processando, Spinner } from '@/components/indicador-envio'
 
 const ESTADO_INICIAL: EstadoFormularioPesos = {}
 
@@ -68,6 +69,7 @@ export function FormularioPesos({ pesos }: { pesos: PesosCriterios }) {
 
   return (
     <form action={acao} className="mt-8 space-y-8">
+      <Processando ativo={enviando} texto="Salvando pesos…" />
       <div className="grid gap-8 lg:grid-cols-2">
         {GRUPOS_CRITERIO.map((grupo) => (
           <Grupo key={grupo} grupo={grupo} pesos={pesos} estado={estado} />
@@ -88,10 +90,11 @@ export function FormularioPesos({ pesos }: { pesos: PesosCriterios }) {
 
       <div className="flex items-center gap-4">
         <button
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-onAccent disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-onAccent disabled:opacity-60"
           type="submit"
           disabled={enviando}
         >
+          {enviando ? <Spinner /> : null}
           {enviando ? 'Salvando…' : 'Salvar pesos'}
         </button>
         <Link className="text-sm text-textMuted hover:text-accent" href="/priorizacao">

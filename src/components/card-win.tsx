@@ -17,6 +17,7 @@ import {
   type SituacaoWin,
 } from '@/lib/win-promocao'
 import { StatusWin } from '@/generated/prisma/enums'
+import { Processando, Spinner } from '@/components/indicador-envio'
 
 const classeCampo =
   'mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text ' +
@@ -68,6 +69,7 @@ function FormularioWin({
 
   return (
     <form action={acao} className={`border-l-2 ${situacao ? TRACO_SITUACAO[situacao] : 'border-borderSoft'} bg-surface p-4`}>
+      <Processando ativo={enviando} texto="Salvando WIN…" />
       <input type="hidden" name="ano" value={semana.ano} />
       <input type="hidden" name="semana" value={semana.semana} />
       <input type="hidden" name="ordem" value={linha.ordem} />
@@ -163,10 +165,11 @@ function FormularioWin({
       {estado.salvo ? <p className="mt-3 text-sm text-realizado">Salvo.</p> : null}
 
       <button
-        className="mt-3 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-onAccent disabled:opacity-60"
+        className="inline-flex items-center gap-2 mt-3 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-onAccent disabled:opacity-60"
         type="submit"
         disabled={enviando}
       >
+        {enviando ? <Spinner /> : null}
         {enviando ? 'Salvando…' : linha.registroId ? 'Salvar' : 'Adicionar'}
       </button>
     </form>
@@ -206,6 +209,7 @@ export function CardWin({
   return (
     <div className="space-y-6">
       <form action={acao} className="border-l-2 border-accent bg-surface p-4">
+        <Processando ativo={enviando} texto="Salvando card…" />
         <input type="hidden" name="ano" value={semana.ano} />
         <input type="hidden" name="semana" value={semana.semana} />
         <div className="grid gap-3 sm:grid-cols-2">
@@ -241,10 +245,11 @@ export function CardWin({
         {estado.erroGeral ? <p className="mt-3 text-sm text-warn">{estado.erroGeral}</p> : null}
         {estado.salvo ? <p className="mt-3 text-sm text-realizado">Card salvo.</p> : null}
         <button
-          className="mt-3 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-onAccent disabled:opacity-60"
+          className="inline-flex items-center gap-2 mt-3 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-onAccent disabled:opacity-60"
           type="submit"
           disabled={enviando}
         >
+          {enviando ? <Spinner /> : null}
           {enviando ? 'Salvando…' : 'Salvar cabeçalho'}
         </button>
       </form>

@@ -23,6 +23,7 @@ import {
   type NotaGut,
 } from '@/lib/matriz-criterios'
 import type { ErrosAvaliacao } from '@/lib/matriz-validacao'
+import { Processando, Spinner } from '@/components/indicador-envio'
 
 const ESTADO_INICIAL: EstadoFormularioAvaliacao = {}
 
@@ -97,6 +98,7 @@ export function FormularioAvaliacao({
 
   return (
     <form action={acao} className="mt-8 space-y-8">
+      <Processando ativo={enviando} texto="Salvando avaliação…" />
       <input type="hidden" name="projetoId" value={projetoId} />
 
       <div className="grid gap-8 lg:grid-cols-2">
@@ -169,10 +171,11 @@ export function FormularioAvaliacao({
 
       <div className="flex items-center gap-4">
         <button
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-onAccent disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-onAccent disabled:opacity-60"
           type="submit"
           disabled={enviando}
         >
+          {enviando ? <Spinner /> : null}
           {enviando ? 'Salvando…' : 'Salvar avaliação'}
         </button>
         <Link className="text-sm text-textMuted hover:text-accent" href="/priorizacao">

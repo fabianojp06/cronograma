@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 
 import { encerrarWin, type EstadoEncerramento } from '@/app/wins/acoes-win'
 import { DESFECHOS_ENCERRAMENTO, ROTULO_DESFECHO } from '@/lib/win-validacao'
+import { Processando } from '@/components/indicador-envio'
 
 /**
  * Encerra um WIN sem promovê-lo, **perguntando como ele terminou**.
@@ -32,6 +33,7 @@ export function EncerrarWin({
 
   return (
     <form action={acao} className="flex flex-wrap items-center gap-2">
+      <Processando ativo={enviando} texto="Encerrando WIN…" />
       <input type="hidden" name="winId" value={winId} />
       <input type="hidden" name="ano" value={semana.ano} />
       <input type="hidden" name="semana" value={semana.semana} />
