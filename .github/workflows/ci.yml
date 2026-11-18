@@ -69,7 +69,9 @@ jobs:
   # produção justamente por isso).
   navegador:
     name: Teste de navegador
-    runs-on: ubuntu-latest
+    # Fixo no 24.04: o `ubuntu-latest` já aponta para o 26.04, que esta versão do
+    # Playwright não suporta (não instala as dependências do Chromium).
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
