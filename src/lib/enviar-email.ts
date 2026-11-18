@@ -10,6 +10,7 @@
 
 import { configuracaoEmail, type MotivoSemEnvio } from './email-config'
 import type { MensagemEmail } from './email-responsavel'
+import { registrarFalha } from './registrar-erro'
 
 export type ResultadoEnvio =
   | { enviado: true }
@@ -46,12 +47,15 @@ export async function enviarEmail(
     if (!resposta.ok) {
       // O corpo traz o motivo (domínio não verificado, chave inválida…); vai
       // para o log da Vercel, não para a tela.
-      console.error('Resend recusou o e-mail', resposta.status, await resposta.text())
+      await registrarFalha(
+        'Resend recusou o e-mail',
+        new Error(`HTTP ${resposta.status}: ${await resposta.text()}`),
+      )
       return { enviado: false, motivo: 'FALHA_NO_ENVIO' }
     }
     return { enviado: true }
   } catch (erro) {
-    console.error('Falha ao enviar e-mail', erro)
+    await registrarFalha('Falha ao enviar e-mail', erro)
     return { enviado: false, motivo: 'FALHA_NO_ENVIO' }
   }
 }

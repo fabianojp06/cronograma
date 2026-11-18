@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
+import Link from 'next/link'
 
 import { LinhaColaborador, type ColaboradorAdmin } from '@/components/linha-colaborador'
 import { podeAdministrar, semAdministradores } from '@/lib/administracao'
@@ -124,6 +125,14 @@ export default async function ColaboradoresPage() {
           ))}
         </ul>
       )}
+
+      {podeEditar ? (
+        <p className="mt-8 text-sm">
+          <Link className="text-textMuted hover:text-accent" href="/administracao/erros">
+            Registro de erros do sistema
+          </Link>
+        </p>
+      ) : null}
 
       <p className="mt-10 border-t border-border pt-6 text-xs text-textFaint">
         O nome vai para o responsável do projeto quando um WIN é promovido — por isso

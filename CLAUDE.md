@@ -505,6 +505,23 @@ denunciou. Toda mudança nas ações de `/wins` roda os dois.
   razão da guarda de migrations: o preview usa o banco de produção e avisaria
   colaboradores reais. Envio pela API HTTP do Resend, sem SDK.
 
+## Registro de erros
+
+`registrarFalha(origem, erro)` (`src/lib/registrar-erro.ts`) substitui o
+`console.error` dos `catch` das Server Actions e do envio de e-mail, e
+`src/instrumentation.ts` (`onRequestError`) pega os erros de renderização. O
+log de execução da Vercel Hobby guarda só 1 hora; o registro vai para
+`RegistroErro` e o administrador lê em `/administracao/erros`.
+
+- **Só produção grava** (`VERCEL_ENV=production`): preview e desenvolvimento
+  usam o mesmo banco e misturariam erro de teste com erro de verdade.
+- **Nunca lança**: roda dentro de um `catch`, e falhar de novo trocaria a
+  mensagem amigável por um 500. O Prisma é importado sob demanda.
+- **Retenção de 30 dias**, apagada por quem registra, no máximo uma vez por hora
+  por instância — não há agendador. Mensagem e detalhe são truncados, porque o
+  texto de um erro pode carregar dados da operação.
+- Ao criar um `catch` novo, use `registrarFalha`, não `console.error`.
+
 ## Migrations em produção
 
 O `build` roda `scripts/migrar-producao.ts` antes do `next build`, e esse script

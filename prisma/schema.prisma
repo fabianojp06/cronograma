@@ -293,3 +293,23 @@ model WinSemana {
   @@index([winId])
   @@index([desfecho])
 }
+
+/// Falhas do sistema, guardadas para consulta pelo administrador.
+///
+/// Existe porque o log de execução da Vercel (plano Hobby) guarda só 1 hora: um
+/// erro de sexta à noite já terá sumido na segunda. Só produção grava, e o que
+/// passa de 30 dias é apagado.
+model RegistroErro {
+  id       String   @id @default(cuid())
+  criadoEm DateTime @default(now())
+  /// De onde veio: "Falha ao salvar WIN", "Resend recusou o e-mail", "Erro em /dashboards".
+  origem   String
+  mensagem String
+  /// Pilha ou corpo da resposta, truncado.
+  detalhe  String?
+  rota     String?
+  /// Identificador que o Next mostra ao usuário na tela de erro.
+  digest   String?
+
+  @@index([criadoEm])
+}
