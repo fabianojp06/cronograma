@@ -597,6 +597,36 @@ A regra de aproximação, também dita na tela (somente leitura, sem link de edi
 - Hoje, futuro ou data inválida = estado atual. Só o drill-down por projeto tem
   foto; o painel consolidado e os dashboards não.
 
+## Acesso: só contas @ctcea.org.br
+
+Estar logado no Clerk não basta. `src/proxy.ts` confere, depois do
+`auth.protect()`, o **e-mail principal e verificado** da conta
+(`dominio-permitido.ts`, `verificar-conta.ts`): precisa ser do domínio
+`ctcea.org.br`, exato — subdomínio e parecidos não valem. Quem não passa vai
+para `/acesso-negado` (página) ou recebe 403 (rotas `/api`). Isso vale para o
+link direto de um projeto, Server Actions e exportações: o proxy pega tudo que
+não está em `ROTAS_PUBLICAS`.
+
+- **Duas camadas, e a segunda é a que garante.** A lista de permissão do Clerk
+  (Dashboard → Configure → Restrictions → Allowlist, domínio `ctcea.org.br`)
+  impede a CRIAÇÃO da conta; esta regra confere na ENTRADA, porque contas já
+  criadas continuam existindo no Clerk e a configuração externa pode ser mexida.
+- **E-mail secundário ou não verificado não vale**: bastaria cadastrar um
+  endereço ctcea.org.br em qualquer conta.
+- **Na dúvida, nega**: se o Clerk não responder, o acesso é negado
+  (`motivo=verificacao`), nunca liberado. A falha não fica em cache.
+- **Cache em memória por instância**: 10 min para autorizada, 1 min para negada.
+  Quem muda o e-mail leva alguns minutos para ser reavaliado.
+- **Porta de emergência: `EMAILS_EXCECAO`** (variável da Vercel, vazia por
+  padrão), endereços completos separados por vírgula, que entram mesmo fora do
+  domínio — ainda exigem e-mail verificado. É uma decisão consciente de quem
+  administra a Vercel; use para destravar alguém, e tire depois.
+- `/acesso-negado` é pública de propósito: se não fosse, o redirecionamento
+  entraria em laço. As rotas públicas seguem sendo só login, cadastro, webhooks
+  e cron (este se protege por `CRON_SECRET`).
+- No teste de navegador, o cookie `e2e_user=user_intruso` troca a conta de teste
+  por uma de e-mail de fora do domínio (`tests/e2e/falso/`).
+
 ## Teste de navegador (Playwright)
 
 `npm run test:e2e` sobe o sistema construído de verdade (`next build` + `next

@@ -7,6 +7,9 @@
 export const ROTAS_PUBLICAS = [
   '/entrar(.*)',
   '/cadastrar(.*)',
+  // Onde cai quem tem conta mas não é do domínio: precisa ser pública, senão o
+  // proxy o mandaria para cá de novo, em laço.
+  '/acesso-negado(.*)',
   '/api/webhooks(.*)',
   // Cron da Vercel: sem sessão; a própria rota confere o CRON_SECRET.
   '/api/cron(.*)',
