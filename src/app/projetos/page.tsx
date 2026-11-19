@@ -2,16 +2,25 @@ import Link from 'next/link'
 
 import { FiltrosProjetos } from '@/components/filtros-projetos'
 import { ListaProjetos } from '@/components/lista-projetos'
+import { Paginacao } from '@/components/paginacao'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { sessaoPodeEditar } from '@/lib/administracao-servidor'
+import { lerPagina, paginar, TAMANHO_PAGINA_PROJETOS } from '@/lib/paginacao'
 import { prisma } from '@/lib/prisma'
-import { filtrarPorStatus, lerFiltros, whereProjetoAtivo } from '@/lib/projeto-filtros'
+import {
+  filtrarPorBusca,
+  filtrarPorStatus,
+  filtrosComoParametros,
+  lerFiltros,
+  whereProjetoAtivo,
+} from '@/lib/projeto-filtros'
 import { montarLinhas, opcoesDistintas } from '@/lib/projetos-listagem'
 
 export const metadata = { title: 'Projetos — Cronograma CTCEA' }
 
 export default async function ProjetosPage({ searchParams }: PageProps<'/projetos'>) {
-  const filtros = lerFiltros(await searchParams)
+  const parametros = await searchParams
+  const filtros = lerFiltros(parametros)
   const hoje = inicioDeHojeUTC()
   const podeEditar = await sessaoPodeEditar()
 
@@ -40,7 +49,8 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
     }),
   ])
 
-  const linhas = filtrarPorStatus(montarLinhas(projetos, hoje), filtros)
+  const linhas = filtrarPorBusca(filtrarPorStatus(montarLinhas(projetos, hoje), filtros), filtros)
+  const pagina = paginar(linhas, lerPagina(parametros), TAMANHO_PAGINA_PROJETOS)
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
@@ -70,9 +80,16 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
         equipes={opcoesDistintas(valores.map((v) => v.equipe))}
         responsaveis={opcoesDistintas(valores.map((v) => v.responsavel))}
         categorias={opcoesDistintas(valores.map((v) => v.categoria))}
+        comBusca
       />
 
-      <ListaProjetos linhas={linhas} podeEditar={podeEditar} />
+      <ListaProjetos linhas={pagina.itens} podeEditar={podeEditar} />
+      <Paginacao
+        pagina={pagina}
+        rota="/projetos"
+        parametros={filtrosComoParametros(filtros)}
+        nome="projetos"
+      />
     </main>
   )
 }

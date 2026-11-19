@@ -1,12 +1,20 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { BuscaAcoes } from '@/components/busca-acoes'
+import { Paginacao } from '@/components/paginacao'
 import { SeletorFoto } from '@/components/seletor-foto'
 import { GanttProjeto, type LinhaGantt } from '@/components/gantt-projeto'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { corteDaFoto, fotoDoProjeto, lerDataDaFoto } from '@/lib/foto-em-data'
 import { formatarDataBR } from '@/lib/formatacao'
 import { sessaoPodeEditar } from '@/lib/administracao-servidor'
+import {
+  correspondeABusca,
+  lerPagina,
+  paginar,
+  TAMANHO_PAGINA_ACOES,
+} from '@/lib/paginacao'
 import { prisma } from '@/lib/prisma'
 import {
   ROTULO_STATUS_AGREGADO,
@@ -24,7 +32,10 @@ export default async function ProjetoPage({
   const agora = inicioDeHojeUTC()
   const podeEditar = await sessaoPodeEditar()
   // `?em=aaaa-mm-dd`: o projeto como estava no fim daquele dia, reconstruído do histórico.
-  const em = lerDataDaFoto((await searchParams).em, agora)
+  const parametros = await searchParams
+  const em = lerDataDaFoto(parametros.em, agora)
+  const bruta = Array.isArray(parametros.busca) ? parametros.busca[0] : parametros.busca
+  const busca = typeof bruta === 'string' && bruta.trim() !== '' ? bruta.trim() : null
 
   // Projeto excluído logicamente (`ativo = false`) não é visível.
   const projeto = await prisma.projeto.findFirst({
@@ -104,7 +115,13 @@ export default async function ProjetoPage({
   }
 
   const resumo = resumirAcoes(acoesProjeto, hoje)
-  const acoes: LinhaGantt[] = acoesProjeto.map((acao) => ({
+  // O resumo acima conta TODAS as ações; busca e paginação só decidem o que se
+  // desenha — senão o percentual concluído mudaria a cada busca.
+  const encontradas = acoesProjeto.filter((a) =>
+    correspondeABusca(busca, [a.numero, a.descricao, a.responsavel]),
+  )
+  const pagina = paginar(encontradas, lerPagina(parametros), TAMANHO_PAGINA_ACOES)
+  const acoes: LinhaGantt[] = pagina.itens.map((acao) => ({
     ...acao,
     // Na foto não há link de edição: a ação editada é a de hoje, não a da foto.
     href: em === null ? `/projetos/${projeto.id}/acoes/${acao.id}/editar` : undefined,
@@ -180,7 +197,25 @@ export default async function ProjetoPage({
         </div>
       ) : null}
 
-      <GanttProjeto acoes={acoes} hoje={hoje} />
+      {acoesProjeto.length > TAMANHO_PAGINA_ACOES || busca !== null ? (
+        <BuscaAcoes busca={busca} em={em} rota={`/projetos/${projeto.id}`} />
+      ) : null}
+      {busca !== null && encontradas.length === 0 ? (
+        <p className="mt-4 text-sm text-textMuted" role="status">
+          Nenhuma ação corresponde a “{busca}”.
+        </p>
+      ) : (
+        <GanttProjeto acoes={acoes} hoje={hoje} />
+      )}
+      <Paginacao
+        nome="ações"
+        pagina={pagina}
+        parametros={{
+          ...(busca !== null ? { busca } : {}),
+          ...(em !== null ? { em } : {}),
+        }}
+        rota={`/projetos/${projeto.id}`}
+      />
     </main>
   )
 }

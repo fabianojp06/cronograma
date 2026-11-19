@@ -31,6 +31,7 @@ export function FiltrosProjetos({
   categorias,
   acao = '/projetos',
   periodo,
+  comBusca = false,
 }: {
   filtros: FiltrosProjeto
   equipes: string[]
@@ -40,6 +41,8 @@ export function FiltrosProjetos({
   acao?: string
   /** Quando presente, mostra os campos De/Até (só os Dashboards usam). */
   periodo?: Periodo
+  /** Mostra o campo de busca por texto (painel e listagem; os Dashboards não usam). */
+  comBusca?: boolean
 }) {
   const router = useRouter()
   const [pending, iniciarTransicao] = useTransition()
@@ -68,6 +71,21 @@ export function FiltrosProjetos({
       onSubmit={aoEnviar}
     >
       <Processando ativo={pending} texto="Atualizando…" />
+      {comBusca ? (
+        <div className="mb-4">
+          <label className={classeRotulo} htmlFor="busca">
+            Buscar
+          </label>
+          <input
+            className={classeSelect}
+            id="busca"
+            name="busca"
+            type="search"
+            placeholder="Nome, referência, equipe, categoria ou responsável"
+            defaultValue={filtros.busca ?? ''}
+          />
+        </div>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className={classeRotulo} htmlFor="equipe">

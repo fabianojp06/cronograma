@@ -12,7 +12,7 @@ import {
 } from '@/lib/exportacao'
 import { gerarXlsx } from '@/lib/exportacao-xlsx'
 import { prisma } from '@/lib/prisma'
-import { filtrarPorStatus, lerFiltros, whereProjetoAtivo } from '@/lib/projeto-filtros'
+import { filtrarPorBusca, filtrarPorStatus, lerFiltros, whereProjetoAtivo } from '@/lib/projeto-filtros'
 import { montarLinhas } from '@/lib/projetos-listagem'
 import { registrarFalha } from '@/lib/registrar-erro'
 
@@ -42,7 +42,9 @@ async function montarTabela(
         acoes: { select: { status: true, previstoTermino: true, realizadoTermino: true } },
       },
     })
-    return tabelaDeProjetos(filtrarPorStatus(montarLinhas(projetos, hoje), filtros))
+    return tabelaDeProjetos(
+      filtrarPorBusca(filtrarPorStatus(montarLinhas(projetos, hoje), filtros), filtros),
+    )
   }
 
   const acoes = await prisma.acao.findMany({

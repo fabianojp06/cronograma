@@ -7,6 +7,7 @@
  * filtrados por igualdade exata contra a lista de valores que existem no banco.
  */
 
+import { correspondeABusca } from './paginacao'
 import { STATUS_AGREGADOS, type StatusAgregado } from './projeto-resumo'
 
 export type FiltrosProjeto = {
@@ -14,6 +15,8 @@ export type FiltrosProjeto = {
   responsavel: string | null
   categoria: string | null
   status: StatusAgregado | null
+  /** Texto livre: nome, referência, equipe, categoria ou responsável. */
+  busca: string | null
 }
 
 export const FILTROS_VAZIOS: FiltrosProjeto = {
@@ -21,6 +24,7 @@ export const FILTROS_VAZIOS: FiltrosProjeto = {
   responsavel: null,
   categoria: null,
   status: null,
+  busca: null,
 }
 
 /** Fonte aceita: `URLSearchParams` ou o objeto `searchParams` do Next. */
@@ -55,6 +59,7 @@ export function lerFiltros(entrada: EntradaFiltros): FiltrosProjeto {
     // Status desconhecido é ignorado em vez de virar erro: a query string vem
     // do usuário e um valor inválido não deve quebrar a listagem.
     status: status !== null && ehStatusAgregado(status) ? status : null,
+    busca: lerParametro(entrada, 'busca'),
   }
 }
 
@@ -63,7 +68,8 @@ export function algumFiltroAtivo(filtros: FiltrosProjeto): boolean {
     filtros.equipe !== null ||
     filtros.responsavel !== null ||
     filtros.categoria !== null ||
-    filtros.status !== null
+    filtros.status !== null ||
+    filtros.busca !== null
   )
 }
 
@@ -87,4 +93,27 @@ export function filtrarPorStatus<T extends { resumo: { status: StatusAgregado } 
 ): T[] {
   if (filtros.status === null) return linhas
   return linhas.filter((linha) => linha.resumo.status === filtros.status)
+}
+
+/** Busca por texto, em memória: junto com o status, é derivada do que já veio do banco. */
+export function filtrarPorBusca<
+  T extends {
+    nome: string
+    referencia: string | null
+    equipe: string | null
+    categoria: string | null
+    responsavel: string | null
+  },
+>(linhas: T[], filtros: FiltrosProjeto): T[] {
+  if (filtros.busca === null) return linhas
+  return linhas.filter((l) =>
+    correspondeABusca(filtros.busca, [l.nome, l.referencia, l.equipe, l.categoria, l.responsavel]),
+  )
+}
+
+/** Só os filtros preenchidos, como parâmetros de URL (links de paginação, Excel). */
+export function filtrosComoParametros(filtros: FiltrosProjeto): Record<string, string> {
+  const saida: Record<string, string> = {}
+  for (const [chave, valor] of Object.entries(filtros)) if (valor) saida[chave] = valor
+  return saida
 }

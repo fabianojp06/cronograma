@@ -263,3 +263,60 @@ test.describe('só contas @ctcea.org.br', () => {
     await expect(page.getByRole('heading', { name: 'Projeto E2E' })).toBeVisible()
   })
 })
+
+test.describe('busca e paginação', () => {
+  test('o painel pagina a carteira e a busca encontra um projeto fora da primeira página', async ({
+    page,
+  }) => {
+    // Mais 29 projetos (com o semeado, 30): a página tem 25.
+    await consultar(
+      `INSERT INTO "Projeto" ("id","nome","equipe","updatedAt")
+       SELECT gen_random_uuid()::text, 'Projeto ' || lpad(n::text, 2, '0'), 'GIA', now()
+       FROM generate_series(1, 29) AS n`,
+    )
+    await consultar(`UPDATE "Projeto" SET "nome" = 'Zona de Migração da Rede' WHERE "nome" = 'Projeto 29'`)
+
+    await page.goto('/')
+    await expect(page.getByText('1–25 de 30 projetos')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Zona de Migração da Rede' })).toHaveCount(0)
+
+    await page.getByRole('link', { name: 'Próxima' }).click()
+    await expect(page).toHaveURL(/pagina=2/)
+    await expect(page.getByText('26–30 de 30 projetos')).toBeVisible()
+
+    // Busca sem acento nem caixa, de qualquer página: volta à primeira.
+    await page.getByLabel('Buscar', { exact: true }).fill('migracao rede')
+    await page.getByRole('button', { name: 'Filtrar' }).click()
+    await expect(page.getByRole('link', { name: 'Zona de Migração da Rede' })).toBeVisible()
+    await expect(page.getByText(/de \d+ projetos/)).toHaveCount(0)
+  })
+
+  test('o projeto pagina as ações, mantém o resumo inteiro e a busca filtra', async ({ page }) => {
+    await consultar(
+      `INSERT INTO "Acao" ("id","projetoId","numero","descricao","previstoInicio","previstoTermino","updatedAt")
+       SELECT gen_random_uuid()::text, $1, n + 1, 'Tarefa ' || n, '2026-03-02', '2026-03-20', now()
+       FROM generate_series(1, 49) AS n`,
+      [projetoId],
+    )
+    await consultar(
+      `UPDATE "Acao" SET "descricao" = 'Homologar certificado' WHERE "projetoId" = $1 AND "numero" = 50`,
+      [projetoId],
+    )
+
+    await page.goto(`/projetos/${projetoId}`)
+    await expect(page.getByText('1–40 de 50 ações')).toBeVisible()
+    // O resumo conta as 50, não as 40 da página.
+    await expect(page.getByText(/0 de 50 ações concluídas/)).toBeVisible()
+    await expect(page.getByText('Homologar certificado')).toHaveCount(0)
+
+    await page.getByLabel('Buscar nas ações').fill('certificado')
+    await page.getByRole('button', { name: 'Buscar' }).click()
+    await expect(page.getByText('Homologar certificado')).toBeVisible()
+    await expect(page.getByText('Tarefa 1', { exact: true })).toHaveCount(0)
+    await expect(page.getByText(/0 de 50 ações concluídas/)).toBeVisible()
+
+    await page.getByLabel('Buscar nas ações').fill('inexistente')
+    await page.getByRole('button', { name: 'Buscar' }).click()
+    await expect(page.getByText('Nenhuma ação corresponde a')).toBeVisible()
+  })
+})
