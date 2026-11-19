@@ -320,3 +320,33 @@ test.describe('busca e paginação', () => {
     await expect(page.getByText('Nenhuma ação corresponde a')).toBeVisible()
   })
 })
+
+test('comenta uma ação, o comentário aparece com o autor e o autor pode apagá-lo', async ({
+  page,
+}) => {
+  await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+  await expect(page.getByText('Nenhum comentário nesta ação.')).toBeVisible()
+
+  await page.getByLabel('Novo comentário').fill('Aguardando retorno do fornecedor')
+  await page.getByRole('button', { name: 'Comentar' }).click()
+
+  await expect(page.getByText('Comentário salvo.')).toBeVisible()
+  await expect(page.getByText('Aguardando retorno do fornecedor')).toBeVisible()
+  // O autor aparece pelo nome do colaborador vinculado à conta.
+  await expect(
+    page.getByRole('listitem').filter({ hasText: 'Aguardando retorno do fornecedor' }),
+  ).toContainText('Ana Souza')
+  expect(
+    (await consultar('SELECT 1 FROM "ComentarioAcao" WHERE "acaoId" = $1', [acaoId])).length,
+  ).toBe(1)
+
+  // Campo vazio é recusado com mensagem, sem gravar.
+  await page.getByRole('button', { name: 'Comentar' }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Escreva o comentário.' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Apagar' }).click()
+  await expect(page.getByText('Nenhum comentário nesta ação.')).toBeVisible()
+  expect(
+    (await consultar('SELECT 1 FROM "ComentarioAcao" WHERE "acaoId" = $1', [acaoId])).length,
+  ).toBe(0)
+})

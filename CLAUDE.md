@@ -575,6 +575,25 @@ denunciou. Toda mudança nas ações de `/wins` roda os dois.
 - O `auth()` falso do teste de navegador chama `headers()` de propósito: sem
   isso o Next pré-renderiza a página no build, com o banco vazio.
 
+## Comentários por ação
+
+A coluna de comentário da planilha, com autor e momento: `ComentarioAcao`
+(`acaoId`, `texto`, `autor`, `criadoEm`), mostrada na tela de uma ação, acima do
+histórico. Server Actions em `projetos/acoes-comentario.ts`; regra pura em
+`comentario-validacao.ts`.
+
+- **Só se acrescenta; não se edita.** A conversa não pode ser reescrita depois.
+  Quem escreveu apaga o seu, e o administrador apaga qualquer um (mesma regra
+  de administrador do resto: enquanto não houver nenhum, todos podem).
+- **Perfil Leitor não comenta nem apaga**: comentar é gravar, e a guarda
+  `contaPodeEditar` vale aqui como nas demais Server Actions. Ele lê os comentários.
+- **`autor` é o `userId` do Clerk**, como `HistoricoAlteracao.alteradoPor`; o
+  nome vem do colaborador vinculado na hora de mostrar (`rotularAutor`).
+- Texto de 1 a 2000 caracteres, aparado; quebras de linha são preservadas.
+- Comentário **não é auditoria**: não entra em `HistoricoAlteracao`, não avisa
+  ninguém por e-mail e não aparece em dashboards, exportações nem na "foto em
+  uma data". Apagar a ação apaga os comentários (cascata).
+
 ## Busca e paginação
 
 Listas longas não vão inteiras para a tela. `paginacao.ts` (puro) lê `?pagina=`

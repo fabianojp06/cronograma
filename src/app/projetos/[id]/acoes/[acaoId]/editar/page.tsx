@@ -1,13 +1,17 @@
+import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { AvisoSomenteLeitura } from '@/components/aviso-somente-leitura'
-import { sessaoPodeEditar } from '@/lib/administracao-servidor'
+import { contaPodeAdministrar, sessaoPodeEditar } from '@/lib/administracao-servidor'
+import { excluirComentario } from '@/app/projetos/acoes-comentario'
+import { FormularioComentario } from '@/components/formulario-comentario'
 import { FormularioAcao, type ValoresAcao } from '@/components/formulario-acao'
 import { serializarValor } from '@/lib/acao-historico'
 import { ROTULOS_STATUS, type StatusAcao } from '@/lib/acao-validacao'
 import { rotularCampo } from '@/lib/dashboard-auditoria'
 import { formatarValorHistorico, rotularAutor } from '@/lib/historico-exibicao'
+import { podeApagarComentario } from '@/lib/comentario-validacao'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'Editar ação — Cronograma CTCEA' }
@@ -40,6 +44,10 @@ export default async function EditarAcaoPage({
       updatedAt: true,
       responsavel: { select: { nome: true, ativo: true, email: true } },
       projeto: { select: { id: true, nome: true, referencia: true } },
+      comentarios: {
+        orderBy: { criadoEm: 'desc' },
+        select: { id: true, texto: true, autor: true, criadoEm: true },
+      },
       historico: {
         orderBy: { alteradoEm: 'desc' },
         select: {
@@ -55,7 +63,9 @@ export default async function EditarAcaoPage({
   })
   if (!acao) notFound()
 
+  const { userId } = await auth()
   const podeEditar = await sessaoPodeEditar()
+  const administrador = userId !== null && (await contaPodeAdministrar(userId))
 
   const ativos = await prisma.colaborador.findMany({
     where: { ativo: true },
@@ -79,7 +89,10 @@ export default async function EditarAcaoPage({
 
   // O histórico guarda o `userId` do Clerk; o nome vem do colaborador da conta.
   const contas = [
-    ...new Set(acao.historico.map((h) => h.alteradoPor).filter((c): c is string => c !== null)),
+    ...new Set([
+      ...acao.historico.map((h) => h.alteradoPor).filter((c): c is string => c !== null),
+      ...acao.comentarios.map((c) => c.autor),
+    ]),
   ]
   const autores = await prisma.colaborador.findMany({
     where: { clerkUserId: { in: contas } },
@@ -155,7 +168,45 @@ export default async function EditarAcaoPage({
           </div>
         )}
 
-        <aside aria-labelledby="titulo-historico" className="mt-8">
+        <section aria-labelledby="titulo-comentarios" className="mt-8 lg:col-start-1">
+          <h2 className="font-display text-base font-bold" id="titulo-comentarios">
+            Comentários{' '}
+            <span className="text-sm font-normal text-textFaint">({acao.comentarios.length})</span>
+          </h2>
+          {podeEditar ? <FormularioComentario acaoId={acao.id} /> : null}
+          {acao.comentarios.length === 0 ? (
+            <p className="mt-3 text-sm text-textMuted">Nenhum comentário nesta ação.</p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {acao.comentarios.map((comentario) => (
+                <li
+                  className="border-l-2 border-accent bg-surface py-2 pl-3 pr-2 text-sm"
+                  key={comentario.id}
+                >
+                  <p className="whitespace-pre-wrap break-words text-text">{comentario.texto}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-textFaint">
+                    <span>
+                      {formatoMomento.format(comentario.criadoEm)} ·{' '}
+                      {rotularAutor(comentario.autor, nomePorConta)}
+                    </span>
+                    {podeEditar &&
+                    userId !== null &&
+                    podeApagarComentario(comentario.autor, userId, administrador) ? (
+                      <form action={excluirComentario}>
+                        <input name="comentarioId" type="hidden" value={comentario.id} />
+                        <button className="text-textMuted hover:text-warn" type="submit">
+                          Apagar
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <aside aria-labelledby="titulo-historico" className="mt-8 lg:col-start-2 lg:row-start-1 lg:row-span-2">
           <h2 className="font-display text-base font-bold" id="titulo-historico">
             Histórico de alterações
           </h2>
