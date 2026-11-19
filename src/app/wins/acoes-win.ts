@@ -492,7 +492,7 @@ const MENSAGEM_DESATIVADO =
  */
 async function conferirVinculoExistente(
   userId: string,
-): Promise<{ erroGeral?: string } | null> {
+): Promise<{ erroGeral?: string; concluido?: boolean } | null> {
   const jaVinculado = await prisma.colaborador.findFirst({
     where: { clerkUserId: userId },
     select: { id: true, ativo: true },
@@ -501,7 +501,7 @@ async function conferirVinculoExistente(
   if (!jaVinculado.ativo) return { erroGeral: MENSAGEM_DESATIVADO }
 
   revalidatePath('/wins')
-  return {}
+  return { concluido: true }
 }
 
 /**
@@ -543,7 +543,7 @@ async function semearEmailDaConta(colaboradorId: string): Promise<void> {
   }
 }
 
-export type EstadoVinculo = { erroGeral?: string }
+export type EstadoVinculo = { erroGeral?: string; concluido?: boolean }
 
 export async function vincularColaborador(
   _anterior: EstadoVinculo,
@@ -591,7 +591,7 @@ export async function vincularColaborador(
   }
 
   revalidatePath('/wins')
-  return {}
+  return { concluido: true }
 }
 
 export type EstadoRepeticao = { erroGeral?: string }
@@ -765,7 +765,7 @@ export async function encerrarWin(
   return {}
 }
 
-export type EstadoCadastroColaborador = { erroGeral?: string }
+export type EstadoCadastroColaborador = { erroGeral?: string; concluido?: boolean }
 
 /**
  * Cadastra o próprio nome como colaborador e já vincula a conta.
@@ -824,7 +824,7 @@ export async function cadastrarColaborador(
       }
       await semearEmailDaConta(mesmaPessoa.id)
       revalidatePath('/wins')
-      return {}
+      return { concluido: true }
     }
 
     const email = await emailDaConta()
@@ -835,5 +835,5 @@ export async function cadastrarColaborador(
   }
 
   revalidatePath('/wins')
-  return {}
+  return { concluido: true }
 }

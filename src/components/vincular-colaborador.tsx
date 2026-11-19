@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useActionState, useEffect } from 'react'
 
 import {
   cadastrarColaborador,
@@ -32,11 +33,23 @@ const classeCampo =
  * relatório por responsável passa a contá-la como duas pessoas, e ninguém
  * percebe.
  */
-function CadastrarColaborador({ sugestoes }: { sugestoes: string[] }) {
+function CadastrarColaborador({
+  sugestoes,
+  volta,
+  nomeSugerido,
+}: {
+  sugestoes: string[]
+  volta?: string
+  nomeSugerido?: string | null
+}) {
   const [estado, acao, enviando] = useActionState<EstadoCadastroColaborador, FormData>(
     cadastrarColaborador,
     {},
   )
+  const roteador = useRouter()
+  useEffect(() => {
+    if (estado.concluido && volta) roteador.replace(volta)
+  }, [estado.concluido, volta, roteador])
 
   return (
     <form action={acao} className="mt-4 flex flex-wrap items-end gap-3">
@@ -53,6 +66,7 @@ function CadastrarColaborador({ sugestoes }: { sugestoes: string[] }) {
           maxLength={120}
           placeholder="Como você assina no plano de ação"
           autoComplete="off"
+          defaultValue={nomeSugerido ?? ''}
         />
         {sugestoes.length > 0 ? (
           <datalist id="responsaveis-conhecidos">
@@ -68,7 +82,7 @@ function CadastrarColaborador({ sugestoes }: { sugestoes: string[] }) {
         disabled={enviando}
       >
         {enviando ? <Spinner /> : null}
-        Cadastrar e usar o card
+        {volta ? 'Cadastrar e continuar' : 'Cadastrar e usar o card'}
       </button>
       {estado.erroGeral ? (
         <p className="w-full text-sm text-warn">{estado.erroGeral}</p>
@@ -87,11 +101,24 @@ function CadastrarColaborador({ sugestoes }: { sugestoes: string[] }) {
 export function VincularColaborador({
   livres,
   sugestoes,
+  volta,
+  nomeSugerido,
+  preselecionadoId,
 }: {
   livres: ColaboradorLivre[]
   sugestoes: string[]
+  /** Caminho para onde ir depois de se cadastrar (primeiro acesso); sem ele, a tela só se atualiza. */
+  volta?: string
+  /** Nome que o Clerk conhece da conta, para facilitar o cadastro. */
+  nomeSugerido?: string | null
+  /** Colaborador livre que parece ser a pessoa (mesmo nome sem acento nem caixa). */
+  preselecionadoId?: string | null
 }) {
   const [estado, acao, enviando] = useActionState<EstadoVinculo, FormData>(vincularColaborador, {})
+  const roteador = useRouter()
+  useEffect(() => {
+    if (estado.concluido && volta) roteador.replace(volta)
+  }, [estado.concluido, volta, roteador])
 
   return (
     <div className="mt-8 border-l-2 border-previsto bg-surface p-4">
@@ -116,7 +143,7 @@ export function VincularColaborador({
               className="mt-1 rounded-md border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-accent focus:ring-1 focus:ring-accent"
               id="colaboradorId"
               name="colaboradorId"
-              defaultValue=""
+              defaultValue={preselecionadoId ?? ''}
             >
               <option value="">Selecione…</option>
               {livres.map((c) => (
@@ -144,7 +171,7 @@ export function VincularColaborador({
         {livres.length > 0 ? (
           <p className="text-sm text-textMuted">Não achou seu nome na lista?</p>
         ) : null}
-        <CadastrarColaborador sugestoes={sugestoes} />
+        <CadastrarColaborador nomeSugerido={nomeSugerido} sugestoes={sugestoes} volta={volta} />
       </div>
     </div>
   )
