@@ -453,10 +453,11 @@ test.describe('notificações de comentário', () => {
     await expect(page.getByText('comentou uma ação sua')).toBeVisible()
   })
 
-  test('conta sem colaborador vinculado vê como se ligar', async ({ page, context }) => {
+  test('conta sem colaborador é levada ao cadastro antes de ver a tela', async ({ page, context }) => {
     await context.addCookies([{ name: 'e2e_user', value: 'user_sem_cadastro', url: 'http://127.0.0.1:3100' }])
     await page.goto('/notificacoes')
-    await expect(page.getByText('ainda não está ligada a um colaborador')).toBeVisible()
+    await expect(page).toHaveURL(/\/bem-vindo\?volta=/)
+    await expect(page.getByRole('heading', { name: 'Quem é você?' })).toBeVisible()
   })
 })
 
@@ -583,10 +584,11 @@ test.describe('meus projetos', () => {
     await expect(page.getByRole('link', { name: 'Projeto E2E' })).toBeVisible()
   })
 
-  test('conta sem colaborador vinculado vê como se ligar', async ({ page, context }) => {
+  test('conta sem colaborador é levada ao cadastro antes de ver a tela', async ({ page, context }) => {
     await context.addCookies([{ name: 'e2e_user', value: 'user_sem_cadastro', url: 'http://127.0.0.1:3100' }])
     await page.goto('/meus-projetos')
-    await expect(page.getByText('ainda não está ligada a um colaborador')).toBeVisible()
+    await expect(page).toHaveURL(/\/bem-vindo\?volta=/)
+    await expect(page.getByRole('heading', { name: 'Quem é você?' })).toBeVisible()
   })
 })
 
@@ -713,5 +715,76 @@ test.describe('duplicar ação e modelos de projeto', () => {
     await page.goto('/modelos')
     await page.getByRole('button', { name: 'Excluir o modelo Para excluir' }).click()
     await expect(page.getByText('Nenhum modelo ainda.')).toBeVisible()
+  })
+})
+
+test.describe('primeiro acesso', () => {
+  const novaConta = (context: import('@playwright/test').BrowserContext, usuario: string) =>
+    context.addCookies([{ name: 'e2e_user', value: usuario, url: 'http://127.0.0.1:3100' }])
+
+  test('quem entra pelo link de um projeto sem cadastro se cadastra e volta ao projeto', async ({ page, context }) => {
+    await novaConta(context, 'user_nova')
+    await page.goto(`/projetos/${projetoId}`)
+
+    await expect(page).toHaveURL(new RegExp(`/bem-vindo\\?volta=%2Fprojetos%2F${projetoId}$`))
+    await expect(page.getByRole('heading', { name: 'Bem-vindo ao sistema' })).toBeVisible()
+    // O conteúdo do projeto não foi servido antes do cadastro.
+    await expect(page.getByText('Projeto E2E')).toHaveCount(0)
+
+    await page.getByLabel('Seu nome').fill('Marina Duarte')
+    await page.getByRole('button', { name: 'Cadastrar e continuar' }).click()
+
+    await expect(page).toHaveURL(new RegExp(`/projetos/${projetoId}$`))
+    await expect(page.getByRole('heading', { name: 'Projeto E2E' })).toBeVisible()
+    const [{ nome }] = await consultar<{ nome: string }>(`SELECT "nome" FROM "Colaborador" WHERE "clerkUserId" = 'user_nova'`)
+    expect(nome).toBe('Marina Duarte')
+
+    // Já cadastrada, não é desviada de novo.
+    await page.goto('/dashboards')
+    await expect(page).toHaveURL(/\/dashboards$/)
+  })
+
+  test('quem já está na lista (veio da planilha) se vincula pelo cadastro existente, sem duplicar', async ({ page, context }) => {
+    await consultar(`INSERT INTO "Colaborador" ("id","nome","updatedAt") VALUES ($1,'Carlos Lima',now())`, [crypto.randomUUID()])
+    await novaConta(context, 'user_carlos')
+    await page.goto('/')
+
+    await expect(page).toHaveURL(/\/bem-vindo$/)
+    await page.getByLabel('Colaborador').selectOption({ label: 'Carlos Lima' })
+    await page.getByRole('button', { name: 'Vincular' }).click()
+
+    await expect(page).toHaveURL(/\/$/)
+    const linhas = await consultar<{ clerkUserId: string }>(`SELECT "clerkUserId" FROM "Colaborador" WHERE "nome" = 'Carlos Lima'`)
+    expect(linhas).toEqual([{ clerkUserId: 'user_carlos' }])
+  })
+
+  test('quem já tem cadastro e abre /bem-vindo segue para onde ia', async ({ page }) => {
+    await page.goto(`/bem-vindo?volta=${encodeURIComponent('/dashboards')}`)
+    await expect(page).toHaveURL(/\/dashboards$/)
+  })
+
+  test('o endereço de volta só aceita caminho interno', async ({ page, context }) => {
+    await novaConta(context, 'user_nova2')
+    await page.goto('/bem-vindo?volta=https%3A%2F%2Fevil.example%2Fx')
+    await page.getByLabel('Seu nome').fill('Pessoa Nova')
+    await page.getByRole('button', { name: 'Cadastrar e continuar' }).click()
+    await expect(page).toHaveURL(/127\.0\.0\.1:3100\/$/)
+  })
+
+  test('as telas de entrar e criar conta explicam o acesso e levam o link de volta', async ({ page }) => {
+    const volta = `/projetos/${projetoId}`
+    await page.goto(`/entrar?redirect_url=${encodeURIComponent(volta)}`)
+    await expect(page.getByRole('heading', { name: 'Este conteúdo é restrito à CTCEA' })).toBeVisible()
+    await expect(page.getByText('@ctcea.org.br').first()).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Criar conta' })).toHaveAttribute('href', `/cadastrar?redirect_url=${encodeURIComponent(volta)}`)
+
+    await page.goto(`/cadastrar?redirect_url=${encodeURIComponent(volta)}`)
+    await expect(page.getByRole('heading', { name: 'Criar a sua conta' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', `/entrar?redirect_url=${encodeURIComponent(volta)}`)
+  })
+
+  test('destino de outro domínio no redirect_url é descartado', async ({ page }) => {
+    await page.goto('/entrar?redirect_url=https%3A%2F%2Fevil.example%2Fx')
+    await expect(page.getByRole('link', { name: 'Criar conta' })).toHaveAttribute('href', '/cadastrar')
   })
 })

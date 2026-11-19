@@ -406,7 +406,7 @@ describe('vincular colaborador não pode virar beco sem saída', () => {
     usuarioAtual.userId = 'user_novo'
     const fd = new FormData()
     fd.set('colaboradorId', livre.id)
-    expect(await vincularColaborador({}, fd)).toEqual({})
+    expect(await vincularColaborador({}, fd)).toEqual({ concluido: true })
 
     const depois = await prisma.colaborador.findUniqueOrThrow({
       where: { id: livre.id },

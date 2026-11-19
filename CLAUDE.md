@@ -808,6 +808,41 @@ não está em `ROTAS_PUBLICAS`.
 - No teste de navegador, o cookie `e2e_user=user_intruso` troca a conta de teste
   por uma de e-mail de fora do domínio (`tests/e2e/falso/`).
 
+## Primeiro acesso: cadastro do colaborador
+
+Entrar (conta no domínio) e ser colaborador são coisas diferentes: quem entra
+sem cadastro não pode ser responsável por ação, não recebe aviso nem notificação
+e não vê "Meus projetos". Por isso o `proxy.ts`, depois de conferir o domínio,
+manda a conta SEM colaborador para `/bem-vindo?volta=<caminho>` antes de qualquer
+tela, e o cadastro devolve a pessoa ao endereço que ela tentou abrir (o link do
+projeto, por exemplo). Regra pura em `primeiro-acesso.ts`.
+
+- **A tela reusa "Quem é você?"** (`VincularColaborador`): escolher o próprio
+  nome entre os cadastros que ainda não têm conta (os da planilha) ou cadastrar
+  o nome. O nome que o Clerk conhece vem sugerido, e, se bater (sem acento nem
+  caixa) com alguém da lista, vem pré-selecionado — um clique só, sem duplicar.
+- **O que nunca é desviado**: `/bem-vindo`, `/entrar`, `/cadastrar`,
+  `/acesso-negado`, `/api/*` e qualquer requisição que não seja GET/HEAD (uma
+  Server Action a meio caminho não pode virar redirecionamento). Sem essa lista,
+  haveria laço.
+- **`volta` só aceita caminho interno** (`caminhoSeguro`): endereço completo,
+  `//host` e barra invertida viram `/`. Não é redirecionamento aberto.
+- **É conforto, não segurança, e falha aberta**: `verificar-cadastro.ts` guarda
+  só o "sim" (10 min, por instância), nunca o "não" — quem acabou de se
+  cadastrar é liberado na hora — e, se o banco falhar, deixa passar (e registra a
+  falha). O acesso em si continua decidido pelo domínio.
+- **Perfil Leitor**: quem já tem cadastro não é desviado, então o Leitor nunca
+  vê esta tela. Conta sem cadastro é Colaborador por padrão e passa pelo
+  cadastro. Não há como marcar Leitor quem ainda não existe em Colaboradores.
+- **`/entrar` e `/cadastrar`** ganharam, em volta do componente do Clerk, um
+  painel (`PainelDeAcesso`) dizendo que o acesso é restrito a `@ctcea.org.br` e
+  oferecendo criar a conta. O `redirect_url` do Clerk só acompanha a troca entre
+  as duas telas se for caminho interno ou endereço do próprio sistema
+  (`redirectSeguro`); o resto é descartado. O miolo (campos, botões sociais) é
+  do Clerk e não é alterado por dentro.
+- As telas "Minhas ações", "Meus projetos" e "Notificações" ainda explicam como
+  se ligar a um colaborador, mas na prática o desvio para `/bem-vindo` vem antes.
+
 ## Teste de navegador (Playwright)
 
 `npm run test:e2e` sobe o sistema construído de verdade (`next build` + `next

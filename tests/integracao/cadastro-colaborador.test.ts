@@ -52,7 +52,7 @@ describe('banco zerado: a porta de entrada precisa abrir', () => {
   it('cadastra o primeiro colaborador e já vincula a conta', async () => {
     expect(await prisma.colaborador.count()).toBe(0)
 
-    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({})
+    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({ concluido: true })
 
     const criado = await prisma.colaborador.findFirstOrThrow({
       select: { nome: true, clerkUserId: true, ativo: true },
@@ -78,7 +78,7 @@ describe('nome que o importador já criou', () => {
     // É o que o `scripts/importar-card-win.ts` deixa no banco.
     await prisma.colaborador.create({ data: { nome: 'Fabiano José', area: 'AGP' } })
 
-    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({})
+    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({ concluido: true })
 
     expect(await prisma.colaborador.count()).toBe(1)
     const c = await prisma.colaborador.findFirstOrThrow({
@@ -93,7 +93,7 @@ describe('nome que o importador já criou', () => {
 
     // Sem a comparação por chave isto esbarraria no índice único de `nome`
     // e devolveria um erro de banco em vez de reconhecer a pessoa.
-    expect(await cadastrarColaborador({}, formulario('fabiano  jose'))).toEqual({})
+    expect(await cadastrarColaborador({}, formulario('fabiano  jose'))).toEqual({ concluido: true })
 
     expect(await prisma.colaborador.count()).toBe(1)
     const c = await prisma.colaborador.findFirstOrThrow({ select: { nome: true, clerkUserId: true } })
@@ -124,7 +124,7 @@ describe('nome que o importador já criou', () => {
 describe('uma conta só pode ser um colaborador', () => {
   it('não cria um segundo cadastro para quem já está vinculado', async () => {
     await cadastrarColaborador({}, formulario('Fabiano José'))
-    expect(await cadastrarColaborador({}, formulario('Outro Nome'))).toEqual({})
+    expect(await cadastrarColaborador({}, formulario('Outro Nome'))).toEqual({ concluido: true })
 
     expect(await prisma.colaborador.count()).toBe(1)
     const c = await prisma.colaborador.findFirstOrThrow({ select: { nome: true } })
@@ -145,7 +145,7 @@ describe('a jornada completa de quem chega num sistema zerado', () => {
     // não há WIN. A pergunta "consigo cadastrar o WIN?" se responde aqui.
     expect(await prisma.colaborador.count()).toBe(0)
 
-    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({})
+    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({ concluido: true })
 
     const semana = { ano: 2026, semana: 39 }
     const fd = new FormData()
@@ -212,14 +212,14 @@ describe('vínculo com colaborador desativado não pode ser silencioso', () => {
     await prisma.colaborador.create({
       data: { nome: 'Fabiano José', clerkUserId: 'user_novo' },
     })
-    expect(await cadastrarColaborador({}, formulario('Qualquer Nome'))).toEqual({})
+    expect(await cadastrarColaborador({}, formulario('Qualquer Nome'))).toEqual({ concluido: true })
   })
 })
 
 describe('e-mail vindo da conta do Clerk', () => {
   it('auto-cadastro grava o e-mail da conta, normalizado', async () => {
     usuarioAtual.email = 'Fabiano.Garcia@CTCEA.org.br'
-    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({})
+    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({ concluido: true })
 
     const criado = await prisma.colaborador.findFirstOrThrow({ select: { email: true } })
     expect(criado.email).toBe('fabiano.garcia@ctcea.org.br')
@@ -229,7 +229,7 @@ describe('e-mail vindo da conta do Clerk', () => {
     await prisma.colaborador.create({ data: { nome: 'Fabiano José' } })
     usuarioAtual.email = 'fabiano@ctcea.org.br'
 
-    expect(await cadastrarColaborador({}, formulario('fabiano jose'))).toEqual({})
+    expect(await cadastrarColaborador({}, formulario('fabiano jose'))).toEqual({ concluido: true })
 
     const c = await prisma.colaborador.findFirstOrThrow({
       select: { email: true, clerkUserId: true },
@@ -248,7 +248,7 @@ describe('e-mail vindo da conta do Clerk', () => {
 
     const fd = new FormData()
     fd.set('colaboradorId', c.id)
-    expect(await vincularColaborador({}, fd)).toEqual({})
+    expect(await vincularColaborador({}, fd)).toEqual({ concluido: true })
 
     const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
     expect(depois).toMatchObject({ clerkUserId: 'user_novo', email: 'ana.pessoal@ctcea.org.br' })
@@ -260,7 +260,7 @@ describe('e-mail vindo da conta do Clerk', () => {
 
     const fd = new FormData()
     fd.set('colaboradorId', c.id)
-    expect(await vincularColaborador({}, fd)).toEqual({})
+    expect(await vincularColaborador({}, fd)).toEqual({ concluido: true })
 
     const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
     expect(depois.email).toBe('ana@ctcea.org.br')
@@ -271,7 +271,7 @@ describe('e-mail vindo da conta do Clerk', () => {
     usuarioAtual.falhaAoLerConta = true
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({})
+    expect(await cadastrarColaborador({}, formulario('Fabiano José'))).toEqual({ concluido: true })
 
     const criado = await prisma.colaborador.findFirstOrThrow({
       select: { nome: true, clerkUserId: true, email: true },
