@@ -575,6 +575,39 @@ denunciou. Toda mudança nas ações de `/wins` roda os dois.
 - O `auth()` falso do teste de navegador chama `headers()` de propósito: sem
   isso o Next pré-renderiza a página no build, com o banco vazio.
 
+## Edição em lote de ações (`/projetos/[id]/lote`)
+
+Remarcar o previsto e/ou trocar o responsável de várias ações de um projeto de
+uma vez. Regra pura em `edicao-lote.ts`, gravação em `acao-lote.ts`, Server
+Actions em `projetos/acoes-lote.ts` (`previaLote` e `aplicarLote`). Aparece como
+"Editar em lote" na tela do projeto, para quem pode editar (Leitor recebe o
+aviso de somente leitura; quem recusa de verdade são as Server Actions).
+
+- **Dois passos, sempre**: a PRÉVIA mostra de/para ação por ação e não grava
+  nada; a confirmação grava EXATAMENTE o que foi mostrado (os campos voltam como
+  ocultos no formulário de confirmação — mexer no formulário de cima não
+  altera o que será gravado).
+- **Só previsto e responsável.** Status e datas realizadas ficam de fora de
+  propósito: concluir em lote pede as datas realizadas e o erro em lote custa
+  mais. Concluída não tem o previsto remarcado (mexeria na aderência de prazo
+  já medida); sem data prevista não há o que deslocar; responsável igual ao
+  atual não é mudança. Cada caso aparece como observação na linha da prévia.
+- **Deslocar é em DIAS ÚTEIS** (`deslocarDiasUteis`: pula fim de semana e
+  feriado nacional fixo; adiar ou adiantar). Início e término andam juntos
+  pela mesma quantidade, então a ordem entre eles se mantém.
+- **Limite de 100 ações por operação** (`LIMITE_LOTE`) e de 250 dias úteis.
+  A seleção vale por projeto, não entre projetos.
+- **Uma transação para tudo** (`gravarLote`): ou grava o lote com o histórico,
+  ou nada muda. Histórico igual ao da edição individual: uma linha por ação e
+  por campo alterado, com `alteradoPor`, e o NOME do responsável.
+- **Conflito por versão**: cada ação é gravada com `updateMany where { id,
+  updatedAt = versão vista na prévia }`. Se alguém a salvou depois, ela é
+  PULADA e listada no resultado — nunca sobrescrita; as demais gravam. Sem a
+  versão da prévia a ação conflita, em vez de gravar às cegas.
+- **Aviso por e-mail**: quem PASSA a ser responsável recebe UM e-mail com a
+  lista das ações (`montarAvisoLote`), não um por ação. Remover o responsável
+  não avisa ninguém. Só produção envia, como no resto.
+
 ## Comentários por ação
 
 A coluna de comentário da planilha, com autor e momento: `ComentarioAcao`

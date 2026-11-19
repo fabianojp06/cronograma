@@ -101,3 +101,20 @@ export function somarDiasUteis(inicio: Date, quantidade: number): Date {
 
   return cursor
 }
+
+/**
+ * Desloca uma data em `quantidade` dias úteis (negativa = para trás; 0 devolve a
+ * própria data). O dia de partida não conta: o primeiro dia útil andado é o 1.
+ * Partir de um sábado ou feriado funciona do mesmo jeito — anda até cair em dia
+ * útil, o que mantém a ordem entre duas datas deslocadas pela mesma quantidade.
+ */
+export function deslocarDiasUteis(data: Date, quantidade: number): Date {
+  let cursor = inicioDoDiaUTC(data)
+  const passo = quantidade < 0 ? -1 : 1
+  let restantes = Math.abs(quantidade)
+  while (restantes > 0) {
+    cursor = somarDiasCorridos(cursor, passo)
+    if (ehDiaUtil(cursor)) restantes -= 1
+  }
+  return cursor
+}

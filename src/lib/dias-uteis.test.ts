@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  deslocarDiasUteis,
   diasUteisEntre,
   ehDiaUtil,
   ehFimDeSemana,
@@ -109,5 +110,39 @@ describe('somarDiasUteis', () => {
     expect(somarDiasUteis(new Date('2026-03-02T18:00:00.000Z'), 0)).toEqual(
       data('2026-03-02'),
     )
+  })
+})
+
+describe('deslocarDiasUteis', () => {
+  const d = (s: string) => new Date(`${s}T00:00:00.000Z`)
+  const iso = (x: Date) => x.toISOString().slice(0, 10)
+
+  it('zero devolve a própria data', () => {
+    expect(iso(deslocarDiasUteis(d('2026-03-04'), 0))).toBe('2026-03-04')
+  })
+  it('para frente pula o fim de semana', () => {
+    // quinta + 2 úteis = segunda
+    expect(iso(deslocarDiasUteis(d('2026-03-05'), 2))).toBe('2026-03-09')
+  })
+  it('para trás pula o fim de semana', () => {
+    // segunda - 1 útil = sexta
+    expect(iso(deslocarDiasUteis(d('2026-03-09'), -1))).toBe('2026-03-06')
+  })
+  it('pula feriado nacional fixo', () => {
+    // 20/11/2026 (Consciência Negra, sexta): quinta 19 + 1 útil = segunda 23
+    expect(iso(deslocarDiasUteis(d('2026-11-19'), 1))).toBe('2026-11-23')
+  })
+  it('partindo de um sábado, o primeiro útil andado é o 1', () => {
+    expect(iso(deslocarDiasUteis(d('2026-03-07'), 1))).toBe('2026-03-09')
+    expect(iso(deslocarDiasUteis(d('2026-03-07'), -1))).toBe('2026-03-06')
+  })
+  it('ir e voltar a mesma quantidade devolve a data útil original', () => {
+    const origem = d('2026-03-11')
+    expect(iso(deslocarDiasUteis(deslocarDiasUteis(origem, 17), -17))).toBe('2026-03-11')
+  })
+  it('mantém a ordem de duas datas deslocadas juntas', () => {
+    const a = deslocarDiasUteis(d('2026-03-06'), 3)
+    const b = deslocarDiasUteis(d('2026-03-07'), 3)
+    expect(a.getTime()).toBeLessThanOrEqual(b.getTime())
   })
 })
