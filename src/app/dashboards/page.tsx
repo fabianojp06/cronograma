@@ -9,6 +9,7 @@ import {
 import { DashboardEvolucao } from '@/components/dashboard-evolucao'
 import { DashboardIndice } from '@/components/dashboard-indice'
 import { DashboardSecao, SemDados } from '@/components/dashboard-secao'
+import { BarraExportacao } from '@/components/barra-exportacao'
 import { FiltrosProjetos } from '@/components/filtros-projetos'
 import { IndicadoresPainel } from '@/components/indicadores-painel'
 import {
@@ -275,6 +276,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
         são dimensões de projeto, e um WIN não tem nenhuma delas.
       </p>
 
+      <div className="print:hidden">
       <FiltrosProjetos
         filtros={filtros}
         equipes={opcoesDistintas(valores.map((v) => v.equipe))}
@@ -283,6 +285,8 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
         acao="/dashboards"
         periodo={periodo}
       />
+      </div>
+      <BarraExportacao mostrarExcel={false} />
 
       {periodoAtivo(periodo) ? (
         <p className="mt-3 text-sm text-textMuted" role="status">
@@ -293,7 +297,9 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
         </p>
       ) : null}
 
-      <DashboardIndice />
+      <div className="print:hidden">
+        <DashboardIndice />
+      </div>
 
       <div className="mt-10 space-y-10">
         <DashboardSecao

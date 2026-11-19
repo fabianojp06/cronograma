@@ -137,3 +137,18 @@ test('"Minhas ações" mostra a ação atrasada de quem está logado', async ({ 
   await expect(atrasadas).toContainText('Ação de partida')
   await expect(atrasadas).toContainText('de atraso')
 })
+
+test('exporta as ações atrasadas em Excel', async ({ page }) => {
+  await page.goto('/')
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('link', { name: 'Ações atrasadas (Excel)' }).click(),
+  ])
+
+  expect(download.suggestedFilename()).toMatch(/^acoes-atrasadas-\d{4}-\d{2}-\d{2}\.xlsx$/)
+  const caminho = await download.path()
+  const { readFileSync } = await import('node:fs')
+  // .xlsx é um zip: começa com "PK".
+  expect(readFileSync(caminho).subarray(0, 2).toString()).toBe('PK')
+})
