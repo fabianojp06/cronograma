@@ -13,9 +13,15 @@ if (process.env.VERCEL) {
   throw new Error('Autenticação falsa de teste carregada na Vercel — remova E2E_AUTH_FALSA.')
 }
 
+import { headers } from 'next/headers'
+
 export const USUARIO_E2E = process.env.E2E_USER_ID ?? 'user_e2e'
 
 export async function auth() {
+  // O `auth()` de verdade lê os cabeçalhos da requisição, e é isso que torna a
+  // página dinâmica. Sem esta leitura o Next pré-renderiza no build, com o banco
+  // vazio, e serve HTML fixo — o teste passaria a depender do que sobrou do build.
+  await headers()
   return { userId: USUARIO_E2E }
 }
 

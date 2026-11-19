@@ -12,6 +12,7 @@ const MENU = [
   { href: "/projetos", rotulo: "Projetos" },
   { href: "/dashboards", rotulo: "Dashboards" },
   { href: "/priorizacao", rotulo: "Priorização" },
+  { href: "/minhas-acoes", rotulo: "Minhas ações" },
   { href: "/wins", rotulo: "Card WIN" },
   { href: "/wins/equipe", rotulo: "Equipe" },
   { href: "/colaboradores", rotulo: "Colaboradores" },
