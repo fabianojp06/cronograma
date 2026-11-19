@@ -553,6 +553,28 @@ denunciou. Toda mudança nas ações de `/wins` roda os dois.
 - O `auth()` falso do teste de navegador chama `headers()` de propósito: sem
   isso o Next pré-renderiza a página no build, com o banco vazio.
 
+## "Foto em uma data" (`/projetos/[id]?em=aaaa-mm-dd`)
+
+O projeto como estava no fim de um dia passado, reconstruído do histórico
+(`foto-em-data.ts`, puro). Parte do estado ATUAL e **desfaz** de trás para
+frente cada alteração posterior ao dia (campo volta ao `valorAntigo`) — exato
+para os campos auditados, e dispensa conhecer o estado inicial. O corte é o
+começo do dia seguinte em Brasília (22h do dia da foto ainda é do dia).
+
+A regra de aproximação, também dita na tela (somente leitura, sem link de edição):
+
+- Ação só aparece se `createdAt` for anterior ao corte; as criadas depois são
+  contadas, não escondidas em silêncio.
+- **Data anterior à primeira ação registrada no sistema** (`min(createdAt)`):
+  o que havia vinha da planilha e não há como reconstruir — a tela avisa que a
+  foto não é confiável em vez de mostrar uma foto vazia como se fosse a verdade.
+- Descrição e número não são auditados: saem como estão hoje.
+- Projeto excluído depois da data não aparece (a exclusão lógica não guarda quando).
+- Alteração feita fora do sistema (importação, SQL) não tem linha de histórico
+  e não é desfeita.
+- Hoje, futuro ou data inválida = estado atual. Só o drill-down por projeto tem
+  foto; o painel consolidado e os dashboards não.
+
 ## Teste de navegador (Playwright)
 
 `npm run test:e2e` sobe o sistema construído de verdade (`next build` + `next
