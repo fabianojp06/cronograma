@@ -233,3 +233,33 @@ test('administrador define o perfil de um colaborador pela tela', async ({ page 
   await linhaBruno.getByRole('button', { name: 'Tornar colaborador' }).click()
   await expect(linhaBruno.getByText('Bruno Lima voltou a ser colaborador')).toBeVisible()
 })
+
+test.describe('só contas @ctcea.org.br', () => {
+  test('conta de fora do domínio é barrada, mesmo com o link direto de um projeto', async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([{ name: 'e2e_user', value: 'user_intruso', url: 'http://127.0.0.1:3100' }])
+
+    await page.goto(`/projetos/${projetoId}`)
+
+    await expect(page).toHaveURL(/\/acesso-negado\?motivo=dominio/)
+    await expect(page.getByRole('heading', { name: 'Acesso restrito' })).toBeVisible()
+    await expect(page.getByText('@ctcea.org.br').first()).toBeVisible()
+    // O conteúdo do projeto não foi servido.
+    await expect(page.getByText('Projeto E2E')).toHaveCount(0)
+  })
+
+  test('as APIs também respondem 403 à conta de fora do domínio', async ({ request }) => {
+    const resposta = await request.get('/api/exportar/acoes', {
+      headers: { cookie: 'e2e_user=user_intruso' },
+    })
+    expect(resposta.status()).toBe(403)
+  })
+
+  test('conta do domínio entra normalmente', async ({ page }) => {
+    await page.goto(`/projetos/${projetoId}`)
+    await expect(page).toHaveURL(new RegExp(`/projetos/${projetoId}$`))
+    await expect(page.getByRole('heading', { name: 'Projeto E2E' })).toBeVisible()
+  })
+})

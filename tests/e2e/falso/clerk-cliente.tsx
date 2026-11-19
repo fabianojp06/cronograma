@@ -32,3 +32,7 @@ export function SignIn() {
 export function SignUp() {
   return null
 }
+
+export function SignOutButton({ children }: { children?: ReactNode }) {
+  return <>{children}</>
+}

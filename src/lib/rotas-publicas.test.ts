@@ -19,6 +19,11 @@ describe('ROTAS_PUBLICAS', () => {
     expect(ehPublica(req('/api/webhooks/clerk'))).toBe(true)
   })
 
+  it('libera a página de acesso negado, para o redirecionamento não entrar em laço', () => {
+    expect(ehPublica(req('/acesso-negado'))).toBe(true)
+    expect(ehPublica(req('/acesso-negado?motivo=dominio'))).toBe(true)
+  })
+
   it('libera o cron, que a Vercel chama sem sessão', () => {
     expect(ehPublica(req('/api/cron/atrasos'))).toBe(true)
   })
