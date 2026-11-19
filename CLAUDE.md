@@ -177,6 +177,34 @@ sem Next, cada um com seu `.test.ts` — igual ao resto de `src/lib/`. Os relat�
 partem das mesmas funções do painel consolidado (`montarLinhas`, `resumirAcoes`):
 painel e dashboard nunca podem somar diferente.
 
+## Abas e resumo de `/dashboards`
+
+A tela deixou de ser uma página única com 17 relatórios empilhados. Regra pura em
+`dashboard-abas.ts`.
+
+- **Uma aba por GRUPO do catálogo** (Panorama, Distribuição, Prazos, Evolução no
+  tempo, Qualidade, Card WIN, Auditoria), mais **Todas**. A aba vive na URL
+  (`?aba=prazos`; o panorama é a padrão e fica sem parâmetro), então continua
+  linkável e funciona sem JavaScript. Aba desconhecida cai no panorama. Filtros e
+  período acompanham a troca de aba, e "Limpar filtros" fica na mesma aba.
+- **Ao criar um relatório novo**, declare-o no catálogo com o seu grupo: a aba
+  e a contagem saem dele, e o teste confere que todo grupo tem aba e que a soma
+  das abas é o catálogo inteiro. As seções ficam em `dashboards/secoes/` **por
+  grupo** (`prazos`, `tempo`, `qualidade`, `wins`, `auditoria`); o teste
+  `dashboard-catalogo.test.ts` lê esses arquivos na ORDEM de renderização — um
+  arquivo novo entra na lista dele.
+- **Resumo no topo** (`ResumoAtencao`): ações atrasadas, vencem em 7 dias,
+  projetos sem ações, WINs para promover e replanejamentos, cada um um link para a
+  aba e a seção do detalhe. Só os que são problema (atrasadas, sem ações, WINs a
+  promover) ganham a cor de atraso, e só quando maior que zero; os outros são
+  informação. Os números respeitam os filtros, menos os de Card WIN e auditoria,
+  que olham o sistema inteiro (a regra de sempre).
+- **Os dados continuam carregados por inteiro** (`dados.ts`), porque o resumo
+  precisa de vários grupos ao mesmo tempo. Se o desempenho pedir (gatilho de
+  ~10 mil ações), carregar só o da aba ativa é o primeiro passo.
+- **PDF**: a impressão sai com a aba aberta. Para a tela inteira, abra a aba
+  **Todas** antes de imprimir. Abas e resumo não são impressos.
+
 ## Desempenho de `/dashboards`
 
 A página lê todos os projetos com todas as ações e agrega em memória a cada

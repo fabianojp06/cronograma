@@ -32,6 +32,7 @@ export function FiltrosProjetos({
   acao = '/projetos',
   periodo,
   comBusca = false,
+  extras,
 }: {
   filtros: FiltrosProjeto
   equipes: string[]
@@ -43,6 +44,8 @@ export function FiltrosProjetos({
   periodo?: Periodo
   /** Mostra o campo de busca por texto (painel e listagem; os Dashboards não usam). */
   comBusca?: boolean
+  /** Parâmetros que acompanham o envio sem serem campos (ex.: a aba dos Dashboards). */
+  extras?: Record<string, string>
 }) {
   const router = useRouter()
   const [pending, iniciarTransicao] = useTransition()
@@ -50,6 +53,10 @@ export function FiltrosProjetos({
   function navegar(destino: string) {
     iniciarTransicao(() => router.push(destino))
   }
+
+  // "Limpar filtros" tira filtros e período, mas fica na mesma aba.
+  const extrasTexto = new URLSearchParams(extras ?? {}).toString()
+  const destinoSemFiltros = extrasTexto === '' ? acao : `${acao}?${extrasTexto}`
 
   function aoEnviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -71,6 +78,11 @@ export function FiltrosProjetos({
       onSubmit={aoEnviar}
     >
       <Processando ativo={pending} texto="Atualizando…" />
+      {extras
+        ? Object.entries(extras).map(([nome, valor]) => (
+            <input key={nome} name={nome} type="hidden" value={valor} />
+          ))
+        : null}
       {comBusca ? (
         <div className="mb-4">
           <label className={classeRotulo} htmlFor="busca">
@@ -209,10 +221,10 @@ export function FiltrosProjetos({
         {algumFiltroAtivo(filtros) || (periodo !== undefined && periodoAtivo(periodo)) ? (
           <Link
             className="text-sm text-textMuted hover:text-text"
-            href={acao}
+            href={destinoSemFiltros}
             onClick={(evento) => {
               evento.preventDefault()
-              navegar(acao)
+              navegar(destinoSemFiltros)
             }}
           >
             Limpar filtros

@@ -1,25 +1,18 @@
 import Link from 'next/link'
 
-import { DashboardCarga } from '@/components/dashboard-carga'
-import { DashboardEvolucao } from '@/components/dashboard-evolucao'
 import { DashboardSecao, SemDados } from '@/components/dashboard-secao'
 import { formatarDataBR } from '@/lib/formatacao'
 import type { proximosVencimentos, rankingAtrasos, resumirAderencia } from '@/lib/dashboard-prazos'
-import type { cargaMensal, evolucaoMensal } from '@/lib/dashboard-temporal'
 import { rel } from './rel'
 
 export function SecoesPrazos({
   aderencia,
   atrasos,
   janelas,
-  evolucao,
-  carga,
 }: {
   aderencia: ReturnType<typeof resumirAderencia>
   atrasos: ReturnType<typeof rankingAtrasos>
   janelas: ReturnType<typeof proximosVencimentos>
-  evolucao: ReturnType<typeof evolucaoMensal>
-  carga: ReturnType<typeof cargaMensal>
 }) {
   const ultimaJanela = janelas[janelas.length - 1]
   return (
@@ -162,25 +155,6 @@ export function SecoesPrazos({
               ))}
             </ul>
           ) : null}
-        </DashboardSecao>
-
-        <DashboardSecao relatorio={rel('evolucao-mensal')}>
-          {evolucao.length === 0 ? (
-            <SemDados>
-              Nenhuma ação com data preenchida — a curva precisa de pelo menos uma data
-              prevista ou realizada.
-            </SemDados>
-          ) : (
-            <DashboardEvolucao pontos={evolucao} />
-          )}
-        </DashboardSecao>
-
-        <DashboardSecao relatorio={rel('carga-mensal')}>
-          {carga.length === 0 ? (
-            <SemDados>Nenhuma ação com data prevista preenchida.</SemDados>
-          ) : (
-            <DashboardCarga pontos={carga} />
-          )}
         </DashboardSecao>
     </>
   )

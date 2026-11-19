@@ -6,7 +6,8 @@ import {
   DashboardComposicao,
   contarPorStatus,
 } from '@/components/dashboard-composicao'
-import { DashboardIndice } from '@/components/dashboard-indice'
+import { AbasDashboard } from '@/components/abas-dashboard'
+import { ResumoAtencao } from '@/components/resumo-atencao'
 import { DashboardSecao, SemDados } from '@/components/dashboard-secao'
 import { FiltrosProjetos } from '@/components/filtros-projetos'
 import { IndicadoresPainel } from '@/components/indicadores-painel'
@@ -17,7 +18,9 @@ import {
   maiorVolume,
   type Dimensao,
 } from '@/lib/dashboard-dimensoes'
+import { abaMostra, lerAba, resumoDeAtencao, slugDaAba } from '@/lib/dashboard-abas'
 import { periodoAtivo } from '@/lib/filtro-periodo'
+import { filtrosComoParametros } from '@/lib/projeto-filtros'
 import { opcoesDistintas } from '@/lib/projetos-listagem'
 
 import { carregarDashboard } from './dados'
@@ -25,6 +28,7 @@ import { SecoesAuditoria } from './secoes/auditoria'
 import { SecoesPrazos } from './secoes/prazos'
 import { SecaoQualidade } from './secoes/qualidade'
 import { rel } from './secoes/rel'
+import { SecoesTempo } from './secoes/tempo'
 import { SecoesWins } from './secoes/wins'
 
 export const metadata = { title: 'Dashboards — Cronograma CTCEA' }
@@ -46,6 +50,9 @@ const FILTRO_DA_DIMENSAO: Partial<Record<Dimensao, string>> = {
 
 
 export default async function DashboardsPage({ searchParams }: PageProps<'/dashboards'>) {
+  const buscaParams = await searchParams
+  const aba = lerAba(buscaParams.aba)
+  const dados = await carregarDashboard(buscaParams)
   const {
     filtros,
     periodo,
@@ -66,7 +73,21 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
     auditoria,
     porCampo,
     replanejamentos,
-  } = await carregarDashboard(await searchParams)
+  } = dados
+
+  // O que a pessoa já escolheu (filtros e período) acompanha cada link de aba.
+  const parametros: Record<string, string> = {
+    ...filtrosComoParametros(filtros),
+    ...(periodo.de ? { de: periodo.de } : {}),
+    ...(periodo.ate ? { ate: periodo.ate } : {}),
+  }
+  const resumo = resumoDeAtencao({
+    acoesAtrasadas: painel.acoesAtrasadas,
+    vencendoEm7Dias: janelas.find((j) => j.dias === 7)?.acoes.length ?? 0,
+    projetosSemAcoes: pendencias.find((p) => p.pendencia === 'PROJETO_SEM_ACAO')?.quantidade ?? 0,
+    winsParaPromover: reincidentes.filter((w) => w.situacao === 'DEVE_PROMOVER').length,
+    replanejamentos: auditoria.totalReplanejamentos,
+  })
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
@@ -90,6 +111,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
         responsaveis={opcoesDistintas(valores.map((v) => v.responsavel))}
         acao="/dashboards"
         periodo={periodo}
+        extras={aba === 'PANORAMA' ? undefined : { aba: slugDaAba(aba) }}
       />
       </div>
       <BarraExportacao mostrarExcel={false} />
@@ -104,68 +126,78 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
       ) : null}
 
       <div className="print:hidden">
-        <DashboardIndice />
+        <ResumoAtencao itens={resumo} parametros={parametros} />
       </div>
+      <AbasDashboard ativa={aba} parametros={parametros} />
 
-      <div className="mt-10 space-y-10">
-        <DashboardSecao
-          relatorio={rel('panorama')}
-          acao={
-            <Link className="text-sm text-textMuted hover:text-accent" href="/">
-              Ver no painel consolidado
-            </Link>
-          }
-        >
-          <IndicadoresPainel painel={painel} />
-        </DashboardSecao>
+      <div className="mt-8 space-y-10">
+        {abaMostra(aba, 'PANORAMA') ? (
+          <>
+            <DashboardSecao
+              relatorio={rel('panorama')}
+              acao={
+                <Link className="text-sm text-textMuted hover:text-accent" href="/">
+                  Ver no painel consolidado
+                </Link>
+              }
+            >
+              <IndicadoresPainel painel={painel} />
+            </DashboardSecao>
 
-        <DashboardSecao relatorio={rel('composicao-status')}>
-          {linhas.length === 0 ? (
-            <SemDados>Nenhum projeto ativo com esses filtros.</SemDados>
-          ) : (
-            <DashboardComposicao fatias={contarPorStatus(linhas)} />
-          )}
-        </DashboardSecao>
-
-        {DIMENSOES.map((dimensao) => {
-          const linhasDimensao = agruparPorDimensao(agrupaveis, dimensao)
-          return (
-            <DashboardSecao key={dimensao} relatorio={rel(SECAO_POR_DIMENSAO[dimensao])}>
-              {linhasDimensao.length === 0 ? (
+            <DashboardSecao relatorio={rel('composicao-status')}>
+              {linhas.length === 0 ? (
                 <SemDados>Nenhum projeto ativo com esses filtros.</SemDados>
               ) : (
-                <DashboardBarras
-                  linhas={linhasDimensao}
-                  maximo={maiorVolume(linhasDimensao)}
-                  rotuloDimensao={ROTULO_DIMENSAO[dimensao]}
-                  filtro={FILTRO_DA_DIMENSAO[dimensao]}
-                />
+                <DashboardComposicao fatias={contarPorStatus(linhas)} />
               )}
             </DashboardSecao>
-          )
-        })}
-        <SecoesPrazos
-          aderencia={aderencia}
-          atrasos={atrasos}
-          janelas={janelas}
-          evolucao={evolucao}
-          carga={carga}
-        />
+          </>
+        ) : null}
 
-        <SecaoQualidade pendencias={pendencias} />
+        {abaMostra(aba, 'DISTRIBUICAO')
+          ? DIMENSOES.map((dimensao) => {
+              const linhasDimensao = agruparPorDimensao(agrupaveis, dimensao)
+              return (
+                <DashboardSecao key={dimensao} relatorio={rel(SECAO_POR_DIMENSAO[dimensao])}>
+                  {linhasDimensao.length === 0 ? (
+                    <SemDados>Nenhum projeto ativo com esses filtros.</SemDados>
+                  ) : (
+                    <DashboardBarras
+                      linhas={linhasDimensao}
+                      maximo={maiorVolume(linhasDimensao)}
+                      rotuloDimensao={ROTULO_DIMENSAO[dimensao]}
+                      filtro={FILTRO_DA_DIMENSAO[dimensao]}
+                    />
+                  )}
+                </DashboardSecao>
+              )
+            })
+          : null}
 
-        <SecoesWins
-          conclusaoSemanal={conclusaoSemanal}
-          reincidentes={reincidentes}
-          comPeriodo={periodoAtivo(periodo)}
-        />
+        {abaMostra(aba, 'PRAZOS') ? (
+          <SecoesPrazos aderencia={aderencia} atrasos={atrasos} janelas={janelas} />
+        ) : null}
 
-        <SecoesAuditoria
-          auditoria={auditoria}
-          replanejamentos={replanejamentos}
-          registros={registros}
-          porCampo={porCampo}
-        />
+        {abaMostra(aba, 'TEMPO') ? <SecoesTempo evolucao={evolucao} carga={carga} /> : null}
+
+        {abaMostra(aba, 'QUALIDADE') ? <SecaoQualidade pendencias={pendencias} /> : null}
+
+        {abaMostra(aba, 'WINS') ? (
+          <SecoesWins
+            conclusaoSemanal={conclusaoSemanal}
+            reincidentes={reincidentes}
+            comPeriodo={periodoAtivo(periodo)}
+          />
+        ) : null}
+
+        {abaMostra(aba, 'AUDITORIA') ? (
+          <SecoesAuditoria
+            auditoria={auditoria}
+            replanejamentos={replanejamentos}
+            registros={registros}
+            porCampo={porCampo}
+          />
+        ) : null}
       </div>
     </main>
   )
