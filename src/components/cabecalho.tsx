@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 
 import { AlternadorTema } from "@/components/alternador-tema";
+import { SinoNotificacoes } from "@/components/sino-notificacoes";
 
 /**
  * Itens do menu principal. Ficam aqui, num array, para que o cabeçalho não
@@ -45,6 +46,7 @@ export function Cabecalho() {
         {/* Fora do <Show>: a escolha de tema vale também na tela de login. */}
         <AlternadorTema />
         <Show when="signed-in">
+          <SinoNotificacoes />
           <UserButton />
         </Show>
         <Show when="signed-out">

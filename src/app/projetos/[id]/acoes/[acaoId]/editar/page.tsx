@@ -70,7 +70,7 @@ export default async function EditarAcaoPage({
   const ativos = await prisma.colaborador.findMany({
     where: { ativo: true },
     orderBy: { nome: 'asc' },
-    select: { id: true, nome: true, email: true },
+    select: { id: true, nome: true, email: true, clerkUserId: true },
   })
   const responsaveis = ativos.map((c) => ({
     id: c.id,
@@ -173,7 +173,13 @@ export default async function EditarAcaoPage({
             Comentários{' '}
             <span className="text-sm font-normal text-textFaint">({acao.comentarios.length})</span>
           </h2>
-          {podeEditar ? <FormularioComentario acaoId={acao.id} /> : null}
+          {podeEditar ? <FormularioComentario
+              acaoId={acao.id}
+              colaboradores={ativos
+                .filter((c) => c.clerkUserId !== userId)
+                .map((c) => ({ id: c.id, nome: c.nome }))}
+              responsavel={acao.responsavel?.nome ?? null}
+            /> : null}
           {acao.comentarios.length === 0 ? (
             <p className="mt-3 text-sm text-textMuted">Nenhum comentário nesta ação.</p>
           ) : (

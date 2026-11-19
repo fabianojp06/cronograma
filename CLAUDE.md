@@ -590,9 +590,31 @@ histórico. Server Actions em `projetos/acoes-comentario.ts`; regra pura em
 - **`autor` é o `userId` do Clerk**, como `HistoricoAlteracao.alteradoPor`; o
   nome vem do colaborador vinculado na hora de mostrar (`rotularAutor`).
 - Texto de 1 a 2000 caracteres, aparado; quebras de linha são preservadas.
-- Comentário **não é auditoria**: não entra em `HistoricoAlteracao`, não avisa
-  ninguém por e-mail e não aparece em dashboards, exportações nem na "foto em
-  uma data". Apagar a ação apaga os comentários (cascata).
+- Comentário **não é auditoria**: não entra em `HistoricoAlteracao` e não
+  aparece em dashboards, exportações nem na "foto em uma data". Apagar a ação
+  apaga os comentários (cascata). **Não manda e-mail**: os avisos ficam no
+  sistema (próxima seção).
+
+### Notificações de comentário (`/notificacoes`)
+
+`Notificacao` (destinatário, comentário, motivo, lida), criada na MESMA
+transação do comentário (`acoes-comentario.ts`); regra pura em `notificacao.ts`.
+
+- **Quem é avisado**: as pessoas escolhidas em "Avisar no sistema" (motivo
+  `MARCADO`) e o **responsável pela ação, sempre** (`RESPONSAVEL`). Marcado e
+  responsável ao mesmo tempo = uma só, como `MARCADO`. Ninguém é avisado do
+  próprio comentário; só colaborador **ativo** recebe.
+- **A marcação é por caixas de seleção, não por `@nome`**: nome com espaço e
+  acento torna o reconhecimento no texto ambíguo (mesmo cuidado de
+  `chaveDoNome`). Evoluir para autocompletar é possível sem mudar o modelo.
+- **Sino no cabeçalho** (`SinoNotificacoes`, componente de servidor) conta as
+  não lidas; falha ao contar vale 0, nunca derruba a página. Cada pessoa vê e
+  marca só as suas: o `destinatarioId` vai no `where` do `updateMany`.
+- **Conta sem colaborador vinculado não recebe** — a tela explica como se ligar.
+- **Leitor** não comenta, mas lê e marca como lidas as suas (estado pessoal).
+- Apagar o comentário apaga os avisos (cascata). Lidas com mais de 30 dias são
+  apagadas por quem comenta (sem agendador). Desativar o colaborador mantém o
+  histórico de avisos dele.
 
 ## Busca e paginação
 

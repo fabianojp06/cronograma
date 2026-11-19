@@ -7,6 +7,11 @@ import { MENSAGEM_SOMENTE_LEITURA } from '@/lib/administracao'
 import { contaPodeAdministrar, contaPodeEditar } from '@/lib/administracao-servidor'
 import { lerIdAcao } from '@/lib/acao-validacao'
 import { podeApagarComentario, validarComentario } from '@/lib/comentario-validacao'
+import {
+  DIAS_DE_RETENCAO_LIDAS,
+  destinatariosDoComentario,
+  lerMarcados,
+} from '@/lib/notificacao'
 import { prisma } from '@/lib/prisma'
 import { registrarFalha } from '@/lib/registrar-erro'
 
@@ -37,13 +42,55 @@ export async function comentarAcao(
   try {
     const acao = await prisma.acao.findFirst({
       where: { id: acaoId, projeto: { ativo: true } },
-      select: { id: true, projetoId: true },
+      select: { id: true, projetoId: true, responsavelId: true },
     })
     if (!acao) return { erro: 'Ação não encontrada ou projeto excluído.' }
 
-    await prisma.comentarioAcao.create({
-      data: { acaoId: acao.id, texto: validacao.texto, autor: userId },
+    const marcados = lerMarcados(formData)
+    const [autor, ativos] = await Promise.all([
+      prisma.colaborador.findUnique({ where: { clerkUserId: userId }, select: { id: true } }),
+      prisma.colaborador.findMany({
+        where: {
+          ativo: true,
+          id: { in: [...marcados, ...(acao.responsavelId ? [acao.responsavelId] : [])] },
+        },
+        select: { id: true },
+      }),
+    ])
+    const destinos = destinatariosDoComentario({
+      autorId: autor?.id ?? null,
+      responsavelId: acao.responsavelId,
+      marcados,
+      ativos: new Set(ativos.map((c) => c.id)),
     })
+
+    // Comentário e avisos na MESMA transação: um sem o outro deixaria alguém
+    // marcado sem saber, ou um aviso apontando para comentário que não existe.
+    await prisma.$transaction(async (tx) => {
+      const comentario = await tx.comentarioAcao.create({
+        data: { acaoId: acao.id, texto: validacao.texto, autor: userId },
+      })
+      if (destinos.length > 0) {
+        await tx.notificacao.createMany({
+          data: destinos.map((d) => ({
+            destinatarioId: d.colaboradorId,
+            comentarioId: comentario.id,
+            motivo: d.motivo,
+          })),
+        })
+      }
+    })
+
+    // Limpeza sem agendador: quem comenta apaga o que já foi lido há muito tempo.
+    await prisma.notificacao
+      .deleteMany({
+        where: {
+          lida: true,
+          criadoEm: { lt: new Date(Date.now() - DIAS_DE_RETENCAO_LIDAS * 86_400_000) },
+        },
+      })
+      .catch(() => {})
+
     revalidatePath(`/projetos/${acao.projetoId}/acoes/${acao.id}/editar`)
     return { enviado: true }
   } catch (erro) {
