@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   algumFiltroAtivo,
+  filtrarPorBusca,
   filtrarPorStatus,
   FILTROS_VAZIOS,
   lerFiltros,
@@ -22,6 +23,7 @@ describe('lerFiltros', () => {
       responsavel: 'Ana',
       categoria: 'Rede',
       status: 'ATRASADO',
+      busca: null,
     })
   })
 
@@ -61,6 +63,7 @@ describe('whereProjetoAtivo', () => {
         responsavel: null,
         categoria: null,
         status: 'CONCLUIDO',
+        busca: 'x',
       }),
     ).toEqual({ ativo: true, equipe: 'STI' })
   })
@@ -84,5 +87,32 @@ describe('filtrarPorStatus', () => {
   it('mantém só as linhas do status pedido', () => {
     const filtradas = filtrarPorStatus(linhas, { ...FILTROS_VAZIOS, status: 'ATRASADO' })
     expect(filtradas.map((l) => l.id)).toEqual(['0', '2'])
+  })
+})
+
+describe('busca', () => {
+  const projeto = (nome: string, responsavel: string | null = null) => ({
+    nome,
+    referencia: null,
+    equipe: 'STI',
+    categoria: null,
+    responsavel,
+  })
+
+  it('lê ?busca= e a conta como filtro ativo', () => {
+    const filtros = lerFiltros({ busca: '  rede  ' })
+    expect(filtros.busca).toBe('rede')
+    expect(algumFiltroAtivo(filtros)).toBe(true)
+  })
+
+  it('não vira cláusula do banco: é aplicada em memória', () => {
+    expect(whereProjetoAtivo({ ...FILTROS_VAZIOS, busca: 'rede' })).toEqual({ ativo: true })
+  })
+
+  it('filtra por nome, sem acento nem caixa, e por responsável', () => {
+    const linhas = [projeto('Migração de Rede', 'Ana'), projeto('Contrato', 'Bruno')]
+    expect(filtrarPorBusca(linhas, { ...FILTROS_VAZIOS, busca: 'migracao' })).toHaveLength(1)
+    expect(filtrarPorBusca(linhas, { ...FILTROS_VAZIOS, busca: 'bruno' })).toHaveLength(1)
+    expect(filtrarPorBusca(linhas, FILTROS_VAZIOS)).toHaveLength(2)
   })
 })

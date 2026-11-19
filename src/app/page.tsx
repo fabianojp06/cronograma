@@ -4,11 +4,19 @@ import { BarraExportacao } from '@/components/barra-exportacao'
 import { FiltrosProjetos } from '@/components/filtros-projetos'
 import { IndicadoresPainel } from '@/components/indicadores-painel'
 import { ListaProjetos } from '@/components/lista-projetos'
+import { Paginacao } from '@/components/paginacao'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { resumirPainel } from '@/lib/painel-consolidado'
 import { sessaoPodeEditar } from '@/lib/administracao-servidor'
+import { lerPagina, paginar, TAMANHO_PAGINA_PROJETOS } from '@/lib/paginacao'
 import { prisma } from '@/lib/prisma'
-import { filtrarPorStatus, lerFiltros, whereProjetoAtivo } from '@/lib/projeto-filtros'
+import {
+  filtrarPorBusca,
+  filtrarPorStatus,
+  filtrosComoParametros,
+  lerFiltros,
+  whereProjetoAtivo,
+} from '@/lib/projeto-filtros'
 import { montarLinhas, opcoesDistintas } from '@/lib/projetos-listagem'
 
 export const metadata = { title: 'Painel consolidado — Cronograma CTCEA' }
@@ -18,15 +26,9 @@ export const metadata = { title: 'Painel consolidado — Cronograma CTCEA' }
  * agregado. Reaproveita `ListaProjetos` e os filtros da rota `/projetos` —
  * duas tabelas com a mesma regra divergiriam na primeira mudança.
  */
-/** Reaproveita só os filtros reconhecidos, para o Excel sair como a tela. */
-function consultaDosFiltros(filtros: ReturnType<typeof lerFiltros>): string {
-  const q = new URLSearchParams()
-  for (const [chave, valor] of Object.entries(filtros)) if (valor) q.set(chave, valor)
-  return q.toString()
-}
-
 export default async function PainelPage({ searchParams }: PageProps<'/'>) {
-  const filtros = lerFiltros(await searchParams)
+  const parametros = await searchParams
+  const filtros = lerFiltros(parametros)
   const hoje = inicioDeHojeUTC()
   const podeEditar = await sessaoPodeEditar()
 
@@ -55,8 +57,9 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
     }),
   ])
 
-  const linhas = filtrarPorStatus(montarLinhas(projetos, hoje), filtros)
+  const linhas = filtrarPorBusca(filtrarPorStatus(montarLinhas(projetos, hoje), filtros), filtros)
   const painel = resumirPainel(linhas)
+  const pagina = paginar(linhas, lerPagina(parametros), TAMANHO_PAGINA_PROJETOS)
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
@@ -85,7 +88,7 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
 
       <IndicadoresPainel painel={painel} />
 
-      <BarraExportacao consulta={consultaDosFiltros(filtros)} />
+      <BarraExportacao consulta={new URLSearchParams(filtrosComoParametros(filtros)).toString()} />
 
       <div className="print:hidden">
       <FiltrosProjetos
@@ -94,10 +97,17 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
         responsaveis={opcoesDistintas(valores.map((v) => v.responsavel))}
         categorias={opcoesDistintas(valores.map((v) => v.categoria))}
         acao="/"
+        comBusca
       />
       </div>
 
-      <ListaProjetos linhas={linhas} podeEditar={podeEditar} />
+      <ListaProjetos linhas={pagina.itens} podeEditar={podeEditar} />
+      <Paginacao
+        pagina={pagina}
+        rota="/"
+        parametros={filtrosComoParametros(filtros)}
+        nome="projetos"
+      />
     </main>
   )
 }

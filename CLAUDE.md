@@ -575,6 +575,29 @@ denunciou. Toda mudança nas ações de `/wins` roda os dois.
 - O `auth()` falso do teste de navegador chama `headers()` de propósito: sem
   isso o Next pré-renderiza a página no build, com o banco vazio.
 
+## Busca e paginação
+
+Listas longas não vão inteiras para a tela. `paginacao.ts` (puro) lê `?pagina=`
+(`?pagina=todas` desliga) e fatia; `correspondeABusca` compara sem acento nem
+caixa e exige TODAS as palavras digitadas, em qualquer campo.
+
+- **Painel e `/projetos`**: 25 por página, campo "Buscar" (nome, referência,
+  equipe, categoria, responsável) junto dos filtros (`?busca=`). Os indicadores
+  do painel somam a carteira FILTRADA inteira, não só a página. O Excel de
+  projetos respeita a busca, como respeita os filtros.
+- **Projeto (`/projetos/[id]`)**: 40 ações por página e busca por descrição,
+  responsável ou número. O RESUMO do cabeçalho (percentual, status) conta todas
+  as ações; busca e página só mudam o que o Gantt desenha — o período da grade
+  é o das ações mostradas. Vale também na "foto em uma data".
+- **Busca e página são em memória**, depois da consulta: o status agregado é
+  derivado e não existe no banco, e a carteira (centenas de projetos) cabe
+  folgada. Se passar de alguns milhares, mover a busca para o `where`.
+- **Mudar filtro ou busca volta à página 1**: o formulário não carrega `pagina`.
+  Página além do fim vira a última (link velho, busca que encolheu a lista).
+- **PDF**: a impressão sai com a página atual; use "Ver todos" antes de
+  imprimir a carteira inteira. Os controles de paginação não são impressos.
+- Os Dashboards não paginam: agregam a carteira toda por definição.
+
 ## "Foto em uma data" (`/projetos/[id]?em=aaaa-mm-dd`)
 
 O projeto como estava no fim de um dia passado, reconstruído do histórico
