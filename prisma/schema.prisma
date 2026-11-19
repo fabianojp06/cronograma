@@ -99,6 +99,8 @@ model ComentarioAcao {
   autor    String
   criadoEm DateTime @default(now())
 
+  notificacoes Notificacao[]
+
   @@index([acaoId, criadoEm])
 }
 
@@ -209,6 +211,7 @@ model Colaborador {
   cards CardSemanal[]
   wins  Win[]
   acoes Acao[]
+  notificacoes Notificacao[]
 
   @@index([ativo])
 }
@@ -346,4 +349,23 @@ model ExecucaoCron {
   resumo     String
 
   @@index([nome, executadoEm])
+}
+
+/// Aviso, dentro do sistema, de que alguém comentou uma ação que diz respeito à
+/// pessoa: ela foi marcada, ou responde pela ação. Nasce na mesma gravação do
+/// comentário e some com ele (cascata). Não há e-mail: o sino do cabeçalho conta
+/// as não lidas. Lida há mais de 30 dias é apagada por quem comenta.
+model Notificacao {
+  id            String         @id @default(cuid())
+  destinatarioId String
+  destinatario  Colaborador    @relation(fields: [destinatarioId], references: [id], onDelete: Cascade)
+  comentarioId  String
+  comentario    ComentarioAcao @relation(fields: [comentarioId], references: [id], onDelete: Cascade)
+  /// MARCADO (a pessoa foi escolhida em "Avisar") ou RESPONSAVEL (responde pela ação).
+  motivo        String
+  lida          Boolean        @default(false)
+  criadoEm      DateTime       @default(now())
+
+  @@unique([destinatarioId, comentarioId])
+  @@index([destinatarioId, lida, criadoEm])
 }

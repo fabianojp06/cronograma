@@ -390,3 +390,70 @@ test.describe('monitoramento', () => {
     await expect(page.getByText('do ponto em que')).toBeVisible()
   })
 })
+
+test.describe('notificações de comentário', () => {
+  test('quem é marcado vê o sino com a contagem, abre a notificação e marca como lida', async ({
+    page,
+    context,
+  }) => {
+    const bruno = crypto.randomUUID()
+    await consultar(
+      `INSERT INTO "Colaborador" ("id","nome","clerkUserId","updatedAt") VALUES ($1,'Bruno Lima','user_bruno',now())`,
+      [bruno],
+    )
+
+    // Ana (a conta de teste) comenta e marca o Bruno.
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await page.getByText('Marcar outras pessoas').click()
+    await page.getByLabel('Bruno Lima').check()
+    await page.getByLabel('Novo comentário').fill('Bruno, preciso do relatório até sexta')
+    await page.getByRole('button', { name: 'Comentar' }).click()
+    await expect(page.getByText('Comentário salvo.')).toBeVisible()
+    // Quem comentou não se avisa.
+    await expect(page.getByRole('link', { name: 'Notificações', exact: true })).toBeVisible()
+
+    // Agora como o Bruno.
+    await context.addCookies([{ name: 'e2e_user', value: 'user_bruno', url: 'http://127.0.0.1:3100' }])
+    await page.goto('/')
+    await expect(page.getByRole('link', { name: 'Notificações: 1 não lida' })).toBeVisible()
+
+    await page.getByRole('link', { name: 'Notificações: 1 não lida' }).click()
+    await expect(page.getByText('1 não lida.')).toBeVisible()
+    await expect(page.getByText('Ana Souza')).toBeVisible()
+    await expect(page.getByText('marcou você')).toBeVisible()
+    await expect(page.getByText('Bruno, preciso do relatório até sexta')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'ação 1' })).toHaveAttribute(
+      'href',
+      `/projetos/${projetoId}/acoes/${acaoId}/editar`,
+    )
+
+    await page.getByRole('button', { name: 'Marcar como lida' }).click()
+    await expect(page.getByText('Tudo lido.')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Notificações', exact: true })).toBeVisible()
+  })
+
+  test('o responsável pela ação é avisado sem ser marcado', async ({ page, context }) => {
+    const bruno = crypto.randomUUID()
+    await consultar(
+      `INSERT INTO "Colaborador" ("id","nome","clerkUserId","updatedAt") VALUES ($1,'Bruno Lima','user_bruno',now())`,
+      [bruno],
+    )
+    await consultar(`UPDATE "Acao" SET "responsavelId" = $1 WHERE "id" = $2`, [bruno, acaoId])
+
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await expect(page.getByText('Bruno Lima, que responde pela ação, é avisado(a) sempre.')).toBeVisible()
+    await page.getByLabel('Novo comentário').fill('Atualizei o prazo')
+    await page.getByRole('button', { name: 'Comentar' }).click()
+    await expect(page.getByText('Comentário salvo.')).toBeVisible()
+
+    await context.addCookies([{ name: 'e2e_user', value: 'user_bruno', url: 'http://127.0.0.1:3100' }])
+    await page.goto('/notificacoes')
+    await expect(page.getByText('comentou uma ação sua')).toBeVisible()
+  })
+
+  test('conta sem colaborador vinculado vê como se ligar', async ({ page, context }) => {
+    await context.addCookies([{ name: 'e2e_user', value: 'user_sem_cadastro', url: 'http://127.0.0.1:3100' }])
+    await page.goto('/notificacoes')
+    await expect(page.getByText('ainda não está ligada a um colaborador')).toBeVisible()
+  })
+})
