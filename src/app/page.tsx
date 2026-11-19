@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { BarraExportacao } from '@/components/barra-exportacao'
 import { FiltrosProjetos } from '@/components/filtros-projetos'
 import { IndicadoresPainel } from '@/components/indicadores-painel'
 import { ListaProjetos } from '@/components/lista-projetos'
@@ -16,6 +17,13 @@ export const metadata = { title: 'Painel consolidado — Cronograma CTCEA' }
  * agregado. Reaproveita `ListaProjetos` e os filtros da rota `/projetos` —
  * duas tabelas com a mesma regra divergiriam na primeira mudança.
  */
+/** Reaproveita só os filtros reconhecidos, para o Excel sair como a tela. */
+function consultaDosFiltros(filtros: ReturnType<typeof lerFiltros>): string {
+  const q = new URLSearchParams()
+  for (const [chave, valor] of Object.entries(filtros)) if (valor) q.set(chave, valor)
+  return q.toString()
+}
+
 export default async function PainelPage({ searchParams }: PageProps<'/'>) {
   const filtros = lerFiltros(await searchParams)
   const hoje = inicioDeHojeUTC()
@@ -73,6 +81,9 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
 
       <IndicadoresPainel painel={painel} />
 
+      <BarraExportacao consulta={consultaDosFiltros(filtros)} />
+
+      <div className="print:hidden">
       <FiltrosProjetos
         filtros={filtros}
         equipes={opcoesDistintas(valores.map((v) => v.equipe))}
@@ -80,6 +91,7 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
         categorias={opcoesDistintas(valores.map((v) => v.categoria))}
         acao="/"
       />
+      </div>
 
       <ListaProjetos linhas={linhas} />
     </main>

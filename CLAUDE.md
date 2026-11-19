@@ -528,6 +528,31 @@ denunciou. Toda mudança nas ações de `/wins` roda os dois.
   razão da guarda de migrations: o preview usa o banco de produção e avisaria
   colaboradores reais. Envio pela API HTTP do Resend, sem SDK.
 
+## Avisos de atraso, "Minhas ações" e exportação
+
+- **Aviso semanal de atraso** (`/api/cron/atrasos`, cron da Vercel às segundas,
+  11h UTC em `vercel.json`): um e-mail por responsável com a lista das ações
+  atrasadas (`avisar-atrasos.ts`, texto em `email-atrasos.ts`). A regra é a do
+  painel (`acaoEstaAtrasada`). Fora do envio: ação sem responsável, responsável
+  sem e-mail ou desativado, projeto excluído — o resumo devolvido conta os dois
+  primeiros casos. A rota é pública para o Clerk (`ROTAS_PUBLICAS`) e se
+  protege sozinha por `CRON_SECRET` (`autorizacao-cron.ts`): **sem a variável
+  ela recusa tudo**, não fica aberta. Só produção envia (`email-config.ts`).
+  Mudar a frequência é mudar o `schedule` do `vercel.json`; no plano Hobby o
+  cron roda no máximo uma vez por dia.
+- **`/minhas-acoes`**: ações do colaborador ligado à conta (projetos ativos),
+  em Atrasadas / Em aberto / Concluídas (as 10 mais recentes).
+  `minhas-acoes.ts` é puro. Conta sem colaborador vê o caminho para se ligar.
+- **Exportação** (`/api/exportar/{projetos|acoes|atrasadas}`, `.xlsx` por
+  `exceljs`): o conteúdo é decidido em `exportacao.ts` (puro) e o formato em
+  `exportacao-xlsx.ts`. `projetos` respeita os filtros da query string, como o
+  painel. Datas e números saem como data e número, não como texto. Texto do
+  usuário entra como string, nunca como fórmula. **PDF é a impressão do
+  navegador** (`BarraExportacao`): sem biblioteca; o tema escuro é desligado
+  durante a impressão e filtros/cabeçalho têm `print:hidden`.
+- O `auth()` falso do teste de navegador chama `headers()` de propósito: sem
+  isso o Next pré-renderiza a página no build, com o banco vazio.
+
 ## Teste de navegador (Playwright)
 
 `npm run test:e2e` sobe o sistema construído de verdade (`next build` + `next

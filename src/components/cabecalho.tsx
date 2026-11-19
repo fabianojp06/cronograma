@@ -21,7 +21,7 @@ const MENU = [
 /** Barra superior fixa: identidade do sistema, menu e sessão do usuário. */
 export function Cabecalho() {
   return (
-    <header className="flex flex-wrap items-center gap-x-8 gap-y-2 border-b border-border bg-surface px-6 py-3">
+    <header className="print:hidden flex flex-wrap items-center gap-x-8 gap-y-2 border-b border-border bg-surface px-6 py-3">
       <Link href="/" className="font-display text-sm font-extrabold tracking-tight">
         CTCEA <span className="text-accent">Cronograma</span>
       </Link>
