@@ -164,6 +164,17 @@ export default async function ProjetoPage({
           >
             Nova ação
           </Link>
+          {acoesProjeto.length > 1 ? (
+            <>
+              {' · '}
+              <Link
+                className="text-accent hover:underline"
+                href={`/projetos/${projeto.id}/lote`}
+              >
+                Editar em lote
+              </Link>
+            </>
+          ) : null}
           </>
         ) : null}
       </p>

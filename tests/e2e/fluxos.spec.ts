@@ -457,3 +457,81 @@ test.describe('notificações de comentário', () => {
     await expect(page.getByText('ainda não está ligada a um colaborador')).toBeVisible()
   })
 })
+
+test.describe('edição em lote', () => {
+  async function maisUmaAcao() {
+    await consultar(
+      `INSERT INTO "Acao" ("id","projetoId","numero","descricao","previstoInicio","previstoTermino","updatedAt")
+       VALUES ($1,$2,2,'Segunda ação','2026-03-09','2026-03-13',now())`,
+      [crypto.randomUUID(), projetoId],
+    )
+  }
+
+  test('remarca o previsto de duas ações: prévia, confirmação e histórico por ação', async ({ page }) => {
+    await maisUmaAcao()
+    await page.goto(`/projetos/${projetoId}`)
+    await page.getByRole('link', { name: 'Editar em lote' }).click()
+    await expect(page.getByRole('heading', { name: 'Editar ações em lote' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Marcar todas' }).click()
+    await page.getByLabel('Dias úteis').fill('3')
+    await page.getByRole('button', { name: 'Ver prévia' }).click()
+
+    await expect(page.getByText('Adiar o previsto em 3 dias úteis:')).toBeVisible()
+    await expect(page.getByText('2 de 2 ações mudam.')).toBeVisible()
+    // 02/03 + 3 úteis = 05/03; 20/03 + 3 úteis = 25/03
+    await expect(page.getByText(/Início previsto: 02\/03\/2026.*05\/03\/2026/)).toBeVisible()
+    await expect(page.getByText(/Término previsto: 20\/03\/2026.*25\/03\/2026/)).toBeVisible()
+    // A prévia não gravou nada.
+    expect((await consultar('SELECT 1 FROM "HistoricoAlteracao"')).length).toBe(0)
+
+    await page.getByRole('button', { name: 'Confirmar e gravar 2 ação(ões)' }).click()
+    await expect(page.getByText('ações alteradas')).toBeVisible()
+
+    const [{ n }] = await consultar<{ n: string }>(
+      `SELECT count(*) AS n FROM "HistoricoAlteracao" WHERE "campo" IN ('previstoInicio','previstoTermino')`,
+    )
+    expect(Number(n)).toBe(4)
+    const [acao] = await consultar<{ t: string }>(
+      `SELECT to_char("previstoTermino",'YYYY-MM-DD') AS t FROM "Acao" WHERE "id" = $1`,
+      [acaoId],
+    )
+    expect(acao.t).toBe('2026-03-25')
+  })
+
+  test('troca o responsável em lote', async ({ page }) => {
+    await maisUmaAcao()
+    await page.goto(`/projetos/${projetoId}/lote`)
+    await page.getByLabel('Marcar a ação 1').check()
+    await page.getByLabel('Responsável', { exact: true }).selectOption({ label: 'Ana Souza' })
+    await page.getByRole('button', { name: 'Ver prévia' }).click()
+    await expect(page.getByText(/Responsável: —.*Ana Souza/)).toBeVisible()
+    await page.getByRole('button', { name: /Confirmar e gravar/ }).click()
+    await expect(page.getByText('ação alterada')).toBeVisible()
+    const [{ nome }] = await consultar<{ nome: string }>(
+      `SELECT c."nome" FROM "Acao" a JOIN "Colaborador" c ON c."id" = a."responsavelId" WHERE a."id" = $1`,
+      [acaoId],
+    )
+    expect(nome).toBe('Ana Souza')
+  })
+
+  test('pedido sem ação marcada ou sem operação é recusado com mensagem', async ({ page }) => {
+    await maisUmaAcao()
+    await page.goto(`/projetos/${projetoId}/lote`)
+    await page.getByRole('button', { name: 'Ver prévia' }).click()
+    await expect(page.getByRole('alert').filter({ hasText: 'Marque pelo menos' })).toBeVisible()
+    await page.getByLabel('Marcar a ação 1').check()
+    await page.getByRole('button', { name: 'Ver prévia' }).click()
+    await expect(page.getByRole('alert').filter({ hasText: 'Escolha o que fazer' })).toBeVisible()
+  })
+
+  test('o Leitor vê o aviso no lugar do formulário', async ({ page }) => {
+    await maisUmaAcao()
+    await consultar(`UPDATE "Colaborador" SET "somenteLeitura" = true WHERE "clerkUserId" = 'user_e2e'`)
+    await page.goto(`/projetos/${projetoId}`)
+    await expect(page.getByRole('link', { name: 'Editar em lote' })).toHaveCount(0)
+    await page.goto(`/projetos/${projetoId}/lote`)
+    await expect(page.getByText('Seu perfil é somente leitura.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Ver prévia' })).toHaveCount(0)
+  })
+})
