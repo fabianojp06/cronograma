@@ -350,3 +350,43 @@ test('comenta uma ação, o comentário aparece com o autor e o autor pode apag�
     (await consultar('SELECT 1 FROM "ComentarioAcao" WHERE "acaoId" = $1', [acaoId])).length,
   ).toBe(0)
 })
+
+test.describe('monitoramento', () => {
+  test('/api/saude responde sem login, só com ok e o tempo do banco', async ({ request }) => {
+    const resposta = await request.get('/api/saude')
+    expect(resposta.status()).toBe(200)
+    const corpo = await resposta.json()
+    expect(corpo.status).toBe('ok')
+    expect(corpo.banco.ok).toBe(true)
+    expect(Object.keys(corpo).sort()).toEqual(['banco', 'status'])
+  })
+
+  test('o painel do sistema é do administrador, e mostra erros, cron e volume', async ({ page }) => {
+    // Sem ser administrador (e já havendo um), a tela recusa.
+    await consultar(
+      `INSERT INTO "Colaborador" ("id","nome","administrador","updatedAt") VALUES ($1,'Outro Admin',true,now())`,
+      [crypto.randomUUID()],
+    )
+    await page.goto('/administracao/sistema')
+    await expect(page.getByText('Só administradores consultam o painel do sistema.')).toBeVisible()
+
+    await consultar(`UPDATE "Colaborador" SET "administrador" = true WHERE "clerkUserId" = 'user_e2e'`)
+    await consultar(
+      `INSERT INTO "RegistroErro" ("id","origem","mensagem") VALUES ($1,'Falha ao salvar WIN','x'),($2,'Falha ao salvar WIN','y')`,
+      [crypto.randomUUID(), crypto.randomUUID()],
+    )
+    await consultar(
+      `INSERT INTO "ExecucaoCron" ("id","nome","ok","resumo") VALUES ($1,'atrasos',true,'{"enviados":4}')`,
+      [crypto.randomUUID()],
+    )
+
+    await page.goto('/administracao/sistema')
+    await expect(page.getByRole('heading', { name: 'Painel do sistema' })).toBeVisible()
+    await expect(page.getByText(/Respondendo em \d+ ms/)).toBeVisible()
+    await expect(page.getByRole('cell', { name: 'Falha ao salvar WIN' })).toBeVisible()
+    await expect(page.getByText('2 erro(s) nas últimas 24 horas.')).toBeVisible()
+    await expect(page.getByText('Última execução:').first()).toContainText('concluída')
+    await expect(page.getByText('{"enviados":4}')).toBeVisible()
+    await expect(page.getByText('do ponto em que')).toBeVisible()
+  })
+})

@@ -13,4 +13,7 @@ export const ROTAS_PUBLICAS = [
   '/api/webhooks(.*)',
   // Cron da Vercel: sem sessão; a própria rota confere o CRON_SECRET.
   '/api/cron(.*)',
+  // Verificação de saúde para monitoramento externo: devolve só ok/fora e o
+  // tempo do banco, nada que identifique pessoas ou configuração.
+  '/api/saude',
 ] as const

@@ -712,6 +712,30 @@ log de execução da Vercel Hobby guarda só 1 hora; o registro vai para
   texto de um erro pode carregar dados da operação.
 - Ao criar um `catch` novo, use `registrarFalha`, não `console.error`.
 
+## Monitoramento
+
+Três peças, todas só para produção e todas puras onde dá (`monitoramento.ts`):
+
+- **`/api/saude`** (pública, `ROTAS_PUBLICAS`): `SELECT 1` com teto de 4 s;
+  200 `{status:'ok', banco:{ok,ms}}` ou 503 `{status:'fora'}`. Devolve o mínimo
+  de propósito — nenhuma variável, versão ou mensagem de erro. É o endereço que
+  um verificador externo (UptimeRobot, Better Stack) consulta a cada 5 min e
+  avisa por e-mail se cair; **esse cadastro é externo ao código e é de quem
+  administra**.
+- **Alerta de erro por e-mail**: `registrarFalha` avisa quem administra na
+  PRIMEIRA falha de uma origem e silencia as da mesma origem por 1 hora (a
+  pergunta é feita ao banco, porque a instância serverless não guarda memória).
+  Destino: `EMAIL_ALERTAS` (vírgulas) ou, sem ela, os administradores ativos com
+  e-mail. **As origens do próprio envio de e-mail nunca alertam**
+  (`ORIGENS_SEM_ALERTA`): o alerta por e-mail falharia, registraria outra
+  falha e tentaria alertar de novo. Ao criar uma origem nova de falha de
+  e-mail, ponha-a nessa lista. O alerta nunca lança.
+- **`/administracao/sistema`** (só administrador): banco, erros por origem (24 h
+  e 7 dias), últimas execuções do cron (`ExecucaoCron`, 90 dias), configuração
+  (só "definida ou não", nunca o valor) e volume contra o teto de 10 mil ações
+  do `/dashboards`. O cron de atraso grava cada execução em `gravarExecucaoCron`;
+  passar de 9 dias sem execução acende o aviso.
+
 ## Migrations em produção
 
 O `build` roda `scripts/migrar-producao.ts` antes do `next build`, e esse script

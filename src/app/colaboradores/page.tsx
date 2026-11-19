@@ -134,6 +134,10 @@ export default async function ColaboradoresPage() {
           <Link className="text-textMuted hover:text-accent" href="/administracao/erros">
             Registro de erros do sistema
           </Link>
+          {' · '}
+          <Link className="text-textMuted hover:text-accent" href="/administracao/sistema">
+            Painel do sistema
+          </Link>
         </p>
       ) : null}
 

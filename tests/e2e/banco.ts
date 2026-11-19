@@ -40,6 +40,8 @@ export async function encerrarBanco(): Promise<void> {
 export async function limparBanco(): Promise<void> {
   for (const tabela of [
     'ComentarioAcao',
+    'RegistroErro',
+    'ExecucaoCron',
     'HistoricoAlteracao',
     'WinSemana',
     'Win',
