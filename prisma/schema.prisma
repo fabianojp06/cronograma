@@ -64,8 +64,9 @@ model Acao {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  historico HistoricoAlteracao[]
-  wins      Win[]
+  historico   HistoricoAlteracao[]
+  wins        Win[]
+  comentarios ComentarioAcao[]
 
   @@unique([projetoId, numero])
   @@index([projetoId])
@@ -83,6 +84,22 @@ model HistoricoAlteracao {
   alteradoPor String? // login/nome de quem alterou, se aplicável
 
   @@index([acaoId, alteradoEm])
+}
+
+/// Comentário livre numa Ação — a coluna de comentário da planilha, mas com
+/// autor e momento. Só se acrescenta: não há edição, para a conversa não ser
+/// reescrita depois. Quem escreveu pode apagar o seu (e o administrador, o de
+/// qualquer um). `autor` é o `userId` do Clerk, como em `HistoricoAlteracao`;
+/// o nome é resolvido pelo colaborador vinculado na hora de mostrar.
+model ComentarioAcao {
+  id       String   @id @default(cuid())
+  acaoId   String
+  acao     Acao     @relation(fields: [acaoId], references: [id], onDelete: Cascade)
+  texto    String
+  autor    String
+  criadoEm DateTime @default(now())
+
+  @@index([acaoId, criadoEm])
 }
 
 /// Avaliação de um Projeto na Matriz de Priorização (Benefício x Esforço
