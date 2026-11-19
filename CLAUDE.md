@@ -575,6 +575,32 @@ denunciou. Toda mudança nas ações de `/wins` roda os dois.
 - O `auth()` falso do teste de navegador chama `headers()` de propósito: sem
   isso o Next pré-renderiza a página no build, com o banco vazio.
 
+## Meus projetos (`/meus-projetos`)
+
+Os projetos ativos de quem está logado, no menu ao lado de "Minhas ações".
+Regra pura em `meus-projetos.ts`. Um projeto entra por QUALQUER um de três
+vínculos, e a linha diz qual (badge): responsável pelo projeto
+(`Projeto.responsavel`), responsável por ações dele (`Acao.responsavelId`,
+com a contagem) e apoio (`Projeto.apoio`).
+
+- **Os dois campos de texto casam por `chaveDoNome`** (sem acento, caixa nem
+  espaço repetido), a mesma regra do cadastro e do importador. O `apoio` é lido
+  como lista (separadores: vírgula, ponto e vírgula, barra, `&` e " e "), e vale
+  também o campo inteiro, para um nome com separador dentro. **Nome parcial não
+  casa** ("Ana Silva" não é "Ana Silva Costa"): adivinhar por sobrenome juntaria
+  homônimos. O que não casa fica de fora, sem erro, e a tela avisa para conferir
+  a grafia — o texto livre é o ponto fraco desta tela.
+- **É pessoal**: o administrador também vê só os seus (o painel e `/projetos`
+  mostram a carteira inteira).
+- Ordem: quem tem ação MINHA atrasada primeiro, depois projeto atrasado, depois
+  por nome. O resumo (progresso, status) é do projeto inteiro; só a contagem de
+  atrasadas "suas" é pessoal. Mesma regra de atraso do painel.
+- Filtro por link (`?filtro=respondo|apoio`): "respondo" = responsável pelo
+  projeto ou por ações; "apoio" = quem tem o vínculo de apoio. Projeto excluído
+  não aparece. Conta sem colaborador vinculado vê o caminho para se ligar.
+- A consulta ao banco só descarta quem não tem nenhum dos três vínculos
+  possíveis; a comparação de nomes é em memória (carteira pequena).
+
 ## Edição em lote de ações (`/projetos/[id]/lote`)
 
 Remarcar o previsto e/ou trocar o responsável de várias ações de um projeto de
