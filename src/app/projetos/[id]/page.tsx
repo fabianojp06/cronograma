@@ -175,6 +175,17 @@ export default async function ProjetoPage({
               </Link>
             </>
           ) : null}
+          {acoesProjeto.length > 0 ? (
+            <>
+              {' · '}
+              <Link
+                className="text-accent hover:underline"
+                href={`/projetos/${projeto.id}/modelo`}
+              >
+                Salvar como modelo
+              </Link>
+            </>
+          ) : null}
           </>
         ) : null}
       </p>

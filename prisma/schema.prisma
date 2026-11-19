@@ -369,3 +369,40 @@ model Notificacao {
   @@unique([destinatarioId, comentarioId])
   @@index([destinatarioId, lida, criadoEm])
 }
+
+/// Modelo de projeto: um esqueleto reutilizável (ciclos anuais, rotinas da
+/// STI/GIA/GRH). Guarda os campos de classificação do projeto e a lista de ações
+/// com datas RELATIVAS — quando alguém cria um projeto a partir dele, informa a
+/// data de início e as datas das ações são calculadas em dias úteis. Responsáveis
+/// e status não vão para o modelo: pessoas e andamento são do projeto, não do molde.
+model ModeloProjeto {
+  id             String   @id @default(cuid())
+  nome           String   @unique
+  descricao      String?
+  equipe         String?
+  natureza       String?
+  categoria      String?
+  apoio          String?
+  setorEnvolvido String?
+  /// `userId` do Clerk de quem salvou: só ele (ou um administrador) exclui.
+  criadoPor      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  acoes ModeloAcao[]
+}
+
+model ModeloAcao {
+  id        String       @id @default(cuid())
+  modeloId  String
+  modelo    ModeloProjeto @relation(fields: [modeloId], references: [id], onDelete: Cascade)
+  ordem     Int
+  descricao String
+  /// Dias úteis entre o início do projeto e o início desta ação (0 = no mesmo dia).
+  /// Nulo = a ação não tinha data prevista no projeto de origem.
+  inicioDiasUteis  Int?
+  /// Duração em dias úteis (as duas pontas contam, como `diasUteisEntre`).
+  duracaoDiasUteis Int?
+
+  @@unique([modeloId, ordem])
+}

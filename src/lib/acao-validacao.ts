@@ -51,7 +51,7 @@ export type EntradaAcao =
   | FormData
   | Record<string, FormDataEntryValue | null | undefined>
 
-const TAMANHO_MAXIMO_DESCRICAO = 500
+export const TAMANHO_MAXIMO_DESCRICAO = 500
 
 function lerCampo(entrada: EntradaAcao, campo: string): string {
   const bruto =

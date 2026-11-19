@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { AvisoSomenteLeitura } from '@/components/aviso-somente-leitura'
 import { contaPodeAdministrar, sessaoPodeEditar } from '@/lib/administracao-servidor'
 import { excluirComentario } from '@/app/projetos/acoes-comentario'
+import { BotaoDuplicarAcao } from '@/components/botao-duplicar-acao'
 import { FormularioComentario } from '@/components/formulario-comentario'
 import { FormularioAcao, type ValoresAcao } from '@/components/formulario-acao'
 import { serializarValor } from '@/lib/acao-historico'
@@ -130,7 +131,10 @@ export default async function EditarAcaoPage({
 
       <div className="grid gap-x-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
         {podeEditar ? (
-          <FormularioAcao projetoId={acao.projeto.id} responsaveis={responsaveis} acao={valores} />
+          <div>
+            <FormularioAcao projetoId={acao.projeto.id} responsaveis={responsaveis} acao={valores} />
+            <BotaoDuplicarAcao acaoId={acao.id} />
+          </div>
         ) : (
           <div>
             <AvisoSomenteLeitura
