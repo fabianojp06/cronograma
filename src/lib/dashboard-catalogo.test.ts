@@ -52,6 +52,18 @@ describe('catálogo de relatórios', () => {
   })
 })
 
+/**
+ * Texto da página e das seções que ela monta, na ORDEM em que são renderizadas:
+ * a página abre com as seções de panorama/composição/dimensão e depois chama
+ * prazos, qualidade, WIN e auditoria. Concatenar nessa ordem mantém a conferência
+ * valendo depois de a página ter sido dividida em módulos.
+ */
+function textoDaPagina(): string {
+  return ['page.tsx', 'secoes/prazos.tsx', 'secoes/qualidade.tsx', 'secoes/wins.tsx', 'secoes/auditoria.tsx']
+    .map((arquivo) => readFileSync(new URL(`../app/dashboards/${arquivo}`, import.meta.url), 'utf-8'))
+    .join('\n')
+}
+
 describe('a página segue a ordem do catálogo', () => {
   /**
    * O índice de navegação é derivado do catálogo, mas as seções são escritas à
@@ -61,10 +73,7 @@ describe('a página segue a ordem do catálogo', () => {
    * de auditoria e o índice passou a mentir.
    */
   it('renderiza as seções na mesma ordem em que o catálogo as declara', () => {
-    const pagina = readFileSync(
-      new URL('../app/dashboards/page.tsx', import.meta.url),
-      'utf-8',
-    )
+    const pagina = textoDaPagina()
     // Só as seções escritas com id literal: as de dimensão saem de um laço,
     // com o id vindo de variável, e a ordem delas já é derivada de uma lista.
     const naPagina = [...pagina.matchAll(/rel\('([a-z-]+)'\)/g)].map((m) => m[1])
@@ -75,10 +84,7 @@ describe('a página segue a ordem do catálogo', () => {
   })
 
   it('todo id usado na página existe no catálogo', () => {
-    const pagina = readFileSync(
-      new URL('../app/dashboards/page.tsx', import.meta.url),
-      'utf-8',
-    )
+    const pagina = textoDaPagina()
     const ids = new Set(RELATORIOS.map((r) => r.id))
     for (const [, id] of pagina.matchAll(/rel\('([a-z-]+)'\)/g)) {
       expect(ids.has(id), `id "${id}" não está no catálogo`).toBe(true)
