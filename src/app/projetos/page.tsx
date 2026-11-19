@@ -73,6 +73,14 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
             Novo projeto
           </Link>
         ) : null}
+        {podeEditar ? (
+          <Link
+            className="rounded-md border border-border px-4 py-2 text-sm text-textMuted hover:border-accent hover:text-accent"
+            href="/modelos"
+          >
+            A partir de um modelo
+          </Link>
+        ) : null}
       </div>
 
       <FiltrosProjetos

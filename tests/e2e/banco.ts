@@ -39,6 +39,7 @@ export async function encerrarBanco(): Promise<void> {
 /** Esvazia as tabelas que os testes tocam, na ordem das chaves estrangeiras. */
 export async function limparBanco(): Promise<void> {
   for (const tabela of [
+    'ModeloProjeto',
     'Notificacao',
     'ComentarioAcao',
     'RegistroErro',

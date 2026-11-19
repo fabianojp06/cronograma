@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 import { AvisoSomenteLeitura } from '@/components/aviso-somente-leitura'
 import { sessaoPodeEditar } from '@/lib/administracao-servidor'
 import { FormularioProjeto } from '@/components/formulario-projeto'
@@ -17,7 +19,16 @@ export default async function NovoProjetoPage() {
         dentro do projeto.
       </p>
       {podeEditar ? (
-        <FormularioProjeto />
+        <>
+          <p className="mt-3 text-sm text-textMuted">
+            Projeto parecido com outro que já existe?{' '}
+            <Link className="text-accent hover:underline" href="/modelos">
+              Comece de um modelo
+            </Link>{' '}
+            e as ações já vêm prontas.
+          </p>
+          <FormularioProjeto />
+        </>
       ) : (
         <AvisoSomenteLeitura voltarPara="/projetos" rotuloVoltar="Voltar para a listagem" />
       )}

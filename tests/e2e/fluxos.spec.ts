@@ -642,3 +642,76 @@ test.describe('dashboards em abas', () => {
     await expect(page).toHaveURL(/\/dashboards\?aba=prazos$/)
   })
 })
+
+test.describe('duplicar ação e modelos de projeto', () => {
+  test('duplica a ação: abre a cópia, sem andamento, e a original continua', async ({ page }) => {
+    await consultar(`UPDATE "Acao" SET "status" = 'EM_CURSO_50' WHERE "id" = $1`, [acaoId])
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await page.getByRole('button', { name: 'Duplicar esta ação' }).click()
+
+    // Abriu a edição da CÓPIA, não da original.
+    await expect(page).toHaveURL(/\/acoes\/[^/]+\/editar$/)
+    await expect(page).not.toHaveURL(new RegExp(acaoId))
+    await expect(page.getByLabel('Descrição')).toHaveValue('Ação de partida (cópia)')
+    await expect(page.getByLabel('Status')).toHaveValue('NAO_INICIADO')
+    expect((await consultar('SELECT 1 FROM "Acao" WHERE "projetoId" = $1', [projetoId])).length).toBe(2)
+    const [{ status }] = await consultar<{ status: string }>('SELECT "status" FROM "Acao" WHERE "id" = $1', [acaoId])
+    expect(status).toBe('EM_CURSO_50')
+  })
+
+  test('salva o projeto como modelo e cria outro projeto com as datas recalculadas', async ({ page }) => {
+    await consultar(
+      `INSERT INTO "Acao" ("id","projetoId","numero","descricao","previstoInicio","previstoTermino","updatedAt")
+       VALUES ($1,$2,2,'Segunda etapa','2026-03-23','2026-03-27',now())`,
+      [crypto.randomUUID(), projetoId],
+    )
+
+    await page.goto(`/projetos/${projetoId}`)
+    await page.getByRole('link', { name: 'Salvar como modelo' }).click()
+    await page.getByLabel('Nome do modelo').fill('Ciclo trimestral')
+    await page.getByRole('button', { name: 'Salvar como modelo' }).click()
+
+    await expect(page).toHaveURL(/\/modelos\?salvo=/)
+    await expect(page.getByText('Modelo salvo.')).toBeVisible()
+    const item = page.getByRole('listitem').filter({ hasText: 'Ciclo trimestral' })
+    await expect(item).toContainText('2 ações')
+
+    await item.getByRole('link', { name: 'Usar este modelo' }).click()
+    await expect(page.getByText('As 2 ações que o modelo cria')).toBeVisible()
+    await page.getByLabel('Nome do projeto').fill('Ciclo do 3º trimestre')
+    await page.getByLabel('Data de início do projeto').fill('2026-07-06')
+    await page.getByRole('button', { name: 'Criar projeto com as ações do modelo' }).click()
+
+    await expect(page).toHaveURL(/\/projetos\/[^/]+$/)
+    await expect(page.getByRole('heading', { name: 'Ciclo do 3º trimestre' })).toBeVisible()
+    const acoes = await consultar<{ numero: number; i: string; t: string }>(
+      `SELECT a."numero", to_char(a."previstoInicio",'YYYY-MM-DD') AS i, to_char(a."previstoTermino",'YYYY-MM-DD') AS t
+       FROM "Acao" a JOIN "Projeto" p ON p."id" = a."projetoId" WHERE p."nome" = 'Ciclo do 3º trimestre' ORDER BY a."numero"`,
+    )
+    // Origem: 02/03→20/03 (15 úteis) e 23/03→27/03, 15 úteis depois. Em 06/07/2026: 06/07→24/07 e 27/07→31/07.
+    expect(acoes).toEqual([
+      { numero: 1, i: '2026-07-06', t: '2026-07-24' },
+      { numero: 2, i: '2026-07-27', t: '2026-07-31' },
+    ])
+  })
+
+  test('o modelo some da lista ao excluir, e o Leitor não vê as ações de criar nem excluir', async ({ page }) => {
+    await page.goto(`/projetos/${projetoId}/modelo`)
+    await page.getByLabel('Nome do modelo').fill('Para excluir')
+    await page.getByRole('button', { name: 'Salvar como modelo' }).click()
+    await expect(page.getByText('Modelo salvo.')).toBeVisible()
+
+    await consultar(`UPDATE "Colaborador" SET "somenteLeitura" = true WHERE "clerkUserId" = 'user_e2e'`)
+    await page.goto('/modelos')
+    await expect(page.getByText('Para excluir')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Usar este modelo' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Excluir o modelo/ })).toHaveCount(0)
+    await page.goto(`/projetos/${projetoId}/modelo`)
+    await expect(page.getByText('Seu perfil é somente leitura.')).toBeVisible()
+
+    await consultar(`UPDATE "Colaborador" SET "somenteLeitura" = false WHERE "clerkUserId" = 'user_e2e'`)
+    await page.goto('/modelos')
+    await page.getByRole('button', { name: 'Excluir o modelo Para excluir' }).click()
+    await expect(page.getByText('Nenhum modelo ainda.')).toBeVisible()
+  })
+})

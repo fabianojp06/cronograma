@@ -603,6 +603,36 @@ denunciou. Toda mudança nas ações de `/wins` roda os dois.
 - O `auth()` falso do teste de navegador chama `headers()` de propósito: sem
   isso o Next pré-renderiza a página no build, com o banco vazio.
 
+## Duplicar ação e modelos de projeto
+
+**Duplicar ação** (botão na tela de edição, `projetos/acoes-duplicar.ts`,
+`duplicar-acao.ts`): a cópia fica no mesmo projeto, com a descrição + " (cópia)"
+(copiar a cópia não empilha o sufixo), o mesmo previsto e o mesmo responsável, e
+**sem andamento**: status "não iniciado", sem realizado, sem histórico. Leva à
+edição da cópia. Responsável desativado não é copiado. O aviso ao responsável
+segue a regra de toda ação nova (`NOVA_ACAO`).
+
+**Modelos de projeto** (`/modelos`, regra pura em `modelo-projeto.ts`, Server
+Actions em `modelos/acoes-modelo.ts`; tabelas `ModeloProjeto` e `ModeloAcao`):
+
+- **Salvar como modelo** (link na tela do projeto) guarda a classificação
+  (equipe, natureza, categoria, apoio, setor) e as ações com datas
+  **relativas, em dias úteis**: `inicioDiasUteis` (a ação mais cedo é o dia 0) e
+  `duracaoDiasUteis` (as duas pontas contam, como `diasUteisEntre`). **Pessoas e
+  andamento não vão para o modelo** — responsável, status e realizado são do
+  projeto, não do molde. Ação sem data vira item sem datas.
+- **Usar o modelo** (`/modelos/[id]/usar`): informa nome e data de início; o
+  projeto e as ações nascem em UMA transação (ou nasce tudo, ou nada), com as
+  datas posicionadas por `deslocarDiasUteis` e `somarDiasUteis`. No mesmo início,
+  as datas originais voltam (ida e volta, testado). **Início em fim de semana ou
+  feriado vale o próximo dia útil**; e, ao salvar, uma data de início de ação
+  em dia não útil volta como o dia útil anterior (aproximação, dita na tela).
+- Ajustar depois é com a **edição em lote**: não há pré-visualização das datas
+  antes de criar, de propósito — corrigir é barato.
+- Nome do modelo é único. **Quem salvou (ou um administrador) exclui**; Leitor vê
+  a lista mas não cria, usa nem exclui. Excluir o modelo não altera os projetos
+  já criados com ele (cópia, não vínculo). Teto de 200 ações por modelo.
+
 ## Meus projetos (`/meus-projetos`)
 
 Os projetos ativos de quem está logado, no menu ao lado de "Minhas ações".
