@@ -124,3 +124,16 @@ test('o filtro de período some ao limpar', async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboards$/)
   await expect(page.getByText('Período aplicado.')).toHaveCount(0)
 })
+
+test('"Minhas ações" mostra a ação atrasada de quem está logado', async ({ page }) => {
+  await consultar(
+    `UPDATE "Acao" SET "responsavelId" = (SELECT "id" FROM "Colaborador" WHERE "clerkUserId" = 'user_e2e') WHERE "id" = $1`,
+    [acaoId],
+  )
+
+  await page.goto('/minhas-acoes')
+
+  const atrasadas = page.locator('section', { has: page.getByRole('heading', { name: /Atrasadas/ }) })
+  await expect(atrasadas).toContainText('Ação de partida')
+  await expect(atrasadas).toContainText('de atraso')
+})
