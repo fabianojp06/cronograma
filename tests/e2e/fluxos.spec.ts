@@ -97,7 +97,8 @@ test('avisa o conflito quando outra pessoa salvou antes', async ({ browser }) =>
 })
 
 test('filtra os Dashboards por período sem estourar o gráfico de WINs', async ({ page }) => {
-  await page.goto('/dashboards')
+  // O gráfico de WINs fica na aba "Card WIN"; o filtro mantém a aba.
+  await page.goto('/dashboards?aba=wins')
 
   await page.locator('#de').fill('2026-03-01')
   await page.locator('#ate').fill('2026-03-14')
@@ -105,6 +106,7 @@ test('filtra os Dashboards por período sem estourar o gráfico de WINs', async 
 
   await expect(page).toHaveURL(/de=2026-03-01/)
   await expect(page).toHaveURL(/ate=2026-03-14/)
+  await expect(page).toHaveURL(/aba=wins/)
   await expect(page.getByText('Período aplicado.')).toBeVisible()
 
   // Período curto = poucas semanas. O gráfico já esticou até a largura da tela e
@@ -585,5 +587,58 @@ test.describe('meus projetos', () => {
     await context.addCookies([{ name: 'e2e_user', value: 'user_sem_cadastro', url: 'http://127.0.0.1:3100' }])
     await page.goto('/meus-projetos')
     await expect(page.getByText('ainda não está ligada a um colaborador')).toBeVisible()
+  })
+})
+
+test.describe('dashboards em abas', () => {
+  test('abre no panorama, mostra o resumo do que pede atenção e só as seções da aba', async ({ page }) => {
+    await page.goto('/dashboards')
+
+    const resumo = page.getByRole('region', { name: 'O que pede atenção' })
+    await expect(resumo.getByText('Ações atrasadas')).toBeVisible()
+    await expect(resumo.getByText('WINs para promover')).toBeVisible()
+    // A ação semeada tem prazo em março: está atrasada.
+    await expect(resumo.getByRole('link', { name: /Ações atrasadas/ })).toContainText('1')
+
+    await expect(page.getByRole('link', { name: /^Panorama/ })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('heading', { name: 'Panorama geral' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Maiores atrasos' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Alterações recentes' })).toHaveCount(0)
+  })
+
+  test('cada aba mostra os relatórios do seu grupo e o filtro de período a acompanha', async ({ page }) => {
+    await page.goto('/dashboards?de=2026-03-01&ate=2026-12-31')
+    await page.getByRole('link', { name: /^Prazos/ }).click()
+
+    await expect(page).toHaveURL(/aba=prazos/)
+    await expect(page).toHaveURL(/de=2026-03-01/) // o período acompanha a troca de aba
+    await expect(page.getByRole('heading', { name: 'Aderência ao prazo' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Maiores atrasos' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Próximos vencimentos' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Panorama geral' })).toHaveCount(0)
+  })
+
+  test('um número do resumo leva à aba e à seção certas', async ({ page }) => {
+    await page.goto('/dashboards')
+    await page.getByRole('region', { name: 'O que pede atenção' }).getByRole('link', { name: /Ações atrasadas/ }).click()
+    await expect(page).toHaveURL(/aba=prazos#ranking-atrasos/)
+    await expect(page.getByRole('heading', { name: 'Maiores atrasos' })).toBeVisible()
+  })
+
+  test('"Todas" junta tudo numa página (para imprimir) e aba inválida cai no panorama', async ({ page }) => {
+    await page.goto('/dashboards?aba=todas')
+    await expect(page.getByRole('heading', { name: 'Panorama geral' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Maiores atrasos' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Alterações recentes' })).toBeVisible()
+
+    await page.goto('/dashboards?aba=nao-existe')
+    await expect(page.getByRole('heading', { name: 'Panorama geral' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Maiores atrasos' })).toHaveCount(0)
+  })
+
+  test('limpar filtros mantém a aba', async ({ page }) => {
+    await page.goto('/dashboards?aba=prazos&de=2026-03-01&ate=2026-03-14')
+    await page.getByRole('link', { name: 'Limpar filtros' }).click()
+    await expect(page).toHaveURL(/\/dashboards\?aba=prazos$/)
   })
 })
