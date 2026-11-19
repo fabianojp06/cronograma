@@ -333,3 +333,17 @@ model RegistroErro {
 
   @@index([criadoEm])
 }
+
+/// Resultado de cada execução de uma tarefa agendada (hoje, o aviso semanal de
+/// atraso). A Vercel Hobby guarda o log por 1 hora, então "o cron rodou? quantos
+/// e-mails saíram?" não teria resposta na segunda à tarde. Poda por quem grava.
+model ExecucaoCron {
+  id         String   @id @default(cuid())
+  nome       String
+  executadoEm DateTime @default(now())
+  ok         Boolean
+  /// Resumo em texto: contagens em caso de sucesso, mensagem em caso de falha.
+  resumo     String
+
+  @@index([nome, executadoEm])
+}

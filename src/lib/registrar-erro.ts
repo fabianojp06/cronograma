@@ -1,4 +1,10 @@
 import {
+  destinatariosDeAlerta,
+  deveAlertar,
+  JANELA_ALERTA_MS,
+  montarAlertaErro,
+} from '@/lib/monitoramento'
+import {
   deveRegistrar,
   descreverErro,
   limiteDeRetencao,
@@ -17,6 +23,39 @@ export async function apagarRegistrosAntigos(agora: Date = new Date()): Promise<
     where: { criadoEm: { lt: limiteDeRetencao(agora) } },
   })
   return count
+}
+
+/**
+ * Avisa por e-mail quem administra. Nunca lança (roda dentro do tratamento de
+ * outro erro) e usa origens próprias, que não geram alerta, para não entrar em laço.
+ */
+async function alertarAdministradores(
+  origem: string,
+  mensagem: string,
+  rota: string | null,
+): Promise<void> {
+  try {
+    const { prisma } = await import('@/lib/prisma')
+    const { enviarEmail } = await import('@/lib/enviar-email')
+    const { urlBaseDoSistema } = await import('@/lib/email-config')
+    const administradores = await prisma.colaborador.findMany({
+      where: { administrador: true, ativo: true },
+      select: { email: true },
+    })
+    const destinos = destinatariosDeAlerta(
+      process.env,
+      administradores.map((a) => a.email),
+    )
+    const aviso = montarAlertaErro({
+      origem,
+      mensagem,
+      rota,
+      urlBase: urlBaseDoSistema(process.env),
+    })
+    for (const destino of destinos) await enviarEmail(destino, aviso)
+  } catch (falha) {
+    console.error('Falha ao enviar o alerta de erro', falha)
+  }
 }
 
 /**
@@ -39,6 +78,14 @@ export async function registrarFalha(
   try {
     const { prisma } = await import('@/lib/prisma')
     const { mensagem, detalhe } = descreverErro(erro)
+    // Antes de gravar: a pergunta é "já houve outra desta origem na última hora?".
+    const recente = await prisma.registroErro.findFirst({
+      where: {
+        origem: origem.slice(0, MAX_MENSAGEM),
+        criadoEm: { gte: new Date(Date.now() - JANELA_ALERTA_MS) },
+      },
+      select: { id: true },
+    })
     await prisma.registroErro.create({
       data: {
         origem: origem.slice(0, MAX_MENSAGEM),
@@ -48,6 +95,10 @@ export async function registrarFalha(
         digest: contexto.digest ?? null,
       },
     })
+
+    if (deveAlertar(origem, recente !== null)) {
+      await alertarAdministradores(origem, mensagem, contexto.rota ?? null)
+    }
 
     // Retenção sem agendador: limpa de vez em quando, por quem registra.
     const agora = Date.now()
