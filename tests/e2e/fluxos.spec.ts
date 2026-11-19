@@ -535,3 +535,55 @@ test.describe('edição em lote', () => {
     await expect(page.getByRole('button', { name: 'Ver prévia' })).toHaveCount(0)
   })
 })
+
+test.describe('meus projetos', () => {
+  const novoProjeto = (nome: string, campos: { responsavel?: string; apoio?: string; ativo?: boolean }) =>
+    consultar(
+      `INSERT INTO "Projeto" ("id","nome","responsavel","apoio","ativo","updatedAt") VALUES ($1,$2,$3,$4,$5,now())`,
+      [crypto.randomUUID(), nome, campos.responsavel ?? null, campos.apoio ?? null, campos.ativo ?? true],
+    )
+
+  test('lista só os projetos da pessoa, com o motivo, e o filtro separa o apoio', async ({ page }) => {
+    // O semeado ("Projeto E2E") tem Ana Souza como responsável.
+    await novoProjeto('Projeto de apoio', { responsavel: 'Bruno', apoio: 'Carla, ana  souza' })
+    await novoProjeto('Projeto alheio', { responsavel: 'Bruno', apoio: 'Carla' })
+    await novoProjeto('Projeto excluído', { responsavel: 'Ana Souza', ativo: false })
+    // Uma ação do projeto alheio é da Ana: ele entra por "responsável por ações", e atrasada.
+    const [{ id: alheio }] = await consultar<{ id: string }>(`SELECT "id" FROM "Projeto" WHERE "nome" = 'Projeto alheio'`)
+    await consultar(
+      `INSERT INTO "Acao" ("id","projetoId","numero","descricao","previstoInicio","previstoTermino","responsavelId","updatedAt")
+       SELECT $1,$2,1,'Ação da Ana','2026-03-02','2026-03-20',"id",now() FROM "Colaborador" WHERE "clerkUserId" = 'user_e2e'`,
+      [crypto.randomUUID(), alheio],
+    )
+
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Meus projetos' }).click()
+    await expect(page).toHaveURL(/\/meus-projetos$/)
+    await expect(page.getByRole('heading', { name: 'Meus projetos' })).toBeVisible()
+
+    const itens = page.getByRole('listitem')
+    await expect(itens.filter({ hasText: 'Projeto E2E' })).toContainText('Responsável pelo projeto')
+    await expect(itens.filter({ hasText: 'Projeto de apoio' })).toContainText('Apoio')
+    await expect(itens.filter({ hasText: 'Projeto alheio' })).toContainText('Responsável por ações: 1')
+    await expect(itens.filter({ hasText: 'Projeto alheio' })).toContainText('1 ação sua em atraso')
+    await expect(page.getByText('Projeto excluído')).toHaveCount(0)
+    await expect(page.getByText('3 projetos')).toBeVisible()
+    // Os de ação minha atrasada vêm primeiro.
+    await expect(itens.first()).toContainText('Projeto alheio')
+
+    await page.getByRole('link', { name: 'Onde sou apoio' }).click()
+    await expect(page).toHaveURL(/filtro=apoio/)
+    await expect(page.getByRole('link', { name: 'Projeto de apoio' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Projeto E2E' })).toHaveCount(0)
+
+    await page.getByRole('link', { name: 'Os que eu respondo' }).click()
+    await expect(page.getByRole('link', { name: 'Projeto de apoio' })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Projeto E2E' })).toBeVisible()
+  })
+
+  test('conta sem colaborador vinculado vê como se ligar', async ({ page, context }) => {
+    await context.addCookies([{ name: 'e2e_user', value: 'user_sem_cadastro', url: 'http://127.0.0.1:3100' }])
+    await page.goto('/meus-projetos')
+    await expect(page.getByText('ainda não está ligada a um colaborador')).toBeVisible()
+  })
+})

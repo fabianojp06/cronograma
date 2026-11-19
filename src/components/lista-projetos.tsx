@@ -18,7 +18,7 @@ export type LinhaProjeto = {
 }
 
 /** Traço lateral colorido por status — o painel não usa card com sombra. */
-const TRACO_STATUS: Record<StatusAgregado, string> = {
+export const TRACO_STATUS: Record<StatusAgregado, string> = {
   SEM_ACOES: 'border-borderSoft',
   NAO_INICIADO: 'border-textFaint',
   EM_ANDAMENTO: 'border-previsto',
@@ -26,7 +26,7 @@ const TRACO_STATUS: Record<StatusAgregado, string> = {
   CONCLUIDO: 'border-realizado',
 }
 
-const COR_TEXTO_STATUS: Record<StatusAgregado, string> = {
+export const COR_TEXTO_STATUS: Record<StatusAgregado, string> = {
   SEM_ACOES: 'text-textFaint',
   NAO_INICIADO: 'text-textMuted',
   EM_ANDAMENTO: 'text-previsto',
@@ -34,7 +34,7 @@ const COR_TEXTO_STATUS: Record<StatusAgregado, string> = {
   CONCLUIDO: 'text-realizado',
 }
 
-function BarraProgresso({ resumo }: { resumo: ResumoProjeto }) {
+export function BarraProgresso({ resumo }: { resumo: ResumoProjeto }) {
   const cor = resumo.status === 'ATRASADO' ? 'bg-warn' : 'bg-realizado'
   return (
     <div className="flex items-center gap-2">
