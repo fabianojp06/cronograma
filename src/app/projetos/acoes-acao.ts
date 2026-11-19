@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 
 import { registrarFalha } from '@/lib/registrar-erro'
 import { prisma } from '@/lib/prisma'
+import { contaPodeEditar } from '@/lib/administracao-servidor'
+import { MENSAGEM_SOMENTE_LEITURA } from '@/lib/administracao'
 import { lerIdProjeto } from '@/lib/projeto-edicao'
 import {
   ehColisaoDeNumero,
@@ -149,6 +151,7 @@ export async function criarAcao(
   if (!userId) {
     return { erroGeral: 'Sessão expirada. Entre novamente para criar a ação.' }
   }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const projetoId = lerIdProjeto(formData)
   if (!projetoId) return { erroGeral: 'Projeto não identificado. Recarregue a página.' }
@@ -268,6 +271,7 @@ export async function atualizarAcao(
   if (!userId) {
     return { erroGeral: 'Sessão expirada. Entre novamente para salvar a ação.' }
   }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const acaoId = lerIdAcao(formData)
   if (!acaoId) return { erroGeral: 'Ação não identificada. Recarregue a página.' }
@@ -376,6 +380,7 @@ export async function registrarRealizado(
   if (!userId) {
     return { erroGeral: 'Sessão expirada. Entre novamente para registrar o realizado.' }
   }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const acaoId = lerIdAcao(formData)
   if (!acaoId) return { erroGeral: 'Ação não identificada. Recarregue a página.' }

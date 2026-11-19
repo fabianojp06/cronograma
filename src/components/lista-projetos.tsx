@@ -58,7 +58,14 @@ function BarraProgresso({ resumo }: { resumo: ResumoProjeto }) {
   )
 }
 
-export function ListaProjetos({ linhas }: { linhas: LinhaProjeto[] }) {
+export function ListaProjetos({
+  linhas,
+  podeEditar = true,
+}: {
+  linhas: LinhaProjeto[]
+  /** Leitor não vê o atalho de edição; a Server Action recusa de qualquer forma. */
+  podeEditar?: boolean
+}) {
   if (linhas.length === 0) {
     return (
       <p className="mt-8 border-l-2 border-borderSoft bg-surface py-4 pl-4 text-sm text-textMuted">
@@ -97,12 +104,14 @@ export function ListaProjetos({ linhas }: { linhas: LinhaProjeto[] }) {
                 {linha.referencia ? (
                   <span className="block text-xs text-textFaint">{linha.referencia}</span>
                 ) : null}
-                <Link
-                  className="mt-1 inline-block text-xs text-textMuted hover:text-accent"
-                  href={`/projetos/${linha.id}/editar`}
-                >
-                  Editar
-                </Link>
+                {podeEditar ? (
+                  <Link
+                    className="mt-1 inline-block text-xs text-textMuted hover:text-accent"
+                    href={`/projetos/${linha.id}/editar`}
+                  >
+                    Editar
+                  </Link>
+                ) : null}
               </td>
               <td className="px-3 py-3 text-textMuted">{linha.equipe ?? '-'}</td>
               <td className="px-3 py-3 text-textMuted">{linha.categoria ?? '-'}</td>

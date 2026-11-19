@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation'
 
+import { AvisoSomenteLeitura } from '@/components/aviso-somente-leitura'
+import { sessaoPodeEditar } from '@/lib/administracao-servidor'
 import { FormularioAcao } from '@/components/formulario-acao'
 import { prisma } from '@/lib/prisma'
 
@@ -18,6 +20,7 @@ export default async function NovaAcaoPage({
     select: { id: true, nome: true, referencia: true },
   })
   if (!projeto) notFound()
+  const podeEditar = await sessaoPodeEditar()
 
   // Só ativos: quem foi desativado não deveria receber ação nova.
   const colaboradores = await prisma.colaborador.findMany({
@@ -41,7 +44,11 @@ export default async function NovaAcaoPage({
         Projeto <strong className="text-text">{projeto.nome}</strong>. A numeração da
         ação é sequencial e atribuída automaticamente dentro do projeto.
       </p>
-      <FormularioAcao projetoId={projeto.id} responsaveis={responsaveis} />
+      {podeEditar ? (
+        <FormularioAcao projetoId={projeto.id} responsaveis={responsaveis} />
+      ) : (
+        <AvisoSomenteLeitura voltarPara={`/projetos/${projeto.id}`} rotuloVoltar="Voltar para o projeto" />
+      )}
     </main>
   )
 }

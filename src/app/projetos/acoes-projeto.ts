@@ -5,9 +5,10 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { MENSAGEM_SEM_PERMISSAO } from '@/lib/administracao'
-import { contaPodeAdministrar } from '@/lib/administracao-servidor'
+import { contaPodeAdministrar, contaPodeEditar } from '@/lib/administracao-servidor'
 import { registrarFalha } from '@/lib/registrar-erro'
 import { prisma } from '@/lib/prisma'
+import { MENSAGEM_SOMENTE_LEITURA } from '@/lib/administracao'
 import {
   confirmacaoValida,
   DADOS_EXCLUSAO_LOGICA,
@@ -41,6 +42,7 @@ export async function criarProjeto(
   if (!userId) {
     return { erroGeral: 'Sessão expirada. Entre novamente para criar o projeto.' }
   }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const validacao = validarDadosProjeto(formData)
   if (!validacao.ok) return { erros: validacao.erros }
@@ -79,6 +81,7 @@ export async function atualizarProjeto(
   if (!userId) {
     return { erroGeral: 'Sessão expirada. Entre novamente para salvar o projeto.' }
   }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const id = lerIdProjeto(formData)
   if (!id) return { erroGeral: 'Projeto não identificado. Recarregue a página.' }

@@ -6,6 +6,7 @@ import { IndicadoresPainel } from '@/components/indicadores-painel'
 import { ListaProjetos } from '@/components/lista-projetos'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { resumirPainel } from '@/lib/painel-consolidado'
+import { sessaoPodeEditar } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
 import { filtrarPorStatus, lerFiltros, whereProjetoAtivo } from '@/lib/projeto-filtros'
 import { montarLinhas, opcoesDistintas } from '@/lib/projetos-listagem'
@@ -27,6 +28,7 @@ function consultaDosFiltros(filtros: ReturnType<typeof lerFiltros>): string {
 export default async function PainelPage({ searchParams }: PageProps<'/'>) {
   const filtros = lerFiltros(await searchParams)
   const hoje = inicioDeHojeUTC()
+  const podeEditar = await sessaoPodeEditar()
 
   const [projetos, valores] = await Promise.all([
     prisma.projeto.findMany({
@@ -71,12 +73,14 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
             Clique em um projeto para abrir o cronograma detalhado.
           </p>
         </div>
-        <Link
-          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-onAccent"
-          href="/projetos/novo"
-        >
-          Novo projeto
-        </Link>
+        {podeEditar ? (
+          <Link
+            className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-onAccent"
+            href="/projetos/novo"
+          >
+            Novo projeto
+          </Link>
+        ) : null}
       </div>
 
       <IndicadoresPainel painel={painel} />
@@ -93,7 +97,7 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
       />
       </div>
 
-      <ListaProjetos linhas={linhas} />
+      <ListaProjetos linhas={linhas} podeEditar={podeEditar} />
     </main>
   )
 }

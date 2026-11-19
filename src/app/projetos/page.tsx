@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { FiltrosProjetos } from '@/components/filtros-projetos'
 import { ListaProjetos } from '@/components/lista-projetos'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
+import { sessaoPodeEditar } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
 import { filtrarPorStatus, lerFiltros, whereProjetoAtivo } from '@/lib/projeto-filtros'
 import { montarLinhas, opcoesDistintas } from '@/lib/projetos-listagem'
@@ -12,6 +13,7 @@ export const metadata = { title: 'Projetos — Cronograma CTCEA' }
 export default async function ProjetosPage({ searchParams }: PageProps<'/projetos'>) {
   const filtros = lerFiltros(await searchParams)
   const hoje = inicioDeHojeUTC()
+  const podeEditar = await sessaoPodeEditar()
 
   // As opções dos selects vêm de todos os projetos ativos, não do resultado
   // filtrado — senão o filtro aplicado esconderia as demais opções.
@@ -53,12 +55,14 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
             a partir das ações de cada projeto.
           </p>
         </div>
-        <Link
-          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-onAccent"
-          href="/projetos/novo"
-        >
-          Novo projeto
-        </Link>
+        {podeEditar ? (
+          <Link
+            className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-onAccent"
+            href="/projetos/novo"
+          >
+            Novo projeto
+          </Link>
+        ) : null}
       </div>
 
       <FiltrosProjetos
@@ -68,7 +72,7 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
         categorias={opcoesDistintas(valores.map((v) => v.categoria))}
       />
 
-      <ListaProjetos linhas={linhas} />
+      <ListaProjetos linhas={linhas} podeEditar={podeEditar} />
     </main>
   )
 }

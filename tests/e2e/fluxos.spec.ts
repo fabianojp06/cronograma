@@ -187,3 +187,49 @@ test('"Foto em uma data" reconstrói o status do histórico e avisa o que não s
   await expect(page.getByText(/Foto de/)).toHaveCount(0)
   await expect(page.getByRole('link', { name: /Ação de partida/ })).toBeVisible()
 })
+
+test('perfil Leitor: vê tudo, não encontra como editar e a tela explica', async ({ page }) => {
+  await consultar(`UPDATE "Colaborador" SET "somenteLeitura" = true WHERE "clerkUserId" = 'user_e2e'`)
+
+  // O painel mostra os projetos, sem "Novo projeto" nem "Editar".
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Projeto E2E' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Novo projeto' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Editar', exact: true })).toHaveCount(0)
+
+  // Quem chega pela URL vê o aviso, não o formulário.
+  await page.goto('/projetos/novo')
+  await expect(page.getByText('Seu perfil é somente leitura.')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Salvar/ })).toHaveCount(0)
+
+  // A ação continua legível, com o histórico, mas sem formulário.
+  await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+  await expect(page.getByText('Seu perfil é somente leitura.')).toBeVisible()
+  await expect(page.getByText('Ação de partida')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Salvar ação' })).toHaveCount(0)
+
+  // O Card WIN também vira consulta.
+  await page.goto('/wins')
+  await expect(page.getByText('Seu perfil é somente leitura.')).toBeVisible()
+})
+
+test('administrador define o perfil de um colaborador pela tela', async ({ page }) => {
+  await consultar(`UPDATE "Colaborador" SET "administrador" = true WHERE "clerkUserId" = 'user_e2e'`)
+  await consultar(
+    `INSERT INTO "Colaborador" ("id","nome","updatedAt") VALUES ($1,'Bruno Lima',now())`,
+    [crypto.randomUUID()],
+  )
+
+  await page.goto('/colaboradores')
+  const linhaBruno = page.getByRole('listitem').filter({ hasText: 'Bruno Lima' })
+  await linhaBruno.getByRole('button', { name: 'Tornar leitor' }).click()
+
+  await expect(linhaBruno.getByText('Bruno Lima agora é leitor')).toBeVisible()
+  const [{ somenteLeitura }] = await consultar<{ somenteLeitura: boolean }>(
+    `SELECT "somenteLeitura" FROM "Colaborador" WHERE "nome" = 'Bruno Lima'`,
+  )
+  expect(somenteLeitura).toBe(true)
+
+  await linhaBruno.getByRole('button', { name: 'Tornar colaborador' }).click()
+  await expect(linhaBruno.getByText('Bruno Lima voltou a ser colaborador')).toBeVisible()
+})

@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ExcluirProjeto } from '@/components/excluir-projeto'
+import { AvisoSomenteLeitura } from '@/components/aviso-somente-leitura'
+import { sessaoPodeEditar } from '@/lib/administracao-servidor'
 import { FormularioProjeto } from '@/components/formulario-projeto'
 import { contaPodeAdministrar } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
@@ -37,6 +39,7 @@ export default async function EditarProjetoPage({
 
   const { userId } = await auth()
   const podeExcluir = userId !== null && (await contaPodeAdministrar(userId))
+  const podeEditar = await sessaoPodeEditar()
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
@@ -51,9 +54,13 @@ export default async function EditarProjetoPage({
         </Link>
         .
       </p>
-      <FormularioProjeto
-        projeto={{ id: projeto.id, valores: valoresIniciais(projeto) }}
-      />
+      {podeEditar ? (
+        <FormularioProjeto
+          projeto={{ id: projeto.id, valores: valoresIniciais(projeto) }}
+        />
+      ) : (
+        <AvisoSomenteLeitura voltarPara={`/projetos/${projeto.id}`} rotuloVoltar="Voltar para o projeto" />
+      )}
       {podeExcluir ? (
         <ExcluirProjeto id={projeto.id} nome={projeto.nome} />
       ) : (

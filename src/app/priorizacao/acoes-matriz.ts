@@ -4,9 +4,10 @@ import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
 import { MENSAGEM_SEM_PERMISSAO } from '@/lib/administracao'
-import { contaPodeAdministrar } from '@/lib/administracao-servidor'
+import { contaPodeAdministrar, contaPodeEditar } from '@/lib/administracao-servidor'
 import { registrarFalha } from '@/lib/registrar-erro'
 import { prisma } from '@/lib/prisma'
+import { MENSAGEM_SOMENTE_LEITURA } from '@/lib/administracao'
 import { CRITERIOS } from '@/lib/matriz-criterios'
 import {
   validarAvaliacao,
@@ -38,6 +39,7 @@ export async function salvarAvaliacao(
   if (!userId) {
     return { erroGeral: 'Sessão expirada. Entre novamente para salvar a avaliação.' }
   }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const projetoId = formData.get('projetoId')
   if (typeof projetoId !== 'string' || projetoId.trim() === '') {
