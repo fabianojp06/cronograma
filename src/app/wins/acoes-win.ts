@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 
 import { registrarFalha } from '@/lib/registrar-erro'
 import { prisma } from '@/lib/prisma'
+import { contaPodeEditar } from '@/lib/administracao-servidor'
+import { MENSAGEM_SOMENTE_LEITURA } from '@/lib/administracao'
 import { proximoNumero, refazerNaColisao } from '@/lib/acao-validacao'
 import { ehSemanaValida, type SemanaCtcea } from '@/lib/semana-ctcea'
 import { DesfechoWin } from '@/generated/prisma/enums'
@@ -113,6 +115,7 @@ export async function salvarWin(
 ): Promise<EstadoWin> {
   const { userId } = await auth()
   if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const semana = lerSemana(formData)
   if (!semana) return { erroGeral: 'Semana não identificada. Recarregue a página.' }
@@ -223,6 +226,7 @@ export async function salvarWin(
 export async function removerWinDaSemana(formData: FormData): Promise<void> {
   const { userId } = await auth()
   if (!userId) return
+  if (!(await contaPodeEditar(userId))) return
 
   const registroId = formData.get('registroId')
   if (typeof registroId !== 'string' || registroId === '') return
@@ -292,6 +296,7 @@ export async function promoverWin(
 ): Promise<EstadoPromocao> {
   const { userId } = await auth()
   if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const winId = formData.get('winId')
   if (typeof winId !== 'string' || winId === '') {
@@ -437,6 +442,7 @@ export async function salvarCard(
 ): Promise<EstadoCard> {
   const { userId } = await auth()
   if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const semana = lerSemana(formData)
   if (!semana) return { erroGeral: 'Semana não identificada. Recarregue a página.' }
@@ -604,6 +610,7 @@ export async function repetirWin(
 ): Promise<EstadoRepeticao> {
   const { userId } = await auth()
   if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const semana = lerSemana(formData)
   if (!semana) return { erroGeral: 'Semana não identificada. Recarregue a página.' }
@@ -689,6 +696,7 @@ export async function encerrarWin(
 ): Promise<EstadoEncerramento> {
   const { userId } = await auth()
   if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
+  if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
   const winId = formData.get('winId')
   if (typeof winId !== 'string' || winId === '') {

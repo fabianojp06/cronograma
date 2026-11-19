@@ -9,6 +9,7 @@ import { TirarWin } from '@/components/tirar-win'
 import { VincularColaborador } from '@/components/vincular-colaborador'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { formatarDataBR } from '@/lib/formatacao'
+import { AvisoSomenteLeitura } from '@/components/aviso-somente-leitura'
 import { prisma } from '@/lib/prisma'
 import {
   chaveSemana,
@@ -57,8 +58,17 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
       ? null
       : await prisma.colaborador.findFirst({
           where: { clerkUserId: userId, ativo: true },
-          select: { id: true, nome: true, area: true },
+          select: { id: true, nome: true, area: true, somenteLeitura: true },
         })
+
+  if (colaborador?.somenteLeitura) {
+    return (
+      <main className="mx-auto w-full max-w-4xl px-6 py-12">
+        <h1 className="font-display text-2xl font-extrabold">Card WIN</h1>
+        <AvisoSomenteLeitura voltarPara="/wins/equipe" rotuloVoltar="Ver os cards da equipe" />
+      </main>
+    )
+  }
 
   if (!colaborador) {
     // As sugestões vêm dos responsáveis que o plano de ação já conhece: é a

@@ -370,6 +370,28 @@ Desativar, reativar, corrigir nome e definir a área. Há um único papel,
 pesos da matriz e gerencia colaboradores. O resto segue aberto a qualquer conta
 autenticada, coerente com o auto-cadastro — o Clerk já decide quem entra.
 
+**Perfis: Administrador > Colaborador (padrão) > Leitor.** O Leitor
+(`Colaborador.somenteLeitura`) consulta e exporta, mas não grava nada:
+`contaPodeEditar` guarda todas as Server Actions de projeto, ação, matriz e Card
+WIN (as de identidade — cadastrar e vincular o próprio nome — ficam abertas).
+
+- **O padrão é Colaborador**: conta sem cadastro ou sem a marca edita como
+  sempre. A restrição mora na linha do colaborador, então vale também para quem
+  foi marcado antes de ter conta ligada.
+- **Administrador define o perfil** em `/colaboradores` (`alternarLeitor`, por
+  intenção: `tornar-leitor` / `tornar-colaborador`).
+- **Administrador não é leitor, e leitor não é promovido direto**: duas
+  permissões contraditórias na mesma pessoa. Quem vai virar administrador
+  volta a colaborador antes.
+- **Leitor nunca administra**, nem no estado "ainda não há administrador"
+  (`contaPodeAdministrar`).
+- **Desativar leitor não o libera**: `contaSomenteLeitura` não filtra `ativo`.
+- As telas trocam o formulário por `AvisoSomenteLeitura` e escondem os atalhos
+  ("Novo projeto", "Editar"); a ação em si segue legível, com o histórico. Quem
+  recusa de verdade é a Server Action, como no papel de administrador.
+- Ao criar uma Server Action de gravação nova, ponha o `contaPodeEditar` logo
+  depois do `auth()`.
+
 - **Enquanto não existir administrador ATIVO, todos podem** (`administracao.ts`).
   É o estado de antes do papel e evita o sistema nascer trancado; a restrição
   liga sozinha quando a primeira pessoa é promovida. Quem promove OUTRA pessoa

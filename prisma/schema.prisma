@@ -182,6 +182,9 @@ model Colaborador {
   /// Enquanto NINGUÉM for administrador, todos podem (o comportamento de antes
   /// desta coluna) — assim o sistema não nasce trancado. Ver `administracao.ts`.
   administrador Boolean @default(false)
+  /// Perfil Leitor: vê tudo e exporta, mas não grava nada. O padrão (false) é o
+  /// Colaborador, que edita. Administrador nunca é leitor. Ver `administracao.ts`.
+  somenteLeitura Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

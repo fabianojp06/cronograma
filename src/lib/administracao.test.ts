@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import {
   podeAdministrar,
   podeDeixarDeSerAdministrador,
+  podeEditar,
+  podePromoverAAdministrador,
+  podeTornarLeitor,
   semAdministradores,
 } from './administracao'
 
@@ -46,5 +49,25 @@ describe('podeDeixarDeSerAdministrador', () => {
     expect(podeDeixarDeSerAdministrador({ administrador: true, ativo: false }, 1)).toEqual({
       ok: true,
     })
+  })
+})
+
+describe('perfil Leitor', () => {
+  it('leitor não edita; o padrão edita', () => {
+    expect(podeEditar({ somenteLeitura: true })).toBe(false)
+    expect(podeEditar({ somenteLeitura: false })).toBe(true)
+  })
+
+  it('administrador não vira leitor, e leitor não vira administrador direto', () => {
+    expect(podeTornarLeitor({ administrador: true })).toEqual({
+      ok: false,
+      erro: 'ADMINISTRADOR_NAO_E_LEITOR',
+    })
+    expect(podeTornarLeitor({ administrador: false })).toEqual({ ok: true })
+    expect(podePromoverAAdministrador({ somenteLeitura: true })).toEqual({
+      ok: false,
+      erro: 'LEITOR_NAO_E_ADMINISTRADOR',
+    })
+    expect(podePromoverAAdministrador({ somenteLeitura: false })).toEqual({ ok: true })
   })
 })

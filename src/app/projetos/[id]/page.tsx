@@ -6,6 +6,7 @@ import { GanttProjeto, type LinhaGantt } from '@/components/gantt-projeto'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { corteDaFoto, fotoDoProjeto, lerDataDaFoto } from '@/lib/foto-em-data'
 import { formatarDataBR } from '@/lib/formatacao'
+import { sessaoPodeEditar } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
 import {
   ROTULO_STATUS_AGREGADO,
@@ -21,6 +22,7 @@ export default async function ProjetoPage({
 }: PageProps<'/projetos/[id]'>) {
   const { id } = await params
   const agora = inicioDeHojeUTC()
+  const podeEditar = await sessaoPodeEditar()
   // `?em=aaaa-mm-dd`: o projeto como estava no fim daquele dia, reconstruído do histórico.
   const em = lerDataDaFoto((await searchParams).em, agora)
 
@@ -129,20 +131,24 @@ export default async function ProjetoPage({
         <Link className="text-accent hover:underline" href="/projetos">
           Voltar para a listagem
         </Link>
-        {' · '}
-        <Link
-          className="text-accent hover:underline"
-          href={`/projetos/${projeto.id}/editar`}
-        >
-          Editar projeto
-        </Link>
-        {' · '}
-        <Link
-          className="text-accent hover:underline"
-          href={`/projetos/${projeto.id}/acoes/nova`}
-        >
-          Nova ação
-        </Link>
+        {podeEditar ? (
+          <>
+            {' · '}
+          <Link
+            className="text-accent hover:underline"
+            href={`/projetos/${projeto.id}/editar`}
+          >
+            Editar projeto
+          </Link>
+          {' · '}
+          <Link
+            className="text-accent hover:underline"
+            href={`/projetos/${projeto.id}/acoes/nova`}
+          >
+            Nova ação
+          </Link>
+          </>
+        ) : null}
       </p>
 
       <SeletorFoto rota={`/projetos/${projeto.id}`} em={em} ontem={ontem} />

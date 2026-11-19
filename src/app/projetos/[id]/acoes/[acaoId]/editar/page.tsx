@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { AvisoSomenteLeitura } from '@/components/aviso-somente-leitura'
+import { sessaoPodeEditar } from '@/lib/administracao-servidor'
 import { FormularioAcao, type ValoresAcao } from '@/components/formulario-acao'
 import { serializarValor } from '@/lib/acao-historico'
-import { type StatusAcao } from '@/lib/acao-validacao'
+import { ROTULOS_STATUS, type StatusAcao } from '@/lib/acao-validacao'
 import { rotularCampo } from '@/lib/dashboard-auditoria'
 import { formatarValorHistorico, rotularAutor } from '@/lib/historico-exibicao'
 import { prisma } from '@/lib/prisma'
@@ -52,6 +54,8 @@ export default async function EditarAcaoPage({
     },
   })
   if (!acao) notFound()
+
+  const podeEditar = await sessaoPodeEditar()
 
   const ativos = await prisma.colaborador.findMany({
     where: { ativo: true },
@@ -112,7 +116,44 @@ export default async function EditarAcaoPage({
       </p>
 
       <div className="grid gap-x-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <FormularioAcao projetoId={acao.projeto.id} responsaveis={responsaveis} acao={valores} />
+        {podeEditar ? (
+          <FormularioAcao projetoId={acao.projeto.id} responsaveis={responsaveis} acao={valores} />
+        ) : (
+          <div>
+            <AvisoSomenteLeitura
+              voltarPara={`/projetos/${acao.projeto.id}`}
+              rotuloVoltar="Voltar para o projeto"
+            />
+            <dl className="mt-6 space-y-2 text-sm">
+              <div>
+                <dt className="text-textMuted">Descrição</dt>
+                <dd className="text-text">{acao.descricao}</dd>
+              </div>
+              <div>
+                <dt className="text-textMuted">Status</dt>
+                <dd className="text-text">{ROTULOS_STATUS[valores.status]}</dd>
+              </div>
+              <div>
+                <dt className="text-textMuted">Responsável</dt>
+                <dd className="text-text">{acao.responsavel?.nome ?? 'Sem responsável'}</dd>
+              </div>
+              <div>
+                <dt className="text-textMuted">Previsto</dt>
+                <dd className="text-text">
+                  {formatarValorHistorico('previstoInicio', valores.previstoInicio)} a{' '}
+                  {formatarValorHistorico('previstoTermino', valores.previstoTermino)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-textMuted">Realizado</dt>
+                <dd className="text-text">
+                  {formatarValorHistorico('realizadoInicio', valores.realizadoInicio)} a{' '}
+                  {formatarValorHistorico('realizadoTermino', valores.realizadoTermino)}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        )}
 
         <aside aria-labelledby="titulo-historico" className="mt-8">
           <h2 className="font-display text-base font-bold" id="titulo-historico">

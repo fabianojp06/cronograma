@@ -7,8 +7,11 @@ import { registrarFalha } from '@/lib/registrar-erro'
 import { prisma } from '@/lib/prisma'
 import {
   MENSAGEM_ERRO_ADMINISTRADOR,
+  MENSAGEM_ERRO_PERFIL,
   MENSAGEM_SEM_PERMISSAO,
   podeDeixarDeSerAdministrador,
+  podePromoverAAdministrador,
+  podeTornarLeitor,
 } from '@/lib/administracao'
 import { contaPodeAdministrar } from '@/lib/administracao-servidor'
 import {
@@ -279,11 +282,13 @@ export async function alternarAdministrador(
   try {
     const alvo = await prisma.colaborador.findUnique({
       where: { id },
-      select: { nome: true, ativo: true, administrador: true },
+      select: { nome: true, ativo: true, administrador: true, somenteLeitura: true },
     })
     if (!alvo) return { erroGeral: MENSAGEM_ERRO_ADMIN.NAO_ENCONTRADO }
 
     if (promovendo) {
+      const perfil = podePromoverAAdministrador(alvo)
+      if (!perfil.ok) return { erroGeral: MENSAGEM_ERRO_PERFIL[perfil.erro] }
       if (!alvo.ativo) {
         return { erroGeral: 'Só um colaborador ativo pode ser administrador.' }
       }
@@ -311,6 +316,69 @@ export async function alternarAdministrador(
     }
   } catch (erro) {
     await registrarFalha('Falha ao alternar administrador', erro)
+    return { erroGeral: 'Não foi possível alterar. Tente novamente.' }
+  }
+}
+
+/**
+ * Define o perfil de leitura de um colaborador: `leitor` (só consulta e exporta)
+ * ou `colaborador` (volta a editar). Só administrador.
+ *
+ * Age pela INTENÇÃO clicada, como desativar e promover. Administrador não vira
+ * leitor, e a regra mora na ação — a tela esconde o botão, mas uma Server Action
+ * é um POST que qualquer conta consegue forjar. Vale para quem ainda não tem
+ * conta ligada: o perfil fica na linha do cadastro e vale quando a pessoa entrar.
+ */
+export async function alternarLeitor(
+  _anterior: EstadoAdmin,
+  formData: FormData,
+): Promise<EstadoAdmin> {
+  const { userId } = await auth()
+  if (!userId) return { erroGeral: 'Sessão expirada. Entre novamente.' }
+  if (!(await contaPodeAdministrar(userId))) return { erroGeral: MENSAGEM_SEM_PERMISSAO }
+
+  const id = lerId(formData, 'colaboradorId')
+  if (!id) return { erroGeral: MENSAGEM_ERRO_ADMIN.NAO_ENCONTRADO }
+
+  const intencao = formData.get('acao')
+  if (intencao !== 'tornar-leitor' && intencao !== 'tornar-colaborador') {
+    return { erroGeral: MENSAGEM_ERRO_ADMIN.NAO_ENCONTRADO }
+  }
+  const tornandoLeitor = intencao === 'tornar-leitor'
+
+  try {
+    const alvo = await prisma.colaborador.findUnique({
+      where: { id },
+      select: { nome: true, administrador: true },
+    })
+    if (!alvo) return { erroGeral: MENSAGEM_ERRO_ADMIN.NAO_ENCONTRADO }
+
+    if (tornandoLeitor) {
+      const perfil = podeTornarLeitor(alvo)
+      if (!perfil.ok) return { erroGeral: MENSAGEM_ERRO_PERFIL[perfil.erro] }
+    }
+
+    // `administrador: false` na condição fecha a corrida com uma promoção feita
+    // entre a leitura e a gravação.
+    const { count } = await prisma.colaborador.updateMany({
+      where: {
+        id,
+        somenteLeitura: !tornandoLeitor,
+        ...(tornandoLeitor ? { administrador: false } : {}),
+      },
+      data: { somenteLeitura: tornandoLeitor },
+    })
+    if (count === 0) return { erroGeral: MENSAGEM_ERRO_ADMIN.ESTADO_MUDOU }
+
+    revalidatePath('/colaboradores')
+    revalidatePath('/', 'layout')
+    return {
+      aviso: tornandoLeitor
+        ? `${alvo.nome} agora é leitor: só consulta e exporta.`
+        : `${alvo.nome} voltou a ser colaborador e pode editar.`,
+    }
+  } catch (erro) {
+    await registrarFalha('Falha ao alternar perfil de leitura', erro)
     return { erroGeral: 'Não foi possível alterar. Tente novamente.' }
   }
 }

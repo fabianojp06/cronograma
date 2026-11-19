@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { AvisoSomenteLeitura } from '@/components/aviso-somente-leitura'
+import { sessaoPodeEditar } from '@/lib/administracao-servidor'
 import {
   FormularioAvaliacao,
   type ValoresAvaliacao,
@@ -23,6 +25,7 @@ export default async function AvaliarProjetoPage({
   params,
 }: PageProps<'/priorizacao/[projetoId]'>) {
   const { projetoId } = await params
+  const podeEditar = await sessaoPodeEditar()
 
   const [projeto, linhasPeso, carteira] = await Promise.all([
     prisma.projeto.findFirst({
@@ -162,11 +165,15 @@ export default async function AvaliarProjetoPage({
         </section>
       ) : null}
 
-      <FormularioAvaliacao
-        projetoId={projeto.id}
-        projetoNome={projeto.nome}
-        valores={valores}
-      />
+      {podeEditar ? (
+        <FormularioAvaliacao
+          projetoId={projeto.id}
+          projetoNome={projeto.nome}
+          valores={valores}
+        />
+      ) : (
+        <AvisoSomenteLeitura voltarPara="/priorizacao" rotuloVoltar="Voltar para a matriz" />
+      )}
     </main>
   )
 }

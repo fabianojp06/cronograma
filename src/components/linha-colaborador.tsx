@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 
 import {
   alternarAdministrador,
+  alternarLeitor,
   alternarAtivo,
   salvarColaborador,
   type EstadoAdmin,
@@ -17,6 +18,7 @@ export type ColaboradorAdmin = {
   email: string | null
   ativo: boolean
   administrador: boolean
+  somenteLeitura: boolean
   vinculado: boolean
   cards: number
   wins: number
@@ -48,6 +50,10 @@ export function LinhaColaborador({
   )
   const [estadoAtivo, acaoAtivo, alternando] = useActionState<EstadoAdmin, FormData>(
     alternarAtivo,
+    {},
+  )
+  const [estadoLeitor, acaoLeitor, alternandoLeitor] = useActionState<EstadoAdmin, FormData>(
+    alternarLeitor,
     {},
   )
   const [estadoPapel, acaoPapel, alternandoPapel] = useActionState<EstadoAdmin, FormData>(
@@ -184,6 +190,9 @@ export function LinhaColaborador({
                 {colaborador.administrador ? (
                   <span className="ml-2 text-xs font-normal text-accent">administrador</span>
                 ) : null}
+                {colaborador.somenteLeitura ? (
+                  <span className="ml-2 text-xs font-normal text-previsto">leitor</span>
+                ) : null}
               </p>
               <p className="mt-0.5 text-xs text-textFaint">
                 {colaborador.area ?? 'sem área'} ·{' '}
@@ -242,11 +251,27 @@ export function LinhaColaborador({
               </button>
             </form>
           ) : null}
+          {colaborador.administrador ? null : (
+            <form action={acaoLeitor}>
+              <Processando ativo={alternandoLeitor} texto="Atualizando perfil…" />
+              <input type="hidden" name="colaboradorId" value={colaborador.id} />
+              <button
+                className="inline-flex items-center gap-2 text-xs text-textMuted hover:text-accent disabled:opacity-60"
+                type="submit"
+                name="acao"
+                value={colaborador.somenteLeitura ? 'tornar-colaborador' : 'tornar-leitor'}
+                disabled={alternandoLeitor}
+              >
+                {alternandoLeitor ? <Spinner className="size-3" /> : null}
+                {colaborador.somenteLeitura ? 'Tornar colaborador' : 'Tornar leitor'}
+              </button>
+            </form>
+          )}
         </div>
         ) : null}
       </div>
 
-      {[estadoNome, estadoAtivo, estadoPapel].map((estado, i) =>
+      {[estadoNome, estadoAtivo, estadoPapel, estadoLeitor].map((estado, i) =>
         estado.erroGeral ? (
           <p key={i} className="mt-2 text-xs text-warn">
             {estado.erroGeral}

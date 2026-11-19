@@ -2,8 +2,8 @@ import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 
 import { LinhaColaborador, type ColaboradorAdmin } from '@/components/linha-colaborador'
-import { podeAdministrar, semAdministradores } from '@/lib/administracao'
-import { situacaoAdmin } from '@/lib/administracao-servidor'
+import { semAdministradores } from '@/lib/administracao'
+import { contaPodeAdministrar, situacaoAdmin } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
 import { projetosADivergir, projetosDaPessoa } from '@/lib/colaborador-admin'
 
@@ -14,7 +14,8 @@ export default async function ColaboradoresPage() {
   if (!userId) return null
 
   const situacao = await situacaoAdmin(userId)
-  const podeEditar = podeAdministrar(situacao)
+  // `contaPodeAdministrar` já exclui o Leitor, mesmo sem nenhum administrador.
+  const podeEditar = await contaPodeAdministrar(userId)
 
   const [cadastrados, projetos] = await Promise.all([
     prisma.colaborador.findMany({
@@ -26,6 +27,7 @@ export default async function ColaboradoresPage() {
         email: true,
         ativo: true,
         administrador: true,
+        somenteLeitura: true,
         clerkUserId: true,
         _count: { select: { cards: true, wins: true } },
       },
@@ -72,6 +74,7 @@ export default async function ColaboradoresPage() {
     email: c.email,
     ativo: c.ativo,
     administrador: c.administrador,
+    somenteLeitura: c.somenteLeitura,
     vinculado: c.clerkUserId !== null,
     cards: c._count.cards,
     wins: c._count.wins,
