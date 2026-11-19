@@ -19,6 +19,10 @@ describe('ROTAS_PUBLICAS', () => {
     expect(ehPublica(req('/api/webhooks/clerk'))).toBe(true)
   })
 
+  it('libera o cron, que a Vercel chama sem sessão', () => {
+    expect(ehPublica(req('/api/cron/atrasos'))).toBe(true)
+  })
+
   it('protege a raiz e as rotas de domínio (padrão fechado)', () => {
     for (const caminho of ['/', '/projetos', '/projetos/1', '/api/acoes']) {
       expect(ehPublica(req(caminho)), caminho).toBe(false)

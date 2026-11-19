@@ -8,4 +8,6 @@ export const ROTAS_PUBLICAS = [
   '/entrar(.*)',
   '/cadastrar(.*)',
   '/api/webhooks(.*)',
+  // Cron da Vercel: sem sessão; a própria rota confere o CRON_SECRET.
+  '/api/cron(.*)',
 ] as const
