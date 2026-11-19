@@ -1,8 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { SeletorFoto } from '@/components/seletor-foto'
 import { GanttProjeto, type LinhaGantt } from '@/components/gantt-projeto'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
+import { corteDaFoto, fotoDoProjeto, lerDataDaFoto } from '@/lib/foto-em-data'
+import { formatarDataBR } from '@/lib/formatacao'
 import { prisma } from '@/lib/prisma'
 import {
   ROTULO_STATUS_AGREGADO,
@@ -12,8 +15,14 @@ import type { StatusAcao } from '@/lib/acao-validacao'
 
 export const metadata = { title: 'Cronograma do projeto — Cronograma CTCEA' }
 
-export default async function ProjetoPage({ params }: PageProps<'/projetos/[id]'>) {
+export default async function ProjetoPage({
+  params,
+  searchParams,
+}: PageProps<'/projetos/[id]'>) {
   const { id } = await params
+  const agora = inicioDeHojeUTC()
+  // `?em=aaaa-mm-dd`: o projeto como estava no fim daquele dia, reconstruído do histórico.
+  const em = lerDataDaFoto((await searchParams).em, agora)
 
   // Projeto excluído logicamente (`ativo = false`) não é visível.
   const projeto = await prisma.projeto.findFirst({
@@ -43,14 +52,62 @@ export default async function ProjetoPage({ params }: PageProps<'/projetos/[id]'
 
   if (!projeto) notFound()
 
-  const hoje = inicioDeHojeUTC()
-  const resumo = resumirAcoes(projeto.acoes, hoje)
-  const acoes: LinhaGantt[] = projeto.acoes.map((acao) => ({
+  let hoje = agora
+  let acoesProjeto: {
+    id: string
+    numero: number
+    descricao: string
+    status: StatusAcao
+    previstoInicio: Date | null
+    previstoTermino: Date | null
+    realizadoInicio: Date | null
+    realizadoTermino: Date | null
+    responsavel: string | null
+  }[] = projeto.acoes.map((a) => ({ ...a, responsavel: a.responsavel?.nome ?? null }))
+  let criadasDepois = 0
+  let anteriorAoRegistro = false
+
+  if (em !== null) {
+    const [comHistorico, registro] = await Promise.all([
+      prisma.acao.findMany({
+        where: { projetoId: projeto.id },
+        select: {
+          id: true,
+          numero: true,
+          descricao: true,
+          status: true,
+          previstoInicio: true,
+          previstoTermino: true,
+          realizadoInicio: true,
+          realizadoTermino: true,
+          createdAt: true,
+          responsavel: { select: { nome: true } },
+          historico: { select: { campo: true, valorAntigo: true, alteradoEm: true } },
+        },
+      }),
+      // Primeiro registro do sistema: antes dele a foto não tem como ser fiel.
+      prisma.acao.aggregate({ _min: { createdAt: true } }),
+    ])
+    const foto = fotoDoProjeto(
+      comHistorico.map((a) => ({ ...a, responsavel: a.responsavel?.nome ?? null })),
+      corteDaFoto(em),
+      registro._min.createdAt,
+    )
+    acoesProjeto = foto.acoes
+    criadasDepois = foto.criadasDepois
+    anteriorAoRegistro = foto.anteriorAoRegistro
+    // A linha do "hoje" do Gantt passa a marcar o dia da foto, e o atraso é
+    // medido contra ele: o que estava atrasado NAQUELE dia.
+    hoje = new Date(`${em}T00:00:00.000Z`)
+  }
+
+  const resumo = resumirAcoes(acoesProjeto, hoje)
+  const acoes: LinhaGantt[] = acoesProjeto.map((acao) => ({
     ...acao,
-    status: acao.status as StatusAcao,
-    responsavel: acao.responsavel?.nome ?? null,
-    href: `/projetos/${projeto.id}/acoes/${acao.id}/editar`,
+    // Na foto não há link de edição: a ação editada é a de hoje, não a da foto.
+    href: em === null ? `/projetos/${projeto.id}/acoes/${acao.id}/editar` : undefined,
   }))
+  const ontem = new Date(agora.getTime() - 86_400_000).toISOString().slice(0, 10)
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
@@ -87,6 +144,35 @@ export default async function ProjetoPage({ params }: PageProps<'/projetos/[id]'
           Nova ação
         </Link>
       </p>
+
+      <SeletorFoto rota={`/projetos/${projeto.id}`} em={em} ontem={ontem} />
+
+      {em !== null ? (
+        <div className="mt-4 border-l-2 border-previsto bg-surface py-3 pl-4 text-sm text-textMuted" role="status">
+          <p>
+            <strong className="font-medium text-text">Foto de {formatarDataBR(new Date(`${em}T12:00:00Z`))}</strong>{' '}
+            — o projeto como estava no fim desse dia, reconstruído do histórico de
+            alterações. Somente leitura.
+          </p>
+          {anteriorAoRegistro ? (
+            <p className="mt-1 text-warn">
+              Esta data é anterior ao início do registro no sistema: o que havia antes veio
+              da planilha e não há como reconstruí-lo. O que aparece aqui não é confiável.
+            </p>
+          ) : null}
+          {criadasDepois > 0 ? (
+            <p className="mt-1">
+              {criadasDepois === 1
+                ? '1 ação foi criada depois dessa data e não aparece.'
+                : `${criadasDepois} ações foram criadas depois dessa data e não aparecem.`}
+            </p>
+          ) : null}
+          <p className="mt-1 text-xs text-textFaint">
+            Descrição e número da ação aparecem como estão hoje (o histórico não os
+            registra), e alterações feitas fora do sistema não são desfeitas.
+          </p>
+        </div>
+      ) : null}
 
       <GanttProjeto acoes={acoes} hoje={hoje} />
     </main>

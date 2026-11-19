@@ -12,7 +12,7 @@ import { CAMPOS_DATA, ROTULOS_STATUS, type StatusAcao } from './acao-validacao'
 /** Rótulo de um valor nulo — campo vazio antes ou depois da mudança. */
 export const VALOR_VAZIO = '—'
 
-function ehStatus(valor: string): valor is StatusAcao {
+export function ehStatus(valor: string): valor is StatusAcao {
   return valor in ROTULOS_STATUS
 }
 

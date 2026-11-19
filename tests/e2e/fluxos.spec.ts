@@ -152,3 +152,38 @@ test('exporta as ações atrasadas em Excel', async ({ page }) => {
   // .xlsx é um zip: começa com "PK".
   expect(readFileSync(caminho).subarray(0, 2).toString()).toBe('PK')
 })
+
+test('"Foto em uma data" reconstrói o status do histórico e avisa o que não sabe', async ({
+  page,
+}) => {
+  // A ação existe desde março; em 10/04 passou de "não iniciado" para 50%.
+  await consultar(
+    `UPDATE "Acao" SET "createdAt" = '2026-03-01', "status" = 'EM_CURSO_50' WHERE "id" = $1`,
+    [acaoId],
+  )
+  await consultar(
+    `INSERT INTO "HistoricoAlteracao" ("id","acaoId","campo","valorAntigo","valorNovo","alteradoEm")
+     VALUES ($1,$2,'status','NAO_INICIADO','EM_CURSO_50','2026-04-10')`,
+    [crypto.randomUUID(), acaoId],
+  )
+
+  // Antes da mudança: estava como "Não iniciado", e sem link de edição.
+  await page.goto(`/projetos/${projetoId}?em=2026-03-31`)
+  await expect(page.getByRole('status').filter({ hasText: 'Foto de 31/03/2026' })).toBeVisible()
+  await expect(page.getByText('Não iniciado')).toBeVisible()
+  await expect(page.getByRole('link', { name: /Ação de partida/ })).toHaveCount(0)
+
+  // Depois da mudança: já em 50%.
+  await page.goto(`/projetos/${projetoId}?em=2026-04-30`)
+  await expect(page.getByText('Em curso — 50%')).toBeVisible()
+
+  // Antes de a ação existir (e do início do registro): diz o que não sabe.
+  await page.goto(`/projetos/${projetoId}?em=2026-02-01`)
+  await expect(page.getByText('1 ação foi criada depois dessa data')).toBeVisible()
+  await expect(page.getByText('anterior ao início do registro')).toBeVisible()
+
+  // Sem `em` (ou com data inválida) é o estado atual, editável.
+  await page.goto(`/projetos/${projetoId}?em=lixo`)
+  await expect(page.getByText(/Foto de/)).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /Ação de partida/ })).toBeVisible()
+})
