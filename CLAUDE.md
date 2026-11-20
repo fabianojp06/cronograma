@@ -637,6 +637,20 @@ Actions em `modelos/acoes-modelo.ts`; tabelas `ModeloProjeto` e `ModeloAcao`):
   `DATABASE_URL` de quem o executa e cria com `criadoPor = 'sistema'` (só
   administrador exclui). Equipe, natureza e categoria ficam em branco. Um modelo
   novo no arquivo exige rodar o script de novo em cada banco.
+- **Editor de modelos** (`/modelos/novo`, `/modelos/[id]/editar`,
+  `EditorModelo`): cria um modelo do zero (nome, descrição, classificação e a
+  lista de ações com "começa no dia N" e "dura N dias úteis", reordenável) e
+  edita um existente. As linhas vão como campos paralelos repetidos
+  (`acaoDescricao`/`acaoInicio`/`acaoDuracao`) e `lerItensDoFormulario`
+  valida (início e duração vêm juntos ou ambos vazios = ação sem datas;
+  duração ≥ 1; teto de 1000 dias; até 200 ações). O editor é todo CONTROLADO: o
+  React 19 limpa campos não controlados depois de uma ação com erro.
+- **Editar substitui as ações por inteiro**, numa transação (`updateMany` com
+  `updatedAt` = versão vista, depois apaga e recria as ações). Versão velha =
+  conflito, nada grava. Projetos já criados não mudam (cópia, não vínculo).
+  **Quem edita = quem exclui** (`podeAlterarModelo`): o autor ou um administrador;
+  modelo "do sistema" (`criadoPor = 'sistema'`) só o administrador. Excluir
+  pede confirmação no navegador (`BotaoExcluirModelo`).
 - Nome do modelo é único. **Quem salvou (ou um administrador) exclui**; Leitor vê
   a lista mas não cria, usa nem exclui. Excluir o modelo não altera os projetos
   já criados com ele (cópia, não vínculo). Teto de 200 ações por modelo.

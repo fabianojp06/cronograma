@@ -713,6 +713,7 @@ test.describe('duplicar ação e modelos de projeto', () => {
 
     await consultar(`UPDATE "Colaborador" SET "somenteLeitura" = false WHERE "clerkUserId" = 'user_e2e'`)
     await page.goto('/modelos')
+    page.once('dialog', (d) => d.accept())
     await page.getByRole('button', { name: 'Excluir o modelo Para excluir' }).click()
     await expect(page.getByText('Nenhum modelo ainda.')).toBeVisible()
   })
@@ -938,5 +939,74 @@ test.describe('líder do projeto na lista', () => {
     )
     expect(novo.liderId).not.toBeNull()
     expect(novo.responsavel).toBe('Ana Souza')
+  })
+})
+
+test.describe('editor de modelos', () => {
+  test('cria um modelo do zero, edita, usa e exclui com confirmação', async ({ page }) => {
+    await page.goto('/modelos')
+    await page.getByRole('link', { name: 'Novo modelo' }).click()
+
+    await page.getByLabel('Nome do modelo *').fill('Rotina de teste')
+    await page.getByLabel('Equipe', { exact: true }).fill('STI')
+    await page.getByLabel('Descrição da ação 1').fill('Preparar o ambiente')
+    await page.getByLabel('Começa no dia').first().fill('0')
+    await page.getByLabel('Dura (dias)').first().fill('3')
+
+    await page.getByRole('button', { name: '+ Adicionar ação' }).click()
+    // A nova linha já sugere o início logo depois do término da anterior.
+    await expect(page.getByLabel('Começa no dia').nth(1)).toHaveValue('3')
+    await page.getByLabel('Descrição da ação 2').fill('Executar a rotina')
+    await page.getByLabel('Dura (dias)').nth(1).fill('5')
+    await expect(page.getByRole('status').filter({ hasText: 'duração total de 8 dias úteis' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Criar modelo' }).click()
+    await expect(page.getByText('Modelo salvo.')).toBeVisible()
+    const [modelo] = await consultar<{ id: string; equipe: string | null; criadoPor: string }>(
+      `SELECT "id","equipe","criadoPor" FROM "ModeloProjeto" WHERE "nome" = 'Rotina de teste'`,
+    )
+    expect(modelo.equipe).toBe('STI')
+    const acoes = await consultar<{ ordem: number; descricao: string; inicioDiasUteis: number; duracaoDiasUteis: number }>(
+      `SELECT "ordem","descricao","inicioDiasUteis","duracaoDiasUteis" FROM "ModeloAcao" WHERE "modeloId" = $1 ORDER BY "ordem"`,
+      [modelo.id],
+    )
+    expect(acoes).toEqual([
+      { ordem: 1, descricao: 'Preparar o ambiente', inicioDiasUteis: 0, duracaoDiasUteis: 3 },
+      { ordem: 2, descricao: 'Executar a rotina', inicioDiasUteis: 3, duracaoDiasUteis: 5 },
+    ])
+
+    // Editar: troca a ordem das ações e renomeia.
+    await page.getByRole('link', { name: 'Editar' }).click()
+    await page.getByLabel('Nome do modelo *').fill('Rotina de teste (v2)')
+    await page.getByRole('button', { name: 'Descer a ação 1' }).click()
+    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await expect(page.getByText('Modelo salvo.')).toBeVisible()
+    const depois = await consultar<{ descricao: string }>(
+      `SELECT "descricao" FROM "ModeloAcao" WHERE "modeloId" = $1 ORDER BY "ordem"`,
+      [modelo.id],
+    )
+    expect(depois.map((a) => a.descricao)).toEqual(['Executar a rotina', 'Preparar o ambiente'])
+    await page.getByText('Ver as ações').click()
+    await expect(page.getByText('Executar a rotina')).toBeVisible()
+
+    // Excluir pede confirmação: cancelar não exclui.
+    page.once('dialog', (d) => d.dismiss())
+    await page.getByRole('button', { name: /Excluir o modelo Rotina de teste/ }).click()
+    await expect(page.getByText('Rotina de teste (v2)')).toBeVisible()
+    page.once('dialog', (d) => d.accept())
+    await page.getByRole('button', { name: /Excluir o modelo Rotina de teste/ }).click()
+    await expect(page.getByText('Nenhum modelo ainda.')).toBeVisible()
+  })
+
+  test('mostra o erro da linha e não perde o que foi digitado', async ({ page }) => {
+    await page.goto('/modelos/novo')
+    await page.getByLabel('Nome do modelo *').fill('Com erro')
+    await page.getByLabel('Descrição da ação 1').fill('Ação sem duração')
+    await page.getByLabel('Dura (dias)').first().fill('')
+    await page.getByRole('button', { name: 'Criar modelo' }).click()
+    await expect(page.getByRole('alert').filter({ hasText: 'Informe o início e a duração' })).toBeVisible()
+    await expect(page.getByLabel('Nome do modelo *')).toHaveValue('Com erro')
+    await expect(page.getByLabel('Descrição da ação 1')).toHaveValue('Ação sem duração')
+    expect((await consultar(`SELECT 1 FROM "ModeloProjeto"`)).length).toBe(0)
   })
 })

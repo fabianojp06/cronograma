@@ -127,3 +127,94 @@ describe('podeExcluirModelo', () => {
     expect(podeExcluirModelo('u1', 'u2', true)).toBe(true)
   })
 })
+
+import {
+  diaDeTerminoDoItem,
+  lerClassificacaoDoModelo,
+  lerItensDoFormulario,
+  podeAlterarModelo,
+} from './modelo-projeto'
+
+function formulario(linhas: [string, string, string][], extras: Record<string, string> = {}) {
+  const f = new FormData()
+  for (const [d, i, u] of linhas) {
+    f.append('acaoDescricao', d)
+    f.append('acaoInicio', i)
+    f.append('acaoDuracao', u)
+  }
+  for (const [k, v] of Object.entries(extras)) f.set(k, v)
+  return f
+}
+
+describe('lerItensDoFormulario', () => {
+  it('numera as ações em ordem e aceita ação sem datas', () => {
+    const r = lerItensDoFormulario(formulario([['A', '0', '3'], ['B', '', '']]))
+    expect(r).toEqual({
+      ok: true,
+      itens: [
+        { ordem: 1, descricao: 'A', inicioDiasUteis: 0, duracaoDiasUteis: 3 },
+        { ordem: 2, descricao: 'B', inicioDiasUteis: null, duracaoDiasUteis: null },
+      ],
+    })
+  })
+
+  it('ignora linha totalmente vazia e conta a linha da tela nos erros', () => {
+    const r = lerItensDoFormulario(formulario([['A', '0', '3'], ['', '', ''], ['C', '2', '']]))
+    expect(r).toMatchObject({ ok: false, erros: [{ linha: 3 }] })
+  })
+
+  it('valida descrição, inteiros, duração mínima e limite de dias', () => {
+    const erro = (l: [string, string, string]) => {
+      const r = lerItensDoFormulario(formulario([l]))
+      return r.ok ? null : r.erros[0]?.erro
+    }
+    expect(erro(['', '1', '2'])).toBe('Descreva a ação.')
+    expect(erro(['A', 'x', '2'])).toBe('Use números inteiros em dias úteis.')
+    expect(erro(['A', '-1', '2'])).toBe('Use números inteiros em dias úteis.')
+    expect(erro(['A', '1,5', '2'])).toBe('Use números inteiros em dias úteis.')
+    expect(erro(['A', '0', '0'])).toBe('A duração mínima é 1 dia útil.')
+    expect(erro(['A', '1001', '2'])).toContain('no máximo 1000')
+    expect(erro(['A', '', '3'])).toBe('Informe o início e a duração, ou deixe os dois em branco.')
+    expect(erro(['x'.repeat(501), '0', '1'])).toContain('no máximo 500')
+  })
+
+  it('exige pelo menos uma ação e respeita o limite', () => {
+    expect(lerItensDoFormulario(formulario([]))).toMatchObject({ ok: false, erroGeral: expect.stringContaining('pelo menos uma') })
+    const muitas = Array.from({ length: 201 }, (_, i): [string, string, string] => [`Ação ${i}`, '0', '1'])
+    expect(lerItensDoFormulario(formulario(muitas))).toMatchObject({ ok: false, erroGeral: expect.stringContaining('200') })
+  })
+
+  it('apara e junta espaços da descrição', () => {
+    const r = lerItensDoFormulario(formulario([['  Preparar   o   ambiente ', '0', '1']]))
+    expect(r.ok && r.itens[0].descricao).toBe('Preparar o ambiente')
+  })
+})
+
+describe('lerClassificacaoDoModelo', () => {
+  it('apara, vazio vira null e recusa texto longo demais', () => {
+    const f = new FormData()
+    f.set('equipe', '  STI ')
+    f.set('categoria', '')
+    expect(lerClassificacaoDoModelo(f)).toEqual({
+      ok: true,
+      classificacao: { equipe: 'STI', natureza: null, categoria: null, apoio: null, setorEnvolvido: null },
+    })
+    f.set('natureza', 'x'.repeat(501))
+    expect(lerClassificacaoDoModelo(f)).toMatchObject({ ok: false })
+  })
+})
+
+describe('podeAlterarModelo e diaDeTerminoDoItem', () => {
+  it('edita quem criou ou o administrador; modelo do sistema, só administrador', () => {
+    expect(podeAlterarModelo('u1', 'u1', false)).toBe(true)
+    expect(podeAlterarModelo('u1', 'u2', false)).toBe(false)
+    expect(podeAlterarModelo('u1', 'u2', true)).toBe(true)
+    expect(podeAlterarModelo('sistema', 'u2', false)).toBe(false)
+    expect(podeAlterarModelo('sistema', 'u2', true)).toBe(true)
+  })
+  it('o término é início + duração - 1; sem datas, nulo', () => {
+    expect(diaDeTerminoDoItem({ inicioDiasUteis: 3, duracaoDiasUteis: 5 })).toBe(7)
+    expect(diaDeTerminoDoItem({ inicioDiasUteis: 0, duracaoDiasUteis: 1 })).toBe(0)
+    expect(diaDeTerminoDoItem({ inicioDiasUteis: null, duracaoDiasUteis: null })).toBeNull()
+  })
+})
