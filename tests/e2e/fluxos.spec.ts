@@ -788,3 +788,36 @@ test.describe('primeiro acesso', () => {
     await expect(page.getByRole('link', { name: 'Criar conta' })).toHaveAttribute('href', '/cadastrar')
   })
 })
+
+test.describe('dependência entre ações', () => {
+  test('bloqueia o início, e o líder do projeto libera', async ({ page }) => {
+    const [{ id: acaoB }] = await consultar<{ id: string }>(
+      `INSERT INTO "Acao" ("id","projetoId","numero","descricao","updatedAt")
+       VALUES (gen_random_uuid()::text,$1,2,'Ação dependente',now()) RETURNING "id"`,
+      [projetoId],
+    )
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoB}/editar`)
+
+    await page.locator('#dependencia-predecessora').selectOption({ index: 1 })
+    await page.getByRole('button', { name: 'Adicionar' }).click()
+    await expect(page.getByRole('link', { name: 'ação 1', exact: true })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: 'Bloqueada.' })).toBeVisible()
+
+    // Iniciar é recusado, com o número da predecessora, e nada é gravado.
+    await page.locator('#status').selectOption('EM_CURSO_25')
+    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await expect(page.getByText(/depende da ação #1/)).toBeVisible()
+    const statusDaB = async () =>
+      (await consultar<{ status: string }>('SELECT "status" FROM "Acao" WHERE "id" = $1', [acaoB]))[0].status
+    expect(await statusDaB()).toBe('NAO_INICIADO')
+
+    // Ana é a responsável pelo projeto: libera direto, com motivo.
+    await page.locator('#liberacao-motivo').fill('O material já chegou; dá para começar')
+    await page.getByRole('button', { name: 'Liberar', exact: true }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'Liberada pelo líder.' })).toBeVisible()
+
+    await page.locator('#status').selectOption('EM_CURSO_25')
+    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await expect.poll(statusDaB).toBe('EM_CURSO_25')
+  })
+})

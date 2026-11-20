@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { BuscaAcoes } from '@/components/busca-acoes'
 import { Paginacao } from '@/components/paginacao'
 import { SeletorFoto } from '@/components/seletor-foto'
+import { acaoIniciada, etiquetaDaDependencia } from '@/lib/dependencia-acao'
 import { GanttProjeto, type LinhaGantt } from '@/components/gantt-projeto'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { corteDaFoto, fotoDoProjeto, lerDataDaFoto } from '@/lib/foto-em-data'
@@ -121,8 +122,27 @@ export default async function ProjetoPage({
     correspondeABusca(busca, [a.numero, a.descricao, a.responsavel]),
   )
   const pagina = paginar(encontradas, lerPagina(parametros), TAMANHO_PAGINA_ACOES)
+  const [vinculos, liberadas] =
+    em === null
+      ? await Promise.all([
+          prisma.dependenciaAcao.findMany({
+            where: { acao: { projetoId: projeto.id } },
+            select: { acaoId: true, predecessora: { select: { id: true, numero: true, status: true } } },
+          }),
+          prisma.liberacaoAcao.findMany({
+            where: { acao: { projetoId: projeto.id }, status: 'APROVADA' },
+            select: { acaoId: true },
+          }),
+        ])
+      : [[], []]
+  const liberadasIds = new Set(liberadas.map((l) => l.acaoId))
   const acoes: LinhaGantt[] = pagina.itens.map((acao) => ({
     ...acao,
+    dependencia: etiquetaDaDependencia({
+      predecessoras: vinculos.filter((v) => v.acaoId === acao.id).map((v) => v.predecessora),
+      iniciada: acaoIniciada(acao),
+      liberada: liberadasIds.has(acao.id),
+    }),
     // Na foto não há link de edição: a ação editada é a de hoje, não a da foto.
     href: em === null ? `/projetos/${projeto.id}/acoes/${acao.id}/editar` : undefined,
   }))

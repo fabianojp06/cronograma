@@ -13,6 +13,8 @@ import { ROTULOS_STATUS, type StatusAcao } from '@/lib/acao-validacao'
 import { rotularCampo } from '@/lib/dashboard-auditoria'
 import { formatarValorHistorico, rotularAutor } from '@/lib/historico-exibicao'
 import { podeApagarComentario } from '@/lib/comentario-validacao'
+import { contaELiderDoProjeto } from '@/lib/dependencia-servidor'
+import { SecaoDependencias } from '@/components/secao-dependencias'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'Editar ação — Cronograma CTCEA' }
@@ -44,7 +46,34 @@ export default async function EditarAcaoPage({
       responsavelId: true,
       updatedAt: true,
       responsavel: { select: { nome: true, ativo: true, email: true } },
-      projeto: { select: { id: true, nome: true, referencia: true } },
+      projeto: { select: { id: true, nome: true, referencia: true, responsavel: true } },
+      dependeDe: {
+        orderBy: { criadoEm: 'asc' },
+        select: {
+          id: true,
+          predecessora: {
+            select: {
+              id: true,
+              numero: true,
+              descricao: true,
+              status: true,
+              previstoTermino: true,
+              realizadoTermino: true,
+            },
+          },
+        },
+      },
+      liberacoes: {
+        orderBy: { criadoEm: 'desc' },
+        select: {
+          id: true,
+          motivo: true,
+          status: true,
+          justificativa: true,
+          solicitante: true,
+          criadoEm: true,
+        },
+      },
       comentarios: {
         orderBy: { criadoEm: 'desc' },
         select: { id: true, texto: true, autor: true, criadoEm: true },
@@ -93,6 +122,7 @@ export default async function EditarAcaoPage({
     ...new Set([
       ...acao.historico.map((h) => h.alteradoPor).filter((c): c is string => c !== null),
       ...acao.comentarios.map((c) => c.autor),
+      ...acao.liberacoes.map((l) => l.solicitante),
     ]),
   ]
   const autores = await prisma.colaborador.findMany({
@@ -100,6 +130,21 @@ export default async function EditarAcaoPage({
     select: { clerkUserId: true, nome: true },
   })
   const nomePorConta = new Map(autores.map((a) => [a.clerkUserId!, a.nome]))
+
+  const outrasAcoes = await prisma.acao.findMany({
+    where: { projetoId: acao.projeto.id, id: { not: acao.id } },
+    orderBy: { numero: 'asc' },
+    select: { id: true, numero: true, descricao: true },
+  })
+  const jaDepende = new Set(acao.dependeDe.map((v) => v.predecessora.id))
+  const opcoesDependencia = outrasAcoes
+    .filter((o) => !jaDepende.has(o.id))
+    .map((o) => ({
+      id: o.id,
+      rotulo: `${o.numero} — ${o.descricao.length > 60 ? `${o.descricao.slice(0, 60)}…` : o.descricao}`,
+    }))
+  const ehLider =
+    userId !== null && (await contaELiderDoProjeto(userId, acao.projeto.responsavel))
 
   const valores: ValoresAcao = {
     id: acao.id,
@@ -171,6 +216,20 @@ export default async function EditarAcaoPage({
             </dl>
           </div>
         )}
+
+        <div className="lg:col-start-1">
+          <SecaoDependencias
+            acao={acao}
+            ehLider={ehLider}
+            hoje={new Date()}
+            nomePorConta={nomePorConta}
+            opcoes={opcoesDependencia}
+            pedidos={acao.liberacoes}
+            podeEditar={podeEditar}
+            projetoId={acao.projeto.id}
+            vinculos={acao.dependeDe}
+          />
+        </div>
 
         <section aria-labelledby="titulo-comentarios" className="mt-8 lg:col-start-1">
           <h2 className="font-display text-base font-bold" id="titulo-comentarios">

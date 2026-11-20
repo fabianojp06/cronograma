@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
 import { registrarFalha } from '@/lib/registrar-erro'
+import { bloqueioParaGravar } from '@/lib/dependencia-servidor'
 import { prisma } from '@/lib/prisma'
 import { contaPodeEditar } from '@/lib/administracao-servidor'
 import { MENSAGEM_SOMENTE_LEITURA } from '@/lib/administracao'
@@ -178,6 +179,9 @@ export async function atualizarAcao(
 
     projetoId = atual.projetoId
 
+    const bloqueio = await bloqueioParaGravar(acaoId, atual, validacao.dados)
+    if (bloqueio) return { erros: { status: bloqueio } }
+
     const responsavelId = lerResponsavelId(formData)
     const responsavel = await conferirResponsavel(responsavelId, atual.responsavelId)
     if (!responsavel.ok) return { erros: { responsavelId: MENSAGEM_RESPONSAVEL_INVALIDO } }
@@ -277,6 +281,9 @@ export async function registrarRealizado(
 
     const validacao = validarRealizado(formData, atual)
     if (!validacao.ok) return { erros: validacao.erros }
+
+    const bloqueio = await bloqueioParaGravar(acaoId, atual, validacao.dados)
+    if (bloqueio) return { erroGeral: bloqueio }
 
     const { alteracoes } = await gravarAcaoComHistorico(prisma, {
       acaoId,

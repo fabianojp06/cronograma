@@ -3,7 +3,13 @@ import { auth } from '@clerk/nextjs/server'
 
 import { marcarLida, marcarTodasLidas } from '@/app/notificacoes/acoes-notificacao'
 import { rotularAutor } from '@/lib/historico-exibicao'
-import { ROTULO_MOTIVO, trechoDoComentario, type MotivoNotificacao } from '@/lib/notificacao'
+import {
+  ehMotivoLiberacao,
+  ROTULO_LIBERACAO_AVISO,
+  ROTULO_MOTIVO,
+  trechoDoComentario,
+  type MotivoNotificacao,
+} from '@/lib/notificacao'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'Notificações — Cronograma CTCEA' }
@@ -65,12 +71,34 @@ export default async function NotificacoesPage() {
             },
           },
         },
+        liberacao: {
+          select: {
+            motivo: true,
+            justificativa: true,
+            solicitante: true,
+            decididoPor: true,
+            acao: {
+              select: {
+                id: true,
+                numero: true,
+                descricao: true,
+                projeto: { select: { id: true, nome: true, ativo: true } },
+              },
+            },
+          },
+        },
       },
     }),
     prisma.notificacao.count({ where: { destinatarioId: colaborador.id, lida: false } }),
   ])
 
-  const contas = [...new Set(itens.map((n) => n.comentario.autor))]
+  // Quem fez: o autor do comentário, ou — na liberação — quem pediu (pedido)
+  // ou quem decidiu (aprovação e recusa).
+  const autorDe = (n: (typeof itens)[number]): string | null =>
+    n.comentario?.autor ??
+    (n.motivo === 'LIBERACAO_PEDIDA' ? n.liberacao?.solicitante : n.liberacao?.decididoPor) ??
+    null
+  const contas = [...new Set(itens.map(autorDe).filter((c): c is string => c !== null))]
   const autores = await prisma.colaborador.findMany({
     where: { clerkUserId: { in: contas } },
     select: { clerkUserId: true, nome: true },
@@ -82,7 +110,7 @@ export default async function NotificacoesPage() {
       <p className="text-sm font-medium uppercase tracking-wide text-accent">Cronograma CTCEA</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Notificações</h1>
       <p className="mt-2 text-sm text-textMuted">
-        Comentários em que você foi marcado e em ações pelas quais você responde.
+        Comentários em que você foi marcado ou em ações pelas quais você responde, e pedidos e decisões de liberação de início de ações com dependência.
         Os avisos ficam só aqui, no sistema.
       </p>
 
@@ -108,8 +136,20 @@ export default async function NotificacoesPage() {
       ) : (
         <ul className="mt-6 space-y-2">
           {itens.map((n) => {
-            const { acao } = n.comentario
-            const autor = rotularAutor(n.comentario.autor, nomePorConta)
+            const acao = (n.comentario ?? n.liberacao)?.acao
+            if (!acao) return null
+            const conta = autorDe(n)
+            const autor = rotularAutor(conta, nomePorConta)
+            const daLiberacao = ehMotivoLiberacao(n.motivo)
+            const textoDoAviso = n.comentario
+              ? trechoDoComentario(n.comentario.texto)
+              : n.liberacao
+                ? trechoDoComentario(
+                    n.motivo === 'LIBERACAO_PEDIDA'
+                      ? n.liberacao.motivo
+                      : (n.liberacao.justificativa ?? 'Sem justificativa.'),
+                  )
+                : ''
             return (
               <li
                 className={`border-l-2 bg-surface px-4 py-3 ${n.lida ? 'border-borderSoft' : 'border-accent'}`}
@@ -117,7 +157,10 @@ export default async function NotificacoesPage() {
               >
                 <p className="text-sm">
                   <strong className={n.lida ? 'font-medium' : 'font-bold'}>{autor}</strong>{' '}
-                  {ROTULO_MOTIVO[n.motivo as MotivoNotificacao] ?? 'comentou'} na{' '}
+                  {daLiberacao
+                    ? ROTULO_LIBERACAO_AVISO[n.motivo as keyof typeof ROTULO_LIBERACAO_AVISO]
+                    : (ROTULO_MOTIVO[n.motivo as MotivoNotificacao] ?? 'comentou')}{' '}
+                  {daLiberacao ? 'a' : 'na'}{' '}
                   {acao.projeto.ativo ? (
                     <Link
                       className="text-text underline hover:text-accent"
@@ -132,7 +175,7 @@ export default async function NotificacoesPage() {
                   {!n.lida ? <span className="sr-only"> (não lida)</span> : null}
                 </p>
                 <p className="mt-1 whitespace-pre-wrap break-words text-sm text-textMuted">
-                  “{trechoDoComentario(n.comentario.texto)}”
+                  “{textoDoAviso}”
                 </p>
                 <div className="mt-1 flex items-center gap-3 text-xs text-textFaint">
                   <span className="tabular-nums">{momento.format(n.criadoEm)}</span>
