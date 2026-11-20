@@ -629,6 +629,14 @@ Actions em `modelos/acoes-modelo.ts`; tabelas `ModeloProjeto` e `ModeloAcao`):
   em dia não útil volta como o dia útil anterior (aproximação, dita na tela).
 - Ajustar depois é com a **edição em lote**: não há pré-visualização das datas
   antes de criar, de propósito — corrigir é barato.
+- **Modelos iniciais** (`modelos-iniciais.ts`, carregados por
+  `npm run carregar:modelos`, simulação por padrão e `-- --gravar` para gravar):
+  ciclo orçamentário anual, prestação de contas, desenvolvimento de sistema e
+  onboarding. São RASCUNHOS de senso comum, não a rotina medida da CTCEA. O
+  script pula nome que já existe (nunca sobrescreve), roda contra o
+  `DATABASE_URL` de quem o executa e cria com `criadoPor = 'sistema'` (só
+  administrador exclui). Equipe, natureza e categoria ficam em branco. Um modelo
+  novo no arquivo exige rodar o script de novo em cada banco.
 - Nome do modelo é único. **Quem salvou (ou um administrador) exclui**; Leitor vê
   a lista mas não cria, usa nem exclui. Excluir o modelo não altera os projetos
   já criados com ele (cópia, não vínculo). Teto de 200 ações por modelo.

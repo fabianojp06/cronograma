@@ -266,6 +266,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'O modelo guarda a classificação e as ações com datas relativas. Pessoas, status e realizado não vão.',
       'Início em fim de semana ou feriado vale o próximo dia útil.',
       'Quem salvou o modelo (ou um administrador) o exclui. Excluir o modelo não altera projetos já criados.',
+      'O sistema já traz quatro modelos iniciais (ciclo orçamentário, prestação de contas, desenvolvimento de sistema e onboarding). São rascunhos: confira as ações e as durações antes de usar, e só administradores os excluem.',
     ],
     desde: '2026-11-19',
     palavras: ['modelo', 'molde', 'template'],
