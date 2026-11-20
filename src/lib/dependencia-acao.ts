@@ -105,16 +105,20 @@ export function bloqueioDaGravacao(entrada: {
 }
 
 /**
- * Líder do projeto: quem o administrador definiu como `Projeto.responsavel`
- * (texto livre, casado por `chaveDoNome` com o nome do colaborador da conta) ou
- * um administrador. Nome parcial não casa — a mesma regra do resto do sistema.
+ * Líder do projeto: o colaborador escolhido na lista (`liderId`) ou, em projeto
+ * antigo sem líder escolhido, quem o texto de `Projeto.responsavel` indica
+ * (casado por `chaveDoNome`; nome parcial não casa) — e sempre um administrador.
+ * Com `liderId` preenchido, o texto NÃO vale: a lista é a verdade.
  */
 export function ehLiderDoProjeto(entrada: {
+  meuId?: string | null
   nomeDoColaborador: string | null
+  liderId?: string | null
   responsavelDoProjeto: string | null
   administrador: boolean
 }): boolean {
   if (entrada.administrador) return true
+  if (entrada.liderId) return entrada.meuId === entrada.liderId
   const { nomeDoColaborador, responsavelDoProjeto } = entrada
   if (!nomeDoColaborador || !responsavelDoProjeto) return false
   return chaveDoNome(nomeDoColaborador) === chaveDoNome(responsavelDoProjeto)

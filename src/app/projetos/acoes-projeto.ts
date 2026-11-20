@@ -15,6 +15,7 @@ import {
   PALAVRA_CONFIRMACAO,
 } from '@/lib/projeto-exclusao'
 import { CAMPOS_PROJETO, camposAlterados, lerIdProjeto } from '@/lib/projeto-edicao'
+import { lerEscolhaLider, resolverLider } from '@/lib/lider-projeto'
 import { validarDadosProjeto, type ErrosProjeto } from '@/lib/projeto-validacao'
 
 export type EstadoFormularioProjeto = {
@@ -49,8 +50,13 @@ export async function criarProjeto(
 
   let id: string
   try {
+    const lider = await resolverLiderDoFormulario(formData, null)
+    if (!lider.ok) return { erros: { responsavel: lider.erro } }
+
     const projeto = await prisma.projeto.create({
-      data: validacao.dados,
+      data: lider.alterar
+        ? { ...validacao.dados, responsavel: lider.responsavel, liderId: lider.liderId }
+        : validacao.dados,
       select: { id: true },
     })
     id = projeto.id
@@ -64,9 +70,29 @@ export async function criarProjeto(
 }
 
 /** `select` do Prisma com exatamente os campos editáveis do Projeto. */
-const SELECAO_CAMPOS = Object.fromEntries(
-  CAMPOS_PROJETO.map((campo) => [campo, true]),
-) as { [C in (typeof CAMPOS_PROJETO)[number]]: true }
+const SELECAO_CAMPOS = {
+  ...(Object.fromEntries(CAMPOS_PROJETO.map((campo) => [campo, true])) as {
+    [C in (typeof CAMPOS_PROJETO)[number]]: true
+  }),
+  liderId: true,
+} as const
+
+/**
+ * Lê o líder escolhido na lista e o resolve contra o cadastro. O campo
+ * `responsavel` não vem mais do formulário: quando há escolha, o nome é copiado
+ * do colaborador (grafia canônica); `ausente`/`manter` não mexem em nada.
+ */
+async function resolverLiderDoFormulario(formData: FormData, liderIdAtual: string | null) {
+  const escolha = lerEscolhaLider(formData)
+  const colaborador =
+    escolha.tipo === 'colaborador'
+      ? await prisma.colaborador.findUnique({
+          where: { id: escolha.id },
+          select: { id: true, nome: true, ativo: true },
+        })
+      : null
+  return resolverLider(escolha, colaborador, liderIdAtual)
+}
 
 /**
  * Atualiza um Projeto existente (mesmo formulário da criação, com o `id` em
@@ -98,8 +124,24 @@ export async function atualizarProjeto(
       return { erroGeral: 'Projeto não encontrado ou excluído.' }
     }
 
-    if (camposAlterados(atual, validacao.dados).length > 0) {
-      await prisma.projeto.update({ where: { id }, data: validacao.dados })
+    const lider = await resolverLiderDoFormulario(formData, atual.liderId)
+    if (!lider.ok) return { erros: { responsavel: lider.erro } }
+
+    // O formulário novo não manda o texto do responsável: sem escolha de
+    // líder, ele continua o que está gravado (senão "não mexer" viraria apagar).
+    const manterTexto = lerEscolhaLider(formData).tipo === 'manter'
+    const dados = lider.alterar
+      ? { ...validacao.dados, responsavel: lider.responsavel }
+      : manterTexto
+        ? { ...validacao.dados, responsavel: atual.responsavel }
+        : validacao.dados
+    const liderMudou = lider.alterar && lider.liderId !== atual.liderId
+
+    if (camposAlterados(atual, dados).length > 0 || liderMudou) {
+      await prisma.projeto.update({
+        where: { id },
+        data: lider.alterar ? { ...dados, liderId: lider.liderId } : dados,
+      })
       revalidatePath('/projetos')
       revalidatePath(`/projetos/${id}`)
     }

@@ -160,7 +160,7 @@ export async function pedirLiberacao(
         status: true,
         realizadoInicio: true,
         realizadoTermino: true,
-        projeto: { select: { responsavel: true } },
+        projeto: { select: { responsavel: true, liderId: true } },
         dependeDe: { select: { predecessora: { select: { id: true, numero: true, status: true } } } },
         liberacoes: { where: { status: { in: ['PENDENTE', 'APROVADA'] } }, select: { status: true } },
       },
@@ -177,7 +177,7 @@ export async function pedirLiberacao(
       return { erro: 'Já existe um pedido de liberação aguardando o líder.' }
     }
 
-    const lider = await contaELiderDoProjeto(userId, acao.projeto.responsavel)
+    const lider = await contaELiderDoProjeto(userId, acao.projeto)
     const agora = new Date()
 
     if (lider) {
@@ -208,7 +208,7 @@ export async function pedirLiberacao(
 
     const [eu, destinos] = await Promise.all([
       prisma.colaborador.findUnique({ where: { clerkUserId: userId }, select: { id: true } }),
-      destinatariosDoPedido(acao.projeto.responsavel),
+      destinatariosDoPedido(acao.projeto),
     ])
     const avisados = destinos.filter((id) => id !== eu?.id)
 
@@ -277,12 +277,12 @@ export async function decidirLiberacao(
         status: true,
         acaoId: true,
         acao: {
-          select: { numero: true, projetoId: true, projeto: { select: { responsavel: true, ativo: true } } },
+          select: { numero: true, projetoId: true, projeto: { select: { responsavel: true, liderId: true, ativo: true } } },
         },
       },
     })
     if (!pedido || !pedido.acao.projeto.ativo) return { erro: 'Pedido não encontrado.' }
-    if (!(await contaELiderDoProjeto(userId, pedido.acao.projeto.responsavel))) {
+    if (!(await contaELiderDoProjeto(userId, pedido.acao.projeto))) {
       return { erro: 'Só o líder do projeto ou um administrador decide a liberação.' }
     }
 

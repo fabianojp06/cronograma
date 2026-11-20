@@ -24,7 +24,13 @@ model Projeto {
   equipe         String? // ex: STI, GIA, GRH
   natureza       String? // ex: Desenvolvimento, Infraestrutura, Iniciativa
   categoria      String?
+  /// Nome do responsável, em texto: é o que os relatórios agrupam. Quando há
+  /// `liderId`, é a cópia do nome do líder escolhido na lista.
   responsavel    String?
+  /// Líder do projeto, escolhido na lista de colaboradores (quem decide as
+  /// liberações de início). Nulo: vale o nome em `responsavel`, casado pelo nome.
+  liderId        String?
+  lider          Colaborador? @relation("LiderDoProjeto", fields: [liderId], references: [id], onDelete: SetNull)
   apoio          String?
   setorEnvolvido String?
   comentario     String?
@@ -39,6 +45,7 @@ model Projeto {
 
   @@index([ativo])
   @@index([equipe])
+  @@index([liderId])
 }
 
 model Acao {
@@ -217,6 +224,8 @@ model Colaborador {
   wins  Win[]
   acoes Acao[]
   notificacoes Notificacao[]
+  /// Projetos de que é o líder (escolhido na lista, em `Projeto.liderId`).
+  projetosLiderados Projeto[] @relation("LiderDoProjeto")
 
   @@index([ativo])
 }

@@ -375,6 +375,7 @@ export async function promoverWin(
             data: {
               nome: win.descricao,
               responsavel: colaborador.nome,
+              liderId: colaborador.id,
               comentario,
             },
             select: { id: true },
