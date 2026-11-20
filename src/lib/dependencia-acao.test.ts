@@ -98,6 +98,15 @@ describe('ehLiderDoProjeto', () => {
       }),
     ).toBe(true)
   })
+  it('com líder escolhido na lista, só ele é líder — o texto não vale', () => {
+    const base = { responsavelDoProjeto: 'Ana Silva', administrador: false }
+    expect(
+      ehLiderDoProjeto({ ...base, liderId: 'x', meuId: 'x', nomeDoColaborador: 'Outro Nome' }),
+    ).toBe(true)
+    expect(
+      ehLiderDoProjeto({ ...base, liderId: 'x', meuId: 'y', nomeDoColaborador: 'Ana Silva' }),
+    ).toBe(false)
+  })
   it('nome parcial ou ausente não casa', () => {
     expect(
       ehLiderDoProjeto({

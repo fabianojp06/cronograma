@@ -48,38 +48,45 @@ export async function bloqueioParaGravar(
   })
 }
 
-/** A conta é líder do projeto (responsável casado pelo nome) ou administrador de verdade. */
+type ProjetoDoLider = { liderId: string | null; responsavel: string | null }
+
+/** A conta é líder do projeto (lista, ou nome em projeto antigo) ou administrador de verdade. */
 export async function contaELiderDoProjeto(
   userId: string,
-  responsavelDoProjeto: string | null,
+  projeto: ProjetoDoLider,
 ): Promise<boolean> {
   const [eu, situacao] = await Promise.all([
     prisma.colaborador.findFirst({
       where: { clerkUserId: userId, ativo: true },
-      select: { nome: true },
+      select: { id: true, nome: true },
     }),
     situacaoAdmin(userId),
   ])
   // Só administrador REAL: no estado "ainda não há administrador" todos podem
   // tudo, e isso deixaria qualquer um aprovar o próprio pedido.
   return ehLiderDoProjeto({
+    meuId: eu?.id ?? null,
     nomeDoColaborador: eu?.nome ?? null,
-    responsavelDoProjeto,
+    liderId: projeto.liderId,
+    responsavelDoProjeto: projeto.responsavel,
     administrador: situacao.eAdministrador,
   })
 }
 
 /**
- * Quem recebe o aviso de um pedido de liberação: o colaborador ativo que casa
- * com `Projeto.responsavel` e, não havendo, os administradores ativos.
+ * Quem recebe o aviso de um pedido de liberação: o líder escolhido na lista (se
+ * ativo) ou, em projeto antigo, o colaborador ativo que casa com
+ * `Projeto.responsavel` e, não havendo, os administradores ativos.
  */
-export async function destinatariosDoPedido(responsavelDoProjeto: string | null): Promise<string[]> {
+export async function destinatariosDoPedido(projeto: ProjetoDoLider): Promise<string[]> {
   const ativos = await prisma.colaborador.findMany({
     where: { ativo: true },
     select: { id: true, nome: true, administrador: true },
   })
-  if (responsavelDoProjeto) {
-    const chave = chaveDoNome(responsavelDoProjeto)
+  if (projeto.liderId) {
+    if (ativos.some((c) => c.id === projeto.liderId)) return [projeto.liderId]
+  } else if (projeto.responsavel) {
+    const chave = chaveDoNome(projeto.responsavel)
     const lider = ativos.find((c) => chaveDoNome(c.nome) === chave)
     if (lider) return [lider.id]
   }

@@ -8,6 +8,7 @@ import { sessaoPodeEditar } from '@/lib/administracao-servidor'
 import { FormularioProjeto } from '@/components/formulario-projeto'
 import { contaPodeAdministrar } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
+import { opcoesDoLider } from '@/lib/lider-projeto'
 import { valoresIniciais } from '@/lib/projeto-edicao'
 
 export const metadata = { title: 'Editar projeto — Cronograma CTCEA' }
@@ -29,6 +30,7 @@ export default async function EditarProjetoPage({
       natureza: true,
       categoria: true,
       responsavel: true,
+      liderId: true,
       apoio: true,
       setorEnvolvido: true,
       comentario: true,
@@ -40,6 +42,13 @@ export default async function EditarProjetoPage({
   const { userId } = await auth()
   const podeExcluir = userId !== null && (await contaPodeAdministrar(userId))
   const podeEditar = await sessaoPodeEditar()
+  const lideres = opcoesDoLider(
+    await prisma.colaborador.findMany({
+      orderBy: { nome: 'asc' },
+      select: { id: true, nome: true, ativo: true },
+    }),
+    { liderId: projeto.liderId, responsavel: projeto.responsavel },
+  )
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
@@ -56,6 +65,7 @@ export default async function EditarProjetoPage({
       </p>
       {podeEditar ? (
         <FormularioProjeto
+          lideres={lideres}
           projeto={{ id: projeto.id, valores: valoresIniciais(projeto) }}
         />
       ) : (

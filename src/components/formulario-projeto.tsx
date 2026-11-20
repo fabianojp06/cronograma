@@ -47,11 +47,20 @@ function Campo({
 
 export type ProjetoEmEdicao = { id: string; valores: ValoresProjeto }
 
+/** O que o select de líder oferece (calculado no servidor por `opcoesDoLider`). */
+export type EscolhasDeLider = { opcoes: { valor: string; rotulo: string }[]; selecionado: string }
+
 /**
  * Mesmo formulário para criar e editar: quando `projeto` vem preenchido, o `id`
  * segue em campo oculto e a Server Action passa a ser `atualizarProjeto`.
  */
-export function FormularioProjeto({ projeto }: { projeto?: ProjetoEmEdicao }) {
+export function FormularioProjeto({
+  projeto,
+  lideres,
+}: {
+  projeto?: ProjetoEmEdicao
+  lideres: EscolhasDeLider
+}) {
   const editando = projeto !== undefined
   const [estado, acao, enviando] = useActionState(
     editando ? atualizarProjeto : criarProjeto,
@@ -146,12 +155,27 @@ export function FormularioProjeto({ projeto }: { projeto?: ProjetoEmEdicao }) {
       <section className="border-l-2 border-borderSoft pl-4">
         <h2 className="font-display text-base font-bold">Responsáveis</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Campo
-            nome="responsavel"
-            defaultValue={valores?.responsavel}
-            rotulo="Responsável"
-            erros={erros}
-          />
+          <div>
+            <label className="block text-sm font-medium text-textMuted" htmlFor="lider">
+              Responsável (líder do projeto)
+            </label>
+            <select
+              className={classeCampo}
+              defaultValue={lideres.selecionado}
+              id="lider"
+              name="lider"
+            >
+              {lideres.opcoes.map((o) => (
+                <option key={o.valor} value={o.valor}>
+                  {o.rotulo}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-textFaint">
+              Escolha entre os colaboradores. O líder decide as liberações de início de ações.
+            </p>
+            <Erro mensagem={erros?.responsavel} />
+          </div>
           <Campo
             nome="apoio"
             defaultValue={valores?.apoio}

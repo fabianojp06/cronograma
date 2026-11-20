@@ -105,6 +105,14 @@ export async function salvarColaborador(
           data: { nome: validacao.nome, area: area.area, email: email.email },
         })
       }
+      // O nome em `Projeto.responsavel` dos projetos que ele LIDERA (escolhido na
+      // lista) é cópia do nome do colaborador: acompanha a renomeação sempre.
+      if (validacao.mudou) {
+        await tx.projeto.updateMany({
+          where: { liderId: id },
+          data: { responsavel: validacao.nome },
+        })
+      }
       if (!propagar) return { renomeado: validacao.mudou, projetos: 0 }
 
       // Busca por chave: o alvo é toda grafia da MESMA pessoa, incluindo a

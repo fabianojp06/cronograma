@@ -913,3 +913,30 @@ test.describe('menu por perfil', () => {
     await expect(page.getByRole('heading', { name: 'Área de Administração' })).toBeVisible()
   })
 })
+
+test.describe('líder do projeto na lista', () => {
+  test('o projeto antigo vem com o líder pré-selecionado e o novo grava o id', async ({ page }) => {
+    // O semeado tem o responsável digitado ("Ana Souza"): casa com a Ana do cadastro.
+    await page.goto(`/projetos/${projetoId}/editar`)
+    await expect(page.getByLabel('Responsável (líder do projeto)')).toHaveValue(/^c:/)
+
+    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await expect(page.getByText('Alterações do projeto')).toBeVisible()
+    const [ligado] = await consultar<{ liderId: string | null }>(
+      `SELECT "liderId" FROM "Projeto" WHERE "id" = $1`,
+      [projetoId],
+    )
+    expect(ligado.liderId).not.toBeNull()
+
+    await page.goto('/projetos/novo')
+    await page.locator('#nome').fill('Projeto com líder da lista')
+    await page.getByLabel('Responsável (líder do projeto)').selectOption({ label: 'Ana Souza' })
+    await page.getByRole('button', { name: 'Salvar projeto' }).click()
+    await expect(page.getByText('criado.')).toBeVisible()
+    const [novo] = await consultar<{ liderId: string | null; responsavel: string | null }>(
+      `SELECT "liderId","responsavel" FROM "Projeto" WHERE "nome" = 'Projeto com líder da lista'`,
+    )
+    expect(novo.liderId).not.toBeNull()
+    expect(novo.responsavel).toBe('Ana Souza')
+  })
+})

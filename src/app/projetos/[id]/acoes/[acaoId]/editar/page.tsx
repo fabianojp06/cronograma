@@ -46,7 +46,7 @@ export default async function EditarAcaoPage({
       responsavelId: true,
       updatedAt: true,
       responsavel: { select: { nome: true, ativo: true, email: true } },
-      projeto: { select: { id: true, nome: true, referencia: true, responsavel: true } },
+      projeto: { select: { id: true, nome: true, referencia: true, responsavel: true, liderId: true } },
       dependeDe: {
         orderBy: { criadoEm: 'asc' },
         select: {
@@ -144,7 +144,7 @@ export default async function EditarAcaoPage({
       rotulo: `${o.numero} — ${o.descricao.length > 60 ? `${o.descricao.slice(0, 60)}…` : o.descricao}`,
     }))
   const ehLider =
-    userId !== null && (await contaELiderDoProjeto(userId, acao.projeto.responsavel))
+    userId !== null && (await contaELiderDoProjeto(userId, acao.projeto))
 
   const valores: ValoresAcao = {
     id: acao.id,

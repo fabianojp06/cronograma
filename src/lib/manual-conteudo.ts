@@ -140,7 +140,9 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'Só um administrador exclui, em "Excluir projeto" na tela do projeto. A exclusão é lógica: o projeto sai das telas, mas os dados são mantidos.',
     ],
     dicas: [
-      'O campo Responsável é texto e deve ter a mesma grafia do cadastro de colaboradores: é por ele que o sistema reconhece o líder do projeto e monta "Meus projetos".',
+      '"Responsável (líder do projeto)" é uma lista dos colaboradores ativos: escolha o nome, sem digitar. É por ele que o sistema reconhece o líder, que decide as liberações de início, e monta "Meus projetos".',
+      'Projetos antigos, com o nome digitado à mão, mostram o nome já escolhido na lista quando ele bate com o cadastro (sem acento nem maiúscula). Se não bater, aparece "(texto antigo, fora do cadastro)" e o texto é mantido até você escolher alguém.',
+      'Se o líder for renomeado em Colaboradores, o nome nos projetos que ele lidera acompanha.',
     ],
     desde: '2026-09-17',
     palavras: ['novo projeto', 'excluir', 'responsável', 'equipe'],
@@ -205,7 +207,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     dicas: [
       'Só vale entre ações do mesmo projeto, e o sistema recusa ciclos (A depende de B e B de A).',
       'A tela avisa quando a predecessora está atrasada ou termina depois do início previsto da ação.',
-      'Se o líder não é reconhecido (o Responsável do projeto está escrito diferente do cadastro), o pedido vai para os administradores.',
+      'O líder é o "Responsável (líder do projeto)" escolhido na lista, na edição do projeto. Se o projeto ainda não tem líder definido, o pedido vai para os administradores.',
     ],
     desde: '2026-11-20',
     palavras: ['dependência', 'bloqueio', 'bloqueada', 'liberar', 'predecessora', 'líder'],
@@ -283,7 +285,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'Use os filtros "Os que eu respondo" e "Onde sou apoio" para separar.',
     ],
     dicas: [
-      'O sistema compara o seu nome com os campos Responsável e Apoio do projeto sem diferenciar acento ou maiúscula, mas nome parcial não vale ("Ana Silva" não é "Ana Silva Costa"). Se um projeto seu não aparece, confira a grafia.',
+      'O Responsável do projeto é escolhido na lista de colaboradores, então vem com a grafia certa. O campo Apoio ainda é texto: o sistema compara o seu nome com ele sem diferenciar acento ou maiúscula, mas nome parcial não vale ("Ana Silva" não é "Ana Silva Costa"). Se um projeto seu não aparece como apoio, confira a grafia.',
     ],
     desde: '2026-11-19',
     palavras: ['meus', 'apoio', 'responsável'],
@@ -459,6 +461,6 @@ export const GLOSSARIO: readonly TermoGlossario[] = [
   { termo: 'Replanejamento', definicao: 'Mudança de uma data prevista. Fica no histórico e alimenta o relatório de auditoria.' },
   { termo: 'WIN', definicao: 'What\'s Important Now: um compromisso da semana, até 3 por pessoa.' },
   { termo: 'GUT', definicao: 'Gravidade, Urgência e Tendência: três notas de 1 a 5 que se multiplicam na priorização.' },
-  { termo: 'Líder do projeto', definicao: 'Quem o campo Responsável do projeto indica (ou um administrador). Decide as liberações de início.' },
+  { termo: 'Líder do projeto', definicao: 'O colaborador escolhido como Responsável do projeto, na lista (ou um administrador). Decide as liberações de início.' },
   { termo: 'Leitor', definicao: 'Perfil que só consulta e exporta.' },
 ]

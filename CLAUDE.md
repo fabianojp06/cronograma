@@ -633,6 +633,26 @@ Actions em `modelos/acoes-modelo.ts`; tabelas `ModeloProjeto` e `ModeloAcao`):
   a lista mas não cria, usa nem exclui. Excluir o modelo não altera os projetos
   já criados com ele (cópia, não vínculo). Teto de 200 ações por modelo.
 
+## Líder do projeto na lista (`Projeto.liderId`)
+
+O "Responsável" do formulário do projeto é um `<select>` de colaboradores
+(`lider-projeto.ts`), não mais texto. Gravar escolhe o `liderId` E copia o nome
+canônico do colaborador para `Projeto.responsavel`, que os relatórios agrupam:
+a grafia deixa de divergir do cadastro.
+
+- **Valores do select**: `''` sem líder (limpa os dois campos), `c:<id>`
+  colaborador, `t` mantém o texto antigo de um projeto cujo nome não casa com
+  ninguém. Campo `lider` AUSENTE (aba aberta antes da mudança) não mexe no
+  líder e o texto do formulário antigo continua valendo.
+- **Pré-seleção**: com `liderId`, ele; sem, o nome em `responsavel` casado por
+  `chaveDoNome` (salvar já liga); sem casar, a opção `t`. Salvar outro campo
+  nunca apaga o líder. Só ativo é oferecido, exceto o líder atual ("(inativo)").
+- **Renomear o colaborador** atualiza `responsavel` dos projetos que ele lidera
+  (sempre, independente da caixa "alinhar" de projetos por texto).
+- **Promover WIN a projeto** já cria o projeto com `liderId` = quem promoveu.
+- `Projeto.apoio` continua texto (e é o ponto fraco de "Meus projetos").
+- Migration aditiva (`liderId` nulo); projetos existentes migram ao serem salvos.
+
 ## Meus projetos (`/meus-projetos`)
 
 Os projetos ativos de quem está logado, no menu ao lado de "Minhas ações".
@@ -759,8 +779,10 @@ Server Actions em `projetos/acoes-dependencia.ts`, tela na edição da ação
   iniciam nada, então não passam por aqui.
 - **Sem ciclo, sem outro projeto, sem a própria ação** (`validarNovaDependencia`,
   busca em profundidade nos vínculos do projeto).
-- **Líder = `Projeto.responsavel` casado por `chaveDoNome` com o colaborador da
-  conta, ou administrador DE VERDADE** (`contaELiderDoProjeto`). Não usa
+- **Líder = o colaborador escolhido em `Projeto.liderId` (lista no formulário do
+  projeto), ou administrador DE VERDADE** (`contaELiderDoProjeto`). Projeto
+  antigo, sem `liderId`, cai no nome em `Projeto.responsavel` casado por
+  `chaveDoNome`. Com `liderId` o texto NÃO vale: a lista é a verdade. Não usa
   `contaPodeAdministrar`: no estado "ainda não há administrador" todos podem
   tudo, e qualquer um aprovaria o próprio pedido.
 - **Pedido de liberação** (`LiberacaoAcao`: PENDENTE → APROVADA | RECUSADA) com
