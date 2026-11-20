@@ -692,6 +692,44 @@ aviso de somente leitura; quem recusa de verdade são as Server Actions).
   lista das ações (`montarAvisoLote`), não um por ação. Remover o responsável
   não avisa ninguém. Só produção envia, como no resto.
 
+## Dependência entre ações e liberação pelo líder
+
+"B só começa quando A terminar." Regra pura em `dependencia-acao.ts`, vínculos
+em `DependenciaAcao` (B depende de A, mesmo projeto, vários predecessores),
+Server Actions em `projetos/acoes-dependencia.ts`, tela na edição da ação
+(`secao-dependencias.tsx`) e selo "bloqueada por #N" no Gantt.
+
+- **O bloqueio vale só para o INÍCIO REAL**: passar de "não iniciada" para
+  qualquer outro status ou apontar realizado (`gravacaoInicia`). O previsto fica
+  livre, para o planejamento não travar. Ação já em andamento não é bloqueada
+  (o vínculo pode ter sido criado depois), e editar sem iniciar também não.
+  Quem recusa é a Server Action (`bloqueioParaGravar`, em `atualizarAcao` e
+  `registrarRealizado`), não só a tela. Edição em lote, duplicar e modelos não
+  iniciam nada, então não passam por aqui.
+- **Sem ciclo, sem outro projeto, sem a própria ação** (`validarNovaDependencia`,
+  busca em profundidade nos vínculos do projeto).
+- **Líder = `Projeto.responsavel` casado por `chaveDoNome` com o colaborador da
+  conta, ou administrador DE VERDADE** (`contaELiderDoProjeto`). Não usa
+  `contaPodeAdministrar`: no estado "ainda não há administrador" todos podem
+  tudo, e qualquer um aprovaria o próprio pedido.
+- **Pedido de liberação** (`LiberacaoAcao`: PENDENTE → APROVADA | RECUSADA) com
+  motivo obrigatório (5 a 500 caracteres). Se quem pede é o líder, nasce
+  APROVADA, com o registro. O líder (ou administrador) decide; **recusar exige
+  justificativa**, aprovar não. A decisão é um `updateMany where status =
+  PENDENTE` (dois cliques decidem uma vez). Recusado, dá para pedir de novo.
+- **Aprovada, a ação fica liberada** e a dependência continua visível, com a
+  marca "liberada pelo líder". A liberação vale para a ação, não por predecessora.
+- **Trilha**: vínculo adicionado/removido e pedido/decisão entram em
+  `HistoricoAlteracao` com os campos `dependencia` e `liberacao` (texto livre,
+  rotulados em `rotularCampo`). Não são campos auditados da ação: a foto em uma
+  data os ignora.
+- **Avisos no sistema** (`Notificacao.liberacaoId`, `comentarioId` agora
+  opcional): pedido avisa o líder (ou, sem líder com cadastro, os administradores
+  ativos); a decisão avisa quem pediu. Motivos `LIBERACAO_*`.
+- **Aviso de risco** na tela da ação: predecessora atrasada ou com término
+  previsto depois do início previsto desta (`riscoDaPredecessora`). Ainda NÃO há
+  aviso proativo por e-mail nem setas no Gantt.
+
 ## Comentários por ação
 
 A coluna de comentário da planilha, com autor e momento: `ComentarioAcao`

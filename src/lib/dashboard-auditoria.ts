@@ -18,6 +18,12 @@ export const ROTULO_CAMPO_AUDITADO: Record<CampoAuditado, string> = {
   responsavel: 'Responsável',
 }
 
+/** Linhas de histórico que não são coluna da Ação: vínculos e liberações de início. */
+const ROTULO_CAMPO_DA_DEPENDENCIA: Record<string, string> = {
+  dependencia: 'Dependência',
+  liberacao: 'Liberação de início',
+}
+
 /** Campos cuja alteração caracteriza replanejamento (mexer no plano, não no fato). */
 export const CAMPOS_REPLANEJAMENTO = [
   'previstoInicio',
@@ -50,6 +56,7 @@ function ehCampoAuditado(campo: string): campo is CampoAuditado {
 
 /** Rótulo em pt-BR; campo desconhecido (schema futuro) cai no próprio nome. */
 export function rotularCampo(campo: string): string {
+  if (Object.hasOwn(ROTULO_CAMPO_DA_DEPENDENCIA, campo)) return ROTULO_CAMPO_DA_DEPENDENCIA[campo]
   return ehCampoAuditado(campo) ? ROTULO_CAMPO_AUDITADO[campo] : campo
 }
 

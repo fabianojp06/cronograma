@@ -67,6 +67,11 @@ model Acao {
   historico   HistoricoAlteracao[]
   wins        Win[]
   comentarios ComentarioAcao[]
+  /// Ações que precisam terminar antes desta começar.
+  dependeDe   DependenciaAcao[] @relation("DependenteDe")
+  /// Ações que esperam por esta.
+  predecessoraDe DependenciaAcao[] @relation("Predecessora")
+  liberacoes  LiberacaoAcao[]
 
   @@unique([projetoId, numero])
   @@index([projetoId])
@@ -359,15 +364,59 @@ model Notificacao {
   id            String         @id @default(cuid())
   destinatarioId String
   destinatario  Colaborador    @relation(fields: [destinatarioId], references: [id], onDelete: Cascade)
-  comentarioId  String
-  comentario    ComentarioAcao @relation(fields: [comentarioId], references: [id], onDelete: Cascade)
-  /// MARCADO (a pessoa foi escolhida em "Avisar") ou RESPONSAVEL (responde pela ação).
+  /// Aviso de comentário: preenchido; aviso de liberação de início: nulo.
+  comentarioId  String?
+  comentario    ComentarioAcao? @relation(fields: [comentarioId], references: [id], onDelete: Cascade)
+  /// Aviso de liberação de início (pedido ou decisão): preenchido; senão, nulo.
+  liberacaoId   String?
+  liberacao     LiberacaoAcao? @relation(fields: [liberacaoId], references: [id], onDelete: Cascade)
+  /// MARCADO (a pessoa foi escolhida em "Avisar") ou RESPONSAVEL (responde pela ação);
+  /// LIBERACAO_PEDIDA, LIBERACAO_APROVADA ou LIBERACAO_RECUSADA nos avisos de liberação.
   motivo        String
   lida          Boolean        @default(false)
   criadoEm      DateTime       @default(now())
 
   @@unique([destinatarioId, comentarioId])
   @@index([destinatarioId, lida, criadoEm])
+  @@index([liberacaoId])
+}
+
+/// "B só começa quando A terminar": `acaoId` (B) depende de `predecessoraId` (A),
+/// sempre do mesmo projeto. Sem ciclos — a regra mora em `dependencia-acao.ts`.
+model DependenciaAcao {
+  id             String   @id @default(cuid())
+  acaoId         String
+  acao           Acao     @relation("DependenteDe", fields: [acaoId], references: [id], onDelete: Cascade)
+  predecessoraId String
+  predecessora   Acao     @relation("Predecessora", fields: [predecessoraId], references: [id], onDelete: Cascade)
+  /// `userId` do Clerk de quem criou o vínculo.
+  criadoPor      String?
+  criadoEm       DateTime @default(now())
+
+  @@unique([acaoId, predecessoraId])
+  @@index([predecessoraId])
+}
+
+/// Pedido para iniciar uma ação ANTES de as predecessoras terminarem, decidido
+/// pelo líder do projeto (ou um administrador). Aprovada, a ação fica liberada.
+model LiberacaoAcao {
+  id           String    @id @default(cuid())
+  acaoId       String
+  acao         Acao      @relation(fields: [acaoId], references: [id], onDelete: Cascade)
+  /// `userId` do Clerk de quem pediu (ou do líder, quando liberou direto).
+  solicitante  String
+  motivo       String
+  /// PENDENTE, APROVADA ou RECUSADA.
+  status       String    @default("PENDENTE")
+  /// `userId` do Clerk de quem decidiu.
+  decididoPor  String?
+  justificativa String?
+  criadoEm     DateTime  @default(now())
+  decididoEm   DateTime?
+
+  notificacoes Notificacao[]
+
+  @@index([acaoId, status])
 }
 
 /// Modelo de projeto: um esqueleto reutilizável (ciclos anuais, rotinas da

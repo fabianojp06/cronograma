@@ -9,6 +9,19 @@
 
 export type MotivoNotificacao = 'MARCADO' | 'RESPONSAVEL'
 
+/** Avisos da liberação de início (dependência entre ações), sem comentário. */
+export type MotivoLiberacao = 'LIBERACAO_PEDIDA' | 'LIBERACAO_APROVADA' | 'LIBERACAO_RECUSADA'
+
+export const ROTULO_LIBERACAO_AVISO: Record<MotivoLiberacao, string> = {
+  LIBERACAO_PEDIDA: 'pediu liberação para iniciar',
+  LIBERACAO_APROVADA: 'aprovou a liberação para iniciar',
+  LIBERACAO_RECUSADA: 'recusou a liberação para iniciar',
+}
+
+export function ehMotivoLiberacao(motivo: string): motivo is MotivoLiberacao {
+  return Object.hasOwn(ROTULO_LIBERACAO_AVISO, motivo)
+}
+
 export type DestinoNotificacao = { colaboradorId: string; motivo: MotivoNotificacao }
 
 export function destinatariosDoComentario(entrada: {
