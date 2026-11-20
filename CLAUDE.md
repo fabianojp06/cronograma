@@ -692,6 +692,30 @@ aviso de somente leitura; quem recusa de verdade são as Server Actions).
   lista das ações (`montarAvisoLote`), não um por ação. Remover o responsável
   não avisa ninguém. Só produção envia, como no resto.
 
+## Manual do usuário e tour (`/manual`)
+
+O manual mora DENTRO do sistema e é a fonte única do que cada tela faz:
+conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras em
+`manual.ts`, página em `app/manual/page.tsx` (busca, índice, "Novidades").
+
+- **REGRA PARA TODA FUNCIONALIDADE NOVA: o manual entra no MESMO PR.** Seção
+  nova (ou passo/dica nova em uma existente), com `desde` na data da entrega —
+  é o que alimenta "Novidades". Atualizar o manual faz parte de "pronto", como
+  teste e CLAUDE.md.
+- **O que o CI cobra** (`manual.test.ts`): toda `page.tsx` de `src/app` precisa
+  estar em `rotas` de alguma seção (ou em `ROTAS_SEM_MANUAL`, com motivo); rota
+  do manual que deixou de existir quebra; todo item de `MENU` precisa de seção.
+  Isso garante que a tela tem manual, NÃO que o texto está certo: funcionalidade
+  sem tela própria (botão, regra nova) o teste não enxerga — quem a entrega
+  escreve o passo no manual.
+- **Texto**: português simples, imperativo, o nome exato do botão entre aspas.
+  `perfil` diz quem pode usar. Ao mudar um rótulo de botão, procure-o no manual.
+- **Tour** (`tour.ts`, `tour-guiado.tsx`): passeio sobre o CABEÇALHO, que existe
+  em toda tela, por `data-tour`. Sem biblioteca. Item novo no `MENU`
+  (`menu.ts`, compartilhado com o cabeçalho) exige passo no tour (teste cobra).
+  Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
+  navegador); passo sem alvo visível aparece centralizado.
+
 ## Dependência entre ações e liberação pelo líder
 
 "B só começa quando A terminar." Regra pura em `dependencia-acao.ts`, vínculos

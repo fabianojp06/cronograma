@@ -3,22 +3,8 @@ import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 
 import { AlternadorTema } from "@/components/alternador-tema";
 import { SinoNotificacoes } from "@/components/sino-notificacoes";
-
-/**
- * Itens do menu principal. Ficam aqui, num array, para que o cabeçalho não
- * precise ser reescrito a cada tela nova — e para a ordem ser explícita.
- */
-const MENU = [
-  { href: "/", rotulo: "Painel" },
-  { href: "/projetos", rotulo: "Projetos" },
-  { href: "/dashboards", rotulo: "Dashboards" },
-  { href: "/priorizacao", rotulo: "Priorização" },
-  { href: "/meus-projetos", rotulo: "Meus projetos" },
-  { href: "/minhas-acoes", rotulo: "Minhas ações" },
-  { href: "/wins", rotulo: "Card WIN" },
-  { href: "/wins/equipe", rotulo: "Equipe" },
-  { href: "/colaboradores", rotulo: "Colaboradores" },
-] as const;
+import { BotaoTour, TourGuiado } from "@/components/tour-guiado";
+import { alvoDoMenu, MENU } from "@/lib/menu";
 
 /** Barra superior fixa: identidade do sistema, menu e sessão do usuário. */
 export function Cabecalho() {
@@ -35,6 +21,7 @@ export function Cabecalho() {
             <Link
               key={item.href}
               href={item.href}
+              data-tour={alvoDoMenu(item.href)}
               className="text-sm text-textMuted hover:text-accent"
             >
               {item.rotulo}
@@ -45,9 +32,21 @@ export function Cabecalho() {
 
       <div className="ml-auto flex items-center gap-4">
         {/* Fora do <Show>: a escolha de tema vale também na tela de login. */}
-        <AlternadorTema />
+        <span data-tour="tema" className="inline-flex">
+          <AlternadorTema />
+        </span>
         <Show when="signed-in">
-          <SinoNotificacoes />
+          <Link
+            href="/manual"
+            data-tour="manual"
+            className="text-sm text-textMuted hover:text-accent"
+          >
+            Manual
+          </Link>
+          <BotaoTour />
+          <span data-tour="sino" className="inline-flex">
+            <SinoNotificacoes />
+          </span>
           <UserButton />
         </Show>
         <Show when="signed-out">
@@ -58,6 +57,10 @@ export function Cabecalho() {
           </SignInButton>
         </Show>
       </div>
+
+      <Show when="signed-in">
+        <TourGuiado />
+      </Show>
     </header>
   );
 }
