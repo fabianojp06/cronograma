@@ -1,13 +1,30 @@
 import Link from "next/link";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 
 import { AlternadorTema } from "@/components/alternador-tema";
 import { SinoNotificacoes } from "@/components/sino-notificacoes";
 import { BotaoTour, TourGuiado } from "@/components/tour-guiado";
-import { alvoDoMenu, MENU } from "@/lib/menu";
+import { contaPodeAdministrar } from "@/lib/administracao-servidor";
+import { alvoDoMenu, MENU, ROTA_ADMINISTRACAO } from "@/lib/menu";
+
+/**
+ * O item "Administração" só aparece para quem administra. Se a consulta falhar,
+ * esconde: o cabeçalho de toda página não pode cair por causa disso, e a
+ * permissão de verdade continua nas telas e nas Server Actions.
+ */
+async function sessaoAdministra(): Promise<boolean> {
+  try {
+    const { userId } = await auth();
+    return userId !== null && (await contaPodeAdministrar(userId));
+  } catch {
+    return false;
+  }
+}
 
 /** Barra superior fixa: identidade do sistema, menu e sessão do usuário. */
-export function Cabecalho() {
+export async function Cabecalho() {
+  const administrador = await sessaoAdministra();
   return (
     <header className="print:hidden flex flex-wrap items-center gap-x-8 gap-y-2 border-b border-border bg-surface px-6 py-3">
       <Link href="/" className="font-display text-sm font-extrabold tracking-tight">
@@ -27,6 +44,15 @@ export function Cabecalho() {
               {item.rotulo}
             </Link>
           ))}
+          {administrador ? (
+            <Link
+              href={ROTA_ADMINISTRACAO}
+              data-tour="administracao"
+              className="rounded-md border border-border px-2 py-0.5 text-sm text-textMuted hover:border-accent hover:text-accent"
+            >
+              Administração
+            </Link>
+          ) : null}
         </nav>
       </Show>
 
@@ -43,7 +69,7 @@ export function Cabecalho() {
           >
             Manual
           </Link>
-          <BotaoTour />
+          <BotaoTour administrador={administrador} />
           <span data-tour="sino" className="inline-flex">
             <SinoNotificacoes />
           </span>
@@ -59,7 +85,7 @@ export function Cabecalho() {
       </div>
 
       <Show when="signed-in">
-        <TourGuiado />
+        <TourGuiado administrador={administrador} />
       </Show>
     </header>
   );

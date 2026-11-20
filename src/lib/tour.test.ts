@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { MENU, alvoDoMenu } from './menu'
-import { PASSOS_TOUR, posicionarBalao } from './tour'
+import { MENU, MENU_ADMIN, alvoDoMenu } from './menu'
+import { PASSOS_TOUR, passosDoTour, posicionarBalao } from './tour'
 
 describe('passos do tour', () => {
   it('cada item do menu tem o seu passo', () => {
@@ -16,6 +16,14 @@ describe('passos do tour', () => {
       expect(p.titulo.length).toBeGreaterThan(0)
       expect(p.texto.length).toBeGreaterThan(10)
     }
+  })
+
+  it('o passo da administração existe e só aparece para administrador', () => {
+    expect(MENU_ADMIN.length).toBeGreaterThan(0)
+    const admin = passosDoTour(true).find((p) => p.alvo === 'administracao')
+    expect(admin?.somenteAdmin).toBe(true)
+    expect(passosDoTour(false).some((p) => p.somenteAdmin)).toBe(false)
+    expect(passosDoTour(true).length).toBe(passosDoTour(false).length + 1)
   })
 
   it('começa por uma boas-vindas sem alvo', () => {

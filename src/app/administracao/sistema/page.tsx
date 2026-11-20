@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
 
+import { NavegacaoAdministracao } from '@/components/navegacao-administracao'
 import { contaPodeAdministrar } from '@/lib/administracao-servidor'
 import {
   agruparErrosPorOrigem,
@@ -72,6 +73,7 @@ export default async function PainelSistemaPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
+      <NavegacaoAdministracao atual="/administracao/sistema" />
       <p className="text-sm font-medium uppercase tracking-wide text-accent">Administração</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Painel do sistema</h1>
       <p className="mt-2 max-w-3xl text-sm text-textMuted">

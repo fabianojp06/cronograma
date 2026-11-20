@@ -9,7 +9,13 @@
 
 import { alvoDoMenu } from './menu'
 
-export type PassoTour = { alvo: string | null; titulo: string; texto: string }
+export type PassoTour = {
+  alvo: string | null
+  titulo: string
+  texto: string
+  /** Só quem administra vê este passo. */
+  somenteAdmin?: boolean
+}
 
 export const CHAVE_TOUR_VISTO = 'ctcea-tour-visto'
 
@@ -61,9 +67,15 @@ export const PASSOS_TOUR: readonly PassoTour[] = [
     texto: 'Os cards de toda a equipe na semana, para a daily. Somente leitura.',
   },
   {
-    alvo: alvoDoMenu('/colaboradores'),
-    titulo: 'Colaboradores',
-    texto: 'O cadastro de pessoas, com perfil, área e e-mail. Quem administra gerencia por aqui.',
+    alvo: alvoDoMenu('/modelos'),
+    titulo: 'Modelos',
+    texto: 'Moldes de projeto: crie um projeto novo, com as ações e as datas recalculadas, a partir de um modelo.',
+  },
+  {
+    alvo: 'administracao',
+    titulo: 'Administração',
+    texto: 'Área só de quem administra: colaboradores e perfis, pesos da priorização, painel do sistema e registro de erros.',
+    somenteAdmin: true,
   },
   {
     alvo: 'sino',
@@ -81,6 +93,11 @@ export const PASSOS_TOUR: readonly PassoTour[] = [
     texto: 'Passo a passo de cada tela, com busca e a lista de novidades. Dúvida? Comece por ele.',
   },
 ]
+
+/** Os passos do tour para o perfil: quem não administra não vê os de administração. */
+export function passosDoTour(administrador: boolean): readonly PassoTour[] {
+  return PASSOS_TOUR.filter((p) => administrador || !p.somenteAdmin)
+}
 
 export type Retangulo = { top: number; left: number; width: number; height: number }
 

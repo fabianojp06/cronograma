@@ -2,7 +2,7 @@ import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { MENU } from './menu'
+import { MENU, MENU_ADMIN, ROTA_ADMINISTRACAO } from './menu'
 import {
   GRUPOS_MANUAL,
   ROTAS_SEM_MANUAL,
@@ -10,6 +10,7 @@ import {
   buscarNoManual,
   novidades,
   rotaDoArquivo,
+  secoesParaPerfil,
 } from './manual'
 import { GLOSSARIO, SECOES_MANUAL } from './manual-conteudo'
 
@@ -44,6 +45,13 @@ describe('cobertura do manual', () => {
     for (const item of MENU) {
       expect(rotasDoManual.has(item.href), `menu ${item.href} sem seção no manual`).toBe(true)
     }
+  })
+
+  it('todo item da administração e a página da área estão cobertos', () => {
+    for (const item of MENU_ADMIN) {
+      expect(rotasDoManual.has(item.href), `administração ${item.href} sem seção no manual`).toBe(true)
+    }
+    expect(rotasDoManual.has(ROTA_ADMINISTRACAO)).toBe(true)
   })
 
   it('justificativas de rotas sem manual não ficam vazias', () => {
@@ -96,8 +104,15 @@ describe('regras do manual', () => {
 
   it('novidades vêm da mais recente para a mais antiga', () => {
     const n = novidades(SECOES_MANUAL, 3)
-    expect(n[0].id).toBe('acao-dependencias')
+    expect(n[0].desde).toBe('2026-11-20')
     expect(n.map((s) => s.desde)).toEqual([...n.map((s) => s.desde)].sort().reverse())
+  })
+
+  it('quem não administra não recebe as seções só de administrador', () => {
+    const comum = secoesParaPerfil(SECOES_MANUAL, false)
+    expect(comum.some((s) => s.perfil === 'administrador')).toBe(false)
+    expect(comum.length).toBeLessThan(SECOES_MANUAL.length)
+    expect(secoesParaPerfil(SECOES_MANUAL, true)).toHaveLength(SECOES_MANUAL.length)
   })
 
   it('rotaDoArquivo converte o caminho do page.tsx', () => {

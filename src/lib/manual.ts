@@ -98,3 +98,11 @@ export function rotaDoArquivo(caminhoRelativoAApp: string): string {
   const semArquivo = caminhoRelativoAApp.replace(/\\/g, '/').replace(/\/?page\.tsx$/, '')
   return `/${semArquivo}`.replace(/^\/\//, '/')
 }
+
+/** O que o perfil vê: quem não administra não vê as seções "só administrador". */
+export function secoesParaPerfil(
+  secoes: readonly SecaoManual[],
+  administrador: boolean,
+): SecaoManual[] {
+  return secoes.filter((s) => administrador || s.perfil !== 'administrador')
+}

@@ -692,6 +692,32 @@ aviso de somente leitura; quem recusa de verdade são as Server Actions).
   lista das ações (`montarAvisoLote`), não um por ação. Remover o responsável
   não avisa ninguém. Só produção envia, como no resto.
 
+## Menus por perfil e área de Administração
+
+Dois menus, em `menu.ts`: `MENU` (trabalho, igual para Administrador,
+Colaborador e Leitor) e `MENU_ADMIN` (Colaboradores, Pesos da priorização,
+Painel do sistema, Registro de erros), alcançado pelo item "Administração" do
+cabeçalho, que só o administrador vê (`/administracao` lista as ferramentas e
+`NavegacaoAdministracao` liga as quatro telas entre si).
+
+- **Esconder é conforto, não segurança.** Quem recusa de verdade são as Server
+  Actions e as próprias telas (`contaPodeAdministrar`); abrir o endereço direto
+  mostra "só administradores". Não confie no menu para proteger nada.
+- **O cabeçalho usa `contaPodeAdministrar`**, a mesma regra das telas: enquanto
+  não há administrador ativo, todos veem a área (o sistema ainda não restringe).
+  Falha na consulta esconde o item — o cabeçalho de toda página não pode cair.
+- **Tela de administração nova** vai em `MENU_ADMIN` (e ganha a barra
+  `NavegacaoAdministracao` no topo), em vez de ficar só no endereço. O teste do
+  manual exige seção para cada item de `MENU_ADMIN` e para `/administracao`.
+- **Tour e manual seguem o perfil**: passo com `somenteAdmin` e seção do manual
+  com `perfil: 'administrador'` não aparecem para quem não administra
+  (`passosDoTour`, `secoesParaPerfil`).
+- A lista de colaboradores deixou o menu de trabalho: ficou só na Administração
+  (a página segue legível por endereço para quem não administra, como antes).
+- NÃO existe ainda perfil intermediário (líder de equipe/gestor) nem restrição
+  de edição por equipe: todo Colaborador edita qualquer projeto. Decisão
+  pendente com a liderança.
+
 ## Manual do usuário e tour (`/manual`)
 
 O manual mora DENTRO do sistema e é a fonte única do que cada tela faz:
@@ -712,7 +738,8 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   `perfil` diz quem pode usar. Ao mudar um rótulo de botão, procure-o no manual.
 - **Tour** (`tour.ts`, `tour-guiado.tsx`): passeio sobre o CABEÇALHO, que existe
   em toda tela, por `data-tour`. Sem biblioteca. Item novo no `MENU`
-  (`menu.ts`, compartilhado com o cabeçalho) exige passo no tour (teste cobra).
+  (`menu.ts`, compartilhado com o cabeçalho) exige passo no tour (teste cobra);
+  item novo em `MENU_ADMIN` exige seção no manual.
   Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
   navegador); passo sem alvo visível aparece centralizado.
 

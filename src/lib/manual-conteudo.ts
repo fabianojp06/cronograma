@@ -40,8 +40,8 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     passos: [
       'Colaborador (o padrão): cria e edita projetos, ações, comentários e o próprio Card WIN.',
       'Leitor: só consulta e exporta. Os botões de gravar são trocados por um aviso de somente leitura.',
-      'Administrador: faz tudo o que o colaborador faz e ainda exclui projetos, edita os pesos da priorização, gerencia colaboradores e vê o painel do sistema.',
-      'Quem muda o perfil de alguém é um administrador, em Colaboradores.',
+      'Administrador: faz tudo o que o colaborador faz e ainda exclui projetos, edita os pesos da priorização, gerencia colaboradores e vê o painel do sistema. Só ele vê o item "Administração" no menu.',
+      'Quem muda o perfil de alguém é um administrador, em Administração > Colaboradores.',
     ],
     dicas: [
       'O sistema sempre precisa de pelo menos um administrador ativo.',
@@ -58,7 +58,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     perfil: 'todos',
     rotas: ['/notificacoes'],
     passos: [
-      'O menu no topo leva às telas principais. "Tour" mostra, em 1 minuto, onde fica cada coisa; "Manual" abre esta página.',
+      'O menu no topo leva às telas de trabalho, as mesmas para todos os perfis. Quem administra o sistema vê também o item "Administração", numa área separada. "Tour" mostra, em 1 minuto, onde fica cada coisa; "Manual" abre esta página.',
       'O sino mostra quantas notificações você não leu. Clique para ver os avisos de comentários e de liberações de início, e use "Marcar como lida" ou "Marcar todas como lidas".',
       'No seletor de tema, escolha Sistema (padrão), Claro ou Escuro. A escolha fica guardada neste navegador.',
     ],
@@ -378,7 +378,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'Abra "Priorização" para ver o ranking e o gráfico Benefício x Esforço, com os quatro quadrantes.',
       'Para avaliar um projeto, abra-o na matriz e dê as notas (0, 3, 6 ou 9) aos critérios de benefício e esforço, e de 1 a 5 a Gravidade, Urgência e Tendência.',
       'O número no ponto do gráfico é o mesmo do ranking.',
-      'Administradores ajustam os pesos em "Pesos"; cada grupo precisa somar 100.',
+      'Administradores ajustam os pesos em "Administração > Pesos da priorização"; cada grupo precisa somar 100.',
     ],
     dicas: [
       'A matriz recomenda; quem decide a prioridade do projeto é uma pessoa, e os dois valores aparecem lado a lado.',
@@ -397,7 +397,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     perfil: 'administrador',
     rotas: ['/colaboradores'],
     passos: [
-      'Abra "Colaboradores". Qualquer pessoa vê a lista; só administradores alteram.',
+      'Abra "Administração" no menu e escolha "Colaboradores". Só administradores alteram; os demais perfis não têm esse item no menu.',
       'Corrija o nome, defina a área e o e-mail. Ao renomear, marque a opção de alinhar o Responsável dos projetos, se quiser.',
       'Altere o perfil: tornar Leitor, voltar a Colaborador, promover a Administrador.',
       'Desative quem saiu (e reative se voltar). Desativar não apaga nada do histórico.',
@@ -411,6 +411,25 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     palavras: ['perfil', 'leitor', 'administrador', 'desativar', 'área', 'e-mail'],
   },
   {
+    id: 'administracao-area',
+    grupo: 'Administração',
+    titulo: 'Área de Administração',
+    resumo: 'O lugar de quem administra o sistema, separado do menu de trabalho.',
+    perfil: 'administrador',
+    rotas: ['/administracao'],
+    passos: [
+      'Clique em "Administração", no fim do menu. O item só aparece para administradores.',
+      'A página lista as quatro ferramentas: Colaboradores, Pesos da priorização, Painel do sistema e Registro de erros. Dentro de cada uma, a barra no topo leva às outras.',
+      'Os demais perfis não veem o item; se abrirem o endereço direto, a tela diz que o acesso é de administradores.',
+    ],
+    dicas: [
+      'Esconder o item é só conforto: a permissão é conferida pelo servidor em cada ação.',
+      'Enquanto não houver nenhum administrador ativo, todos veem a área (o sistema ainda não restringe nada).',
+    ],
+    desde: '2026-11-20',
+    palavras: ['administração', 'admin', 'menu', 'configuração'],
+  },
+  {
     id: 'administracao-sistema',
     grupo: 'Administração',
     titulo: 'Erros e painel do sistema',
@@ -418,8 +437,8 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     perfil: 'administrador',
     rotas: ['/administracao/erros', '/administracao/sistema'],
     passos: [
-      '"Administração > Sistema" mostra o estado do banco, os erros por origem (24 horas e 7 dias), as últimas execuções do aviso semanal e o volume contra o limite recomendado.',
-      '"Administração > Erros" lista os erros registrados (guardados por 30 dias).',
+      '"Administração > Painel do sistema" mostra o estado do banco, os erros por origem (24 horas e 7 dias), as últimas execuções do aviso semanal e o volume contra o limite recomendado.',
+      '"Administração > Registro de erros" lista os erros registrados (guardados por 30 dias).',
       'O endereço /api/saude responde "ok" ou "fora" e é o que um monitor externo consulta.',
     ],
     dicas: [

@@ -6,7 +6,9 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 import {
   CHAVE_TOUR_VISTO,
   PASSOS_TOUR,
+  passosDoTour,
   posicionarBalao,
+  type PassoTour,
   type Retangulo,
 } from '@/lib/tour'
 
@@ -17,6 +19,8 @@ type EstadoTour = { indice: number; alvo: Retangulo | null; tela: { largura: num
  * balão (no nível do cabeçalho) são componentes distintos e conversam por aqui.
  */
 let estado: EstadoTour = null
+/** Os passos do perfil de quem abriu o tour. */
+let passos: readonly PassoTour[] = PASSOS_TOUR
 const ouvintes = new Set<() => void>()
 const notificar = () => ouvintes.forEach((o) => o())
 
@@ -66,15 +70,20 @@ function fechar() {
   marcarVisto()
 }
 
+function abrir(doPerfil: readonly PassoTour[]) {
+  passos = doPerfil
+  ir(0)
+}
+
 function ir(novo: number) {
   if (novo < 0) return
-  if (novo >= PASSOS_TOUR.length) {
+  if (novo >= passos.length) {
     fechar()
     return
   }
   estado = {
     indice: novo,
-    alvo: medir(PASSOS_TOUR[novo].alvo),
+    alvo: medir(passos[novo].alvo),
     tela: { largura: window.innerWidth, altura: window.innerHeight },
   }
   notificar()
@@ -83,11 +92,11 @@ function ir(novo: number) {
 const instantaneoEstado = () => estado
 
 /** Botão "Tour" do cabeçalho. */
-export function BotaoTour() {
+export function BotaoTour({ administrador }: { administrador: boolean }) {
   return (
     <button
       className="text-sm text-textMuted hover:text-accent"
-      onClick={() => ir(0)}
+      onClick={() => abrir(passosDoTour(administrador))}
       type="button"
     >
       Tour
@@ -100,7 +109,7 @@ export function BotaoTour() {
  * nada da página) e o tour em si: um balão sobre um destaque (sombra enorme ao
  * redor do alvo). Sem biblioteca. Esc sai; as setas avançam e voltam.
  */
-export function TourGuiado() {
+export function TourGuiado({ administrador }: { administrador: boolean }) {
   const caminho = usePathname()
   const visto = useSyncExternalStore(assinar, jaViu, () => true)
   const atual = useSyncExternalStore(assinar, instantaneoEstado, () => null)
@@ -129,7 +138,7 @@ export function TourGuiado() {
   }, [aberto, indice])
 
   const emTelaDeCadastro = /^\/(bem-vindo|entrar|cadastrar|acesso-negado)/.test(caminho)
-  const passo = PASSOS_TOUR[indice]
+  const passo = passos[indice] ?? PASSOS_TOUR[0]
   const posicao = posicionarBalao(
     atual?.alvo ?? null,
     atual?.tela ?? { largura: 1024, altura: 768 },
@@ -150,7 +159,7 @@ export function TourGuiado() {
           </span>
           <button
             className="rounded-md bg-accent px-3 py-1 text-sm font-medium text-onAccent"
-            onClick={() => ir(0)}
+            onClick={() => abrir(passosDoTour(administrador))}
             type="button"
           >
             Fazer o tour
@@ -188,7 +197,7 @@ export function TourGuiado() {
             style={{ top: posicao.top, left: posicao.left, width: LARGURA_BALAO, maxWidth: 'calc(100vw - 24px)' }}
           >
             <p className="text-xs text-textFaint tabular-nums">
-              Passo {indice + 1} de {PASSOS_TOUR.length}
+              Passo {indice + 1} de {passos.length}
             </p>
             <h2 className="mt-1 font-display text-base font-bold" id="tour-titulo">
               {passo.titulo}
@@ -209,7 +218,7 @@ export function TourGuiado() {
                 ref={botaoProximo}
                 type="button"
               >
-                {indice === PASSOS_TOUR.length - 1 ? 'Concluir' : 'Próximo'}
+                {indice === passos.length - 1 ? 'Concluir' : 'Próximo'}
               </button>
               <button className="ml-auto text-textFaint hover:text-warn" onClick={fechar} type="button">
                 Sair

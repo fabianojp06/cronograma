@@ -1,11 +1,15 @@
 import Link from 'next/link'
 
-import { MENU } from '@/lib/menu'
+import { auth } from '@clerk/nextjs/server'
+
+import { contaPodeAdministrar } from '@/lib/administracao-servidor'
+import { MENU, MENU_ADMIN } from '@/lib/menu'
 import {
   ROTULO_PERFIL,
   agruparPorGrupo,
   buscarNoManual,
   novidades,
+  secoesParaPerfil,
 } from '@/lib/manual'
 import { GLOSSARIO, SECOES_MANUAL } from '@/lib/manual-conteudo'
 
@@ -23,9 +27,13 @@ export default async function ManualPage({
   const bruto = parametros.busca
   const busca = (Array.isArray(bruto) ? bruto[0] : bruto)?.trim() || null
 
-  const encontradas = buscarNoManual(SECOES_MANUAL, busca)
+  const { userId } = await auth()
+  const administrador = userId !== null && (await contaPodeAdministrar(userId))
+  const secoes = secoesParaPerfil(SECOES_MANUAL, administrador)
+
+  const encontradas = buscarNoManual(secoes, busca)
   const grupos = agruparPorGrupo(encontradas)
-  const recentes = busca ? [] : novidades(SECOES_MANUAL)
+  const recentes = busca ? [] : novidades(secoes)
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
@@ -108,7 +116,7 @@ export default async function ManualPage({
 
       <div className="mt-12 space-y-12">
         {grupos.flatMap(({ secoes }) => secoes).map((s) => {
-          const telas = MENU.filter((m) => s.rotas.includes(m.href))
+          const telas = [...MENU, ...(administrador ? MENU_ADMIN : [])].filter((m) => s.rotas.includes(m.href))
           return (
             <section aria-labelledby={`t-${s.id}`} className="scroll-mt-6" id={s.id} key={s.id}>
               <h2 className="font-display text-lg font-extrabold" id={`t-${s.id}`}>
