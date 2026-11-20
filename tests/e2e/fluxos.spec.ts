@@ -821,3 +821,45 @@ test.describe('dependência entre ações', () => {
     await expect.poll(statusDaB).toBe('EM_CURSO_25')
   })
 })
+
+test.describe('manual e tour', () => {
+  test('o manual abre, lista as novidades e a busca filtra', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Manual', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Manual do usuário' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Novidades' })).toBeVisible()
+
+    await page.getByLabel('Buscar no manual').fill('liberar')
+    await page.getByRole('button', { name: 'Buscar' }).click()
+    await expect(page.getByRole('heading', { name: 'Dependência entre ações e liberação de início' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Modelos de projeto' })).toHaveCount(0)
+
+    await page.getByLabel('Buscar no manual').fill('zzzinexistente')
+    await page.getByRole('button', { name: 'Buscar' }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'Nada encontrado' })).toBeVisible()
+  })
+
+  test('o convite do tour aparece uma vez, o tour percorre os passos e Esc sai', async ({ page }) => {
+    await page.goto('/')
+    const convite = page.getByRole('region', { name: 'Convite para o tour' })
+    await expect(convite).toBeVisible()
+    await convite.getByRole('button', { name: 'Fazer o tour' }).click()
+
+    const balao = page.getByRole('dialog')
+    await expect(balao).toContainText('Passo 1 de')
+    await balao.getByRole('button', { name: 'Próximo' }).click()
+    await expect(balao).toContainText('Painel')
+    await page.keyboard.press('ArrowRight')
+    await expect(balao).toContainText('Projetos')
+    await page.keyboard.press('ArrowLeft')
+    await expect(balao).toContainText('Painel')
+    await page.keyboard.press('Escape')
+    await expect(balao).toHaveCount(0)
+
+    // Visto: recarregar não oferece de novo, mas o botão refaz o tour.
+    await page.reload()
+    await expect(page.getByRole('region', { name: 'Convite para o tour' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Tour', exact: true }).click()
+    await expect(page.getByRole('dialog')).toContainText('Bem-vindo')
+  })
+})
