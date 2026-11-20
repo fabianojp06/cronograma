@@ -863,3 +863,53 @@ test.describe('manual e tour', () => {
     await expect(page.getByRole('dialog')).toContainText('Bem-vindo')
   })
 })
+
+test.describe('menu por perfil', () => {
+  const tornarAdministradora = (clerk: string) =>
+    consultar(`UPDATE "Colaborador" SET "administrador" = true WHERE "clerkUserId" = $1`, [clerk])
+
+  test('quem não administra não vê a Administração, nem no menu nem no tour', async ({ page }) => {
+    // Existe outro administrador: a conta de teste (Ana) é só Colaboradora.
+    await consultar(
+      `INSERT INTO "Colaborador" ("id","nome","clerkUserId","administrador","updatedAt")
+       VALUES (gen_random_uuid()::text,'Chefe Admin','user_chefe',true,now())`,
+    )
+    await page.goto('/')
+    const menu = page.getByRole('navigation', { name: 'Navegação principal' })
+    await expect(menu.getByRole('link', { name: 'Modelos' })).toBeVisible()
+    await expect(menu.getByRole('link', { name: 'Administração' })).toHaveCount(0)
+    await expect(menu.getByRole('link', { name: 'Colaboradores' })).toHaveCount(0)
+
+    await page.goto('/administracao')
+    await expect(page.getByText('Só administradores acessam esta área.')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Tour', exact: true }).click()
+    await expect(page.getByRole('dialog')).toContainText('Passo 1 de 13')
+
+    // O manual também esconde o que é só do administrador.
+    await page.goto('/manual?busca=Administra%C3%A7%C3%A3o')
+    await expect(page.getByRole('heading', { name: 'Área de Administração' })).toHaveCount(0)
+  })
+
+  test('o administrador vê a área, o menu dela e o passo extra do tour', async ({ page }) => {
+    await tornarAdministradora('user_e2e')
+    await page.goto('/')
+    await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Administração' }).click()
+    await expect(page).toHaveURL(/\/administracao$/)
+
+    const lista = page.getByRole('main')
+    for (const nome of ['Colaboradores', 'Pesos da priorização', 'Painel do sistema', 'Registro de erros']) {
+      await expect(lista.getByRole('link', { name: nome, exact: true }).first()).toBeVisible()
+    }
+
+    // A barra da administração acompanha as telas dela.
+    await page.goto('/colaboradores')
+    await expect(page.getByRole('navigation', { name: 'Administração' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Tour', exact: true }).click()
+    await expect(page.getByRole('dialog')).toContainText('Passo 1 de 14')
+
+    await page.goto('/manual?busca=Administra%C3%A7%C3%A3o')
+    await expect(page.getByRole('heading', { name: 'Área de Administração' })).toBeVisible()
+  })
+})

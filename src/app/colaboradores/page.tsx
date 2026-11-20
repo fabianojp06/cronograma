@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 
+import { NavegacaoAdministracao } from '@/components/navegacao-administracao'
 import { LinhaColaborador, type ColaboradorAdmin } from '@/components/linha-colaborador'
 import { semAdministradores } from '@/lib/administracao'
 import { contaPodeAdministrar, situacaoAdmin } from '@/lib/administracao-servidor'
@@ -88,6 +89,7 @@ export default async function ColaboradoresPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
+      {podeEditar ? <NavegacaoAdministracao atual="/colaboradores" /> : null}
       <p className="text-sm font-medium uppercase tracking-wide text-accent">Equipe</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Colaboradores</h1>
       <p className="mt-2 max-w-2xl text-sm text-textMuted">

@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 
 import { FormularioPesos } from '@/components/formulario-pesos'
 import { montarPesos, pesosSaoPadrao } from '@/lib/matriz-validacao'
+import { NavegacaoAdministracao } from '@/components/navegacao-administracao'
 import { contaPodeAdministrar } from '@/lib/administracao-servidor'
 import { prisma } from '@/lib/prisma'
 
@@ -19,6 +20,7 @@ export default async function PesosPage() {
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
+      {podeEditar ? <NavegacaoAdministracao atual="/priorizacao/pesos" /> : null}
       <p className="text-sm font-medium uppercase tracking-wide text-accent">
         Matriz de Priorização
       </p>
