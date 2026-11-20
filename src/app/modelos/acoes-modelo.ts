@@ -11,8 +11,14 @@ import {
   construirItensDoModelo,
   instanciarModelo,
   LIMITE_ACOES_MODELO,
+  lerClassificacaoDoModelo,
   lerDadosDoModelo,
+  lerItensDoFormulario,
+  podeAlterarModelo,
   podeExcluirModelo,
+  type ClassificacaoModelo,
+  type ErroLinhaModelo,
+  type ItemDoModelo,
 } from '@/lib/modelo-projeto'
 import { lerIdProjeto } from '@/lib/projeto-edicao'
 import { validarDadosProjeto, type ErrosProjeto } from '@/lib/projeto-validacao'
@@ -167,4 +173,136 @@ export async function excluirModelo(formData: FormData): Promise<void> {
   } catch (erro) {
     await registrarFalha('Falha ao excluir o modelo de projeto', erro)
   }
+}
+
+export type EstadoEditorModelo = {
+  erro?: string
+  /** Erros por linha de ação (1 = primeira linha da tela). */
+  erros?: ErroLinhaModelo[]
+}
+
+/**
+ * Lê o que o editor manda (nome, descrição, classificação e as linhas de
+ * ação). Devolve o erro já em forma de estado, ou os dados prontos.
+ */
+type EditorLido =
+  | { estado: EstadoEditorModelo }
+  | {
+      estado?: undefined
+      dados: { nome: string; descricao: string | null }
+      classificacao: ClassificacaoModelo
+      itens: ItemDoModelo[]
+    }
+
+function lerEditor(formData: FormData): EditorLido {
+  const dados = lerDadosDoModelo(formData)
+  if (!dados.ok) return { estado: { erro: dados.erro } }
+  const classificacao = lerClassificacaoDoModelo(formData)
+  if (!classificacao.ok) return { estado: { erro: classificacao.erro } }
+  const itens = lerItensDoFormulario(formData)
+  if (!itens.ok) return { estado: { erro: itens.erroGeral, erros: itens.erros } }
+  return { dados, classificacao: classificacao.classificacao, itens: itens.itens }
+}
+
+/** Cria um modelo do zero, pelo editor (sem partir de um projeto). */
+export async function criarModelo(
+  _anterior: EstadoEditorModelo,
+  formData: FormData,
+): Promise<EstadoEditorModelo> {
+  const { userId } = await auth()
+  if (!userId) return { erro: 'Sessão expirada. Entre novamente.' }
+  if (!(await contaPodeEditar(userId))) return { erro: MENSAGEM_SOMENTE_LEITURA }
+
+  const lido = lerEditor(formData)
+  if (lido.estado) return lido.estado
+
+  let modeloId: string
+  try {
+    const existente = await prisma.modeloProjeto.findUnique({
+      where: { nome: lido.dados.nome },
+      select: { id: true },
+    })
+    if (existente) return { erro: 'Já existe um modelo com esse nome. Escolha outro.' }
+
+    const modelo = await prisma.modeloProjeto.create({
+      data: {
+        nome: lido.dados.nome,
+        descricao: lido.dados.descricao,
+        ...lido.classificacao,
+        criadoPor: userId,
+        acoes: { create: lido.itens },
+      },
+      select: { id: true },
+    })
+    modeloId = modelo.id
+  } catch (erro) {
+    await registrarFalha('Falha ao criar o modelo de projeto', erro)
+    return { erro: 'Não foi possível salvar o modelo. Tente novamente.' }
+  }
+
+  revalidatePath('/modelos')
+  redirect(`/modelos?salvo=${modeloId}`)
+}
+
+/**
+ * Edita um modelo: dados, classificação e a lista de ações, que é SUBSTITUÍDA
+ * por inteiro, tudo numa transação. Quem edita é quem criou ou um
+ * administrador. A edição é conferida por versão (`updatedAt`): se outra
+ * pessoa salvou o modelo depois que esta tela abriu, nada é gravado.
+ * Projetos já criados com o modelo não mudam (cópia, não vínculo).
+ */
+export async function atualizarModelo(
+  _anterior: EstadoEditorModelo,
+  formData: FormData,
+): Promise<EstadoEditorModelo> {
+  const { userId } = await auth()
+  if (!userId) return { erro: 'Sessão expirada. Entre novamente.' }
+  if (!(await contaPodeEditar(userId))) return { erro: MENSAGEM_SOMENTE_LEITURA }
+
+  const modeloId = String(formData.get('modeloId') ?? '')
+  if (!modeloId) return { erro: 'Modelo não identificado. Recarregue a página.' }
+
+  const lido = lerEditor(formData)
+  if (lido.estado) return lido.estado
+
+  const versaoBruta = String(formData.get('versao') ?? '')
+  const versao = versaoBruta === '' ? null : new Date(versaoBruta)
+
+  try {
+    const atual = await prisma.modeloProjeto.findUnique({
+      where: { id: modeloId },
+      select: { id: true, criadoPor: true },
+    })
+    if (!atual) return { erro: 'Modelo não encontrado. Ele pode ter sido excluído.' }
+    const administrador = await contaPodeAdministrar(userId)
+    if (!podeAlterarModelo(atual.criadoPor, userId, administrador)) {
+      return { erro: 'Só quem criou o modelo, ou um administrador, pode editá-lo.' }
+    }
+
+    const outro = await prisma.modeloProjeto.findUnique({
+      where: { nome: lido.dados.nome },
+      select: { id: true },
+    })
+    if (outro && outro.id !== modeloId) return { erro: 'Já existe um modelo com esse nome. Escolha outro.' }
+
+    const gravado = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.modeloProjeto.updateMany({
+        where: { id: modeloId, ...(versao && !Number.isNaN(versao.getTime()) ? { updatedAt: versao } : {}) },
+        data: { nome: lido.dados.nome, descricao: lido.dados.descricao, ...lido.classificacao },
+      })
+      if (count === 0) return false
+      await tx.modeloAcao.deleteMany({ where: { modeloId } })
+      await tx.modeloAcao.createMany({ data: lido.itens.map((i) => ({ ...i, modeloId })) })
+      return true
+    })
+    if (!gravado) {
+      return { erro: 'O modelo foi alterado por outra pessoa depois que você abriu esta tela. Recarregue e refaça a edição.' }
+    }
+  } catch (erro) {
+    await registrarFalha('Falha ao editar o modelo de projeto', erro)
+    return { erro: 'Não foi possível salvar o modelo. Tente novamente.' }
+  }
+
+  revalidatePath('/modelos')
+  redirect(`/modelos?salvo=${modeloId}`)
 }

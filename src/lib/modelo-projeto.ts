@@ -140,3 +140,123 @@ export function lerDadosDoModelo(formData: FormData): ResultadoNomeModelo {
 export function podeExcluirModelo(criadoPor: string, usuario: string, administrador: boolean): boolean {
   return administrador || criadoPor === usuario
 }
+
+/**
+ * Quem edita um modelo: a mesma regra de excluir — quem o criou ou um
+ * administrador. Modelo "do sistema" (carregado pelo script) não tem dono: só
+ * administrador.
+ */
+export function podeAlterarModelo(criadoPor: string, usuario: string, administrador: boolean): boolean {
+  return podeExcluirModelo(criadoPor, usuario, administrador)
+}
+
+export const LIMITE_DIA_MODELO = 1000
+const TAMANHO_MAXIMO_ACAO = 500
+const TAMANHO_MAXIMO_CAMPO = 500
+
+export const CAMPOS_CLASSIFICACAO_MODELO = [
+  'equipe',
+  'natureza',
+  'categoria',
+  'apoio',
+  'setorEnvolvido',
+] as const
+
+export type ClassificacaoModelo = { [C in (typeof CAMPOS_CLASSIFICACAO_MODELO)[number]]: string | null }
+
+export type ErroLinhaModelo = { linha: number; erro: string }
+
+export type ResultadoItensModelo =
+  | { ok: true; itens: ItemDoModelo[] }
+  | { ok: false; erros: ErroLinhaModelo[]; erroGeral?: string }
+
+function lerInteiro(bruto: string): number | null | undefined {
+  const t = bruto.trim()
+  if (t === '') return null
+  if (!/^\d+$/.test(t)) return undefined
+  return Number(t)
+}
+
+/**
+ * Lê a lista de ações do formulário do editor de modelos: três campos
+ * paralelos repetidos (`acaoDescricao`, `acaoInicio`, `acaoDuracao`). Linha
+ * totalmente vazia é ignorada; descrição é obrigatória; início e duração vêm
+ * juntos (ou os dois vazios, e a ação fica sem datas). Os números de linha dos
+ * erros são os da TELA (1 = primeira linha).
+ */
+export function lerItensDoFormulario(formData: FormData): ResultadoItensModelo {
+  const descricoes = formData.getAll('acaoDescricao').map(String)
+  const inicios = formData.getAll('acaoInicio').map(String)
+  const duracoes = formData.getAll('acaoDuracao').map(String)
+
+  const erros: ErroLinhaModelo[] = []
+  const itens: ItemDoModelo[] = []
+
+  descricoes.forEach((bruta, i) => {
+    const descricao = bruta.trim().replace(/\s+/g, ' ')
+    const inicioBruto = inicios[i] ?? ''
+    const duracaoBruta = duracoes[i] ?? ''
+    const linha = i + 1
+    if (descricao === '' && inicioBruto.trim() === '' && duracaoBruta.trim() === '') return
+
+    if (descricao === '') {
+      erros.push({ linha, erro: 'Descreva a ação.' })
+      return
+    }
+    if (descricao.length > TAMANHO_MAXIMO_ACAO) {
+      erros.push({ linha, erro: `A descrição pode ter no máximo ${TAMANHO_MAXIMO_ACAO} caracteres.` })
+      return
+    }
+    const inicio = lerInteiro(inicioBruto)
+    const duracao = lerInteiro(duracaoBruta)
+    if (inicio === undefined || duracao === undefined) {
+      erros.push({ linha, erro: 'Use números inteiros em dias úteis.' })
+      return
+    }
+    if ((inicio === null) !== (duracao === null)) {
+      erros.push({ linha, erro: 'Informe o início e a duração, ou deixe os dois em branco.' })
+      return
+    }
+    if (inicio !== null && duracao !== null) {
+      if (duracao < 1) {
+        erros.push({ linha, erro: 'A duração mínima é 1 dia útil.' })
+        return
+      }
+      if (inicio > LIMITE_DIA_MODELO || duracao > LIMITE_DIA_MODELO) {
+        erros.push({ linha, erro: `Use no máximo ${LIMITE_DIA_MODELO} dias úteis.` })
+        return
+      }
+    }
+    itens.push({ ordem: itens.length + 1, descricao, inicioDiasUteis: inicio, duracaoDiasUteis: duracao })
+  })
+
+  if (erros.length > 0) return { ok: false, erros }
+  if (itens.length === 0) {
+    return { ok: false, erros: [], erroGeral: 'Acrescente pelo menos uma ação ao modelo.' }
+  }
+  if (itens.length > LIMITE_ACOES_MODELO) {
+    return { ok: false, erros: [], erroGeral: `O modelo guarda até ${LIMITE_ACOES_MODELO} ações.` }
+  }
+  return { ok: true, itens }
+}
+
+/** Classificação do modelo (campos de texto opcionais, aparados; vazio vira `null`). */
+export function lerClassificacaoDoModelo(
+  formData: FormData,
+): { ok: true; classificacao: ClassificacaoModelo } | { ok: false; erro: string } {
+  const classificacao = {} as ClassificacaoModelo
+  for (const campo of CAMPOS_CLASSIFICACAO_MODELO) {
+    const valor = String(formData.get(campo) ?? '').trim()
+    if (valor.length > TAMANHO_MAXIMO_CAMPO) {
+      return { ok: false, erro: `Cada campo de classificação pode ter no máximo ${TAMANHO_MAXIMO_CAMPO} caracteres.` }
+    }
+    classificacao[campo] = valor === '' ? null : valor
+  }
+  return { ok: true, classificacao }
+}
+
+/** Dia útil (a partir do início do projeto) em que a ação termina, para a prévia do editor. */
+export function diaDeTerminoDoItem(item: Pick<ItemDoModelo, 'inicioDiasUteis' | 'duracaoDiasUteis'>): number | null {
+  if (item.inicioDiasUteis === null || item.duracaoDiasUteis === null) return null
+  return item.inicioDiasUteis + item.duracaoDiasUteis - 1
+}
