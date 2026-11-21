@@ -5,6 +5,7 @@ import {
   ALTURA_LINHA_PX,
   LARGURA_MINIMA_PX,
   LARGURA_SEMANA_PX,
+  barraDeProgresso,
   barraEmPx,
   larguraDaGrade,
   montarSetas,
@@ -99,5 +100,23 @@ describe('montarSetas', () => {
   it('ignora vínculo cuja ponta não está visível (outra página, fora da janela, sem datas)', () => {
     expect(montarSetas([{ de: 'a', para: 'z', bloqueada: false }], [{ id: 'a', previsto: A }])).toEqual([])
     expect(montarSetas([{ de: 'a', para: 'b', bloqueada: false }], [{ id: 'a', previsto: A }, { id: 'b', previsto: null }])).toEqual([])
+  })
+})
+
+describe('barraDeProgresso', () => {
+  const P = { esquerda: 10, largura: 100 }
+  it('preenche o percentual do previsto para ação em curso sem realizado', () => {
+    expect(barraDeProgresso('EM_CURSO_50', P, false)).toEqual({ esquerda: 10, largura: 50 })
+    expect(barraDeProgresso('EM_CURSO_25', P, false)!.largura).toBe(25)
+    expect(barraDeProgresso('EM_CURSO_75', P, false)!.largura).toBe(75)
+  })
+  it('não desenha se há data realizada, se não está em curso ou se não há previsto', () => {
+    expect(barraDeProgresso('EM_CURSO_50', P, true)).toBeNull()
+    expect(barraDeProgresso('NAO_INICIADO', P, false)).toBeNull()
+    expect(barraDeProgresso('CONCLUIDO', P, false)).toBeNull()
+    expect(barraDeProgresso('EM_CURSO_50', null, false)).toBeNull()
+  })
+  it('mantém largura mínima visível', () => {
+    expect(barraDeProgresso('EM_CURSO_25', { esquerda: 0, largura: 8 }, false)!.largura).toBe(8)
   })
 })
