@@ -5,13 +5,22 @@ import { useMemo, useState } from 'react'
 
 import {
   agruparPorMes,
-  colunaDeHoje,
-  faixaDaBarra,
   gerarSemanas,
   periodoDaGrade,
   previstoEmAtraso,
   type AcaoNaGrade,
 } from '@/lib/gantt'
+import {
+  ALTURA_LINHA_PX,
+  LARGURA_ROTULO_PX,
+  LARGURA_SEMANA_PX,
+  barraEmPx,
+  larguraDaGrade,
+  montarSetas,
+  xDeHoje,
+  xDeMarca,
+  type DependenciaDoGantt,
+} from '@/lib/gantt-geometria'
 import {
   gerarJanelas,
   janelaInicial,
@@ -34,36 +43,19 @@ export type LinhaGantt = AcaoNaGrade & {
   links?: number
   /** Tela de edição da ação; sem ele, a descrição não é link. */
   href?: string
+  /** Riscos e bloqueios ABERTOS que afetam esta ação (o losango marca o prazo). */
+  riscos?: MarcaDeRisco[]
 }
 
-/** Largura de cada coluna-semana; casada com o `repeat()` do grid. */
-const LARGURA_SEMANA = '2.75rem'
-const LARGURA_ROTULO = '18rem'
-
-function Barra({
-  faixa,
-  linha,
-  classe,
-  titulo,
-}: {
-  faixa: { coluna: number; colunas: number }
-  linha: number
-  classe: string
+export type MarcaDeRisco = {
+  id: string
   titulo: string
-}) {
-  return (
-    <div
-      className="flex min-h-5 items-center px-0.5"
-      style={{
-        gridRow: linha,
-        gridColumnStart: faixa.coluna + 2,
-        gridColumnEnd: faixa.coluna + 2 + faixa.colunas,
-      }}
-    >
-      <div className={`h-2 w-full rounded-full ${classe}`} title={titulo} />
-    </div>
-  )
+  tipo: 'RISCO' | 'BLOQUEIO'
+  impacto: 'BAIXO' | 'MEDIO' | 'ALTO'
+  prazo: Date | null
 }
+
+const ALTURA_CABECALHO_PX = 56
 
 /**
  * Grade semanal Previsto x Realizado de um Projeto (modelo CRO-DEP).
@@ -84,9 +76,12 @@ function Barra({
 export function GanttProjeto({
   acoes,
   hoje,
+  dependencias = [],
 }: {
   acoes: LinhaGantt[]
   hoje: Date
+  /** Vínculos "de termina → para começa" entre ações do projeto. */
+  dependencias?: DependenciaDoGantt[]
 }) {
   if (acoes.length === 0) {
     return (
@@ -96,10 +91,10 @@ export function GanttProjeto({
     )
   }
 
-  return <Grade acoes={acoes} hoje={hoje} />
+  return <Grade acoes={acoes} hoje={hoje} dependencias={dependencias} />
 }
 
-function Grade({ acoes, hoje }: { acoes: LinhaGantt[]; hoje: Date }) {
+function Grade({ acoes, hoje, dependencias }: { acoes: LinhaGantt[]; hoje: Date; dependencias: DependenciaDoGantt[] }) {
   const [granularidade, setGranularidade] = useState<Granularidade>('TRIMESTRE')
 
   const periodo = useMemo(() => periodoDaGrade(acoes, hoje), [acoes, hoje])
@@ -137,7 +132,18 @@ function Grade({ acoes, hoje }: { acoes: LinhaGantt[]; hoje: Date }) {
 
   const semanas = gerarSemanas(janela.inicio, janela.fim)
   const meses = agruparPorMes(semanas)
-  const hojeColuna = colunaDeHoje(semanas, hoje)
+  const xHoje = xDeHoje(hoje, semanas)
+  const larguraGrade = larguraDaGrade(semanas)
+  const alturaCorpo = acoes.length * ALTURA_LINHA_PX
+  const barras = acoes.map((a) => ({
+    previsto: barraEmPx(a.previstoInicio, a.previstoTermino, semanas),
+    realizado: barraEmPx(a.realizadoInicio, a.realizadoTermino, semanas),
+  }))
+  const setas = montarSetas(
+    dependencias,
+    acoes.map((a, i) => ({ id: a.id, previsto: barras[i].previsto })),
+  )
+  const haRiscos = acoes.some((a) => a.riscos?.some((r) => r.prazo && xDeMarca(r.prazo, semanas) !== null))
   const indiceDeHoje = janelaInicial(janelas, hoje)
 
   return (
@@ -196,97 +202,87 @@ function Grade({ acoes, hoje }: { acoes: LinhaGantt[]; hoje: Date }) {
         </label>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-5 text-xs text-textMuted">
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-textMuted">
         <span className="flex items-center gap-2">
-          <span className="h-2 w-6 rounded-full border border-previsto" />
+          <span className="h-3.5 w-7 rounded-sm border-2 border-previsto" />
           Previsto
         </span>
         <span className="flex items-center gap-2">
-          <span className="h-2 w-6 rounded-full bg-realizado" />
-          Realizado
+          <span className="h-2 w-7 rounded-sm bg-realizado" />
+          Realizado (sobre o previsto)
         </span>
         <span className="flex items-center gap-2">
-          <span className="h-2 w-6 rounded-full border border-warn" />
+          <span className="h-3.5 w-7 rounded-sm border-2 border-warn bg-warn/15" />
           Previsto em atraso
         </span>
-        {hojeColuna !== null && (
+        {xHoje !== null && (
           <span className="flex items-center gap-2">
-            <span className="h-3 w-0 border-l border-dashed border-accent" />
+            <span className="h-4 w-0.5 bg-accent" />
             Hoje
+          </span>
+        )}
+        {setas.length > 0 && (
+          <span className="flex items-center gap-2">
+            <svg aria-hidden className="h-3 w-7" viewBox="0 0 28 12">
+              <path d="M0 6 H20" className="stroke-textMuted" fill="none" strokeWidth="1.5" />
+              <path d="M18 2 L26 6 L18 10 Z" className="fill-textMuted" />
+            </svg>
+            Dependência: termina → começa
+          </span>
+        )}
+        {haRiscos && (
+          <span className="flex items-center gap-2">
+            <span className="size-2.5 rotate-45 border-2 border-text bg-surface" />
+            Prazo de risco ou bloqueio aberto
           </span>
         )}
       </div>
 
       <div className="mt-3 overflow-x-auto rounded-md border border-border bg-surface">
-        <div
-          className="grid min-w-max text-xs"
-          style={{
-            gridTemplateColumns: `${LARGURA_ROTULO} repeat(${semanas.length}, ${LARGURA_SEMANA})`,
-          }}
-        >
-          {/* Cabeçalho, nível 1: mês */}
-          <div
-            className="sticky left-0 z-20 border-b border-border bg-tableHeadBg px-4 py-2 font-display font-bold"
-            style={{ gridRow: 1 }}
-          >
-            Ação
-          </div>
-          {meses.map((mes) => (
+        <div className="relative text-xs" style={{ width: LARGURA_ROTULO_PX + larguraGrade }}>
+          {/* Cabeçalho: mês e semana, na mesma régua em pixels das barras. */}
+          <div className="flex bg-tableHeadBg" style={{ height: ALTURA_CABECALHO_PX }}>
             <div
-              key={mes.chave}
-              className="border-b border-l border-border bg-tableHeadBg px-1 py-2 text-center font-medium text-textMuted"
-              style={{ gridRow: 1, gridColumnEnd: `span ${mes.colunas}` }}
+              className="sticky left-0 z-20 flex shrink-0 flex-col justify-center border-b border-r border-border bg-tableHeadBg px-4"
+              style={{ width: LARGURA_ROTULO_PX }}
             >
-              {mes.rotulo}
+              <span className="font-display font-bold">Ação</span>
+              <span className="text-textFaint">Status e responsável</span>
             </div>
-          ))}
-
-          {/* Cabeçalho, nível 2: dia da segunda-feira de cada semana */}
-          <div
-            className="sticky left-0 z-20 border-b border-border bg-tableHeadBg px-4 pb-2 text-textFaint"
-            style={{ gridRow: 2 }}
-          >
-            Previsto / Realizado
+            <div className="shrink-0" style={{ width: larguraGrade }}>
+              <div className="flex" style={{ height: ALTURA_CABECALHO_PX / 2 }}>
+                {meses.map((mes) => (
+                  <div
+                    key={mes.chave}
+                    className="overflow-hidden whitespace-nowrap border-b border-l border-border px-1 pt-1.5 text-center font-medium text-textMuted"
+                    style={{ width: mes.colunas * LARGURA_SEMANA_PX }}
+                  >
+                    {mes.rotulo}
+                  </div>
+                ))}
+              </div>
+              <div className="flex" style={{ height: ALTURA_CABECALHO_PX / 2 }}>
+                {semanas.map((semana) => (
+                  <div
+                    key={semana.chave}
+                    className="border-b border-l border-borderSoft pt-1.5 text-center tabular-nums text-textFaint"
+                    style={{ width: LARGURA_SEMANA_PX }}
+                  >
+                    {semana.diaDoMes}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          {semanas.map((semana) => (
-            <div
-              key={semana.chave}
-              className="border-b border-l border-borderSoft bg-tableHeadBg pb-2 text-center tabular-nums text-textFaint"
-              style={{ gridRow: 2 }}
-            >
-              {semana.diaDoMes}
-            </div>
-          ))}
-
-          {/* Linha vertical do "hoje", atravessando todas as ações. */}
-          {hojeColuna !== null && (
-            <div
-              aria-hidden
-              className="pointer-events-none z-10 border-l border-dashed border-accent"
-              style={{ gridRow: '3 / -1', gridColumn: hojeColuna + 2 }}
-            />
-          )}
 
           {acoes.map((acao, indice) => {
-            const linhaPrevisto = 3 + indice * 2
-            const linhaRealizado = linhaPrevisto + 1
-            const previsto = faixaDaBarra(
-              acao.previstoInicio,
-              acao.previstoTermino,
-              semanas,
-            )
+            const { previsto, realizado } = barras[indice]
             const emAtraso = previstoEmAtraso(acao, hoje)
-            const realizado = faixaDaBarra(
-              acao.realizadoInicio,
-              acao.realizadoTermino,
-              semanas,
-            )
-
             return (
-              <div key={acao.id} className="contents">
+              <div key={acao.id} className="flex border-b border-borderSoft" style={{ height: ALTURA_LINHA_PX }}>
                 <div
-                  className="sticky left-0 z-20 flex flex-col justify-center gap-0.5 border-b border-borderSoft bg-surface px-4 py-2"
-                  style={{ gridRow: `${linhaPrevisto} / span 2` }}
+                  className="sticky left-0 z-20 flex shrink-0 flex-col justify-center gap-0.5 border-r border-border bg-surface px-4"
+                  style={{ width: LARGURA_ROTULO_PX }}
                 >
                   {acao.href ? (
                     <Link
@@ -294,13 +290,11 @@ function Grade({ acoes, hoje }: { acoes: LinhaGantt[]; hoje: Date }) {
                       href={acao.href}
                       title={`Editar: ${acao.descricao}`}
                     >
-                      <span className="tabular-nums text-textFaint">{acao.numero}.</span>{' '}
-                      {acao.descricao}
+                      <span className="tabular-nums text-textFaint">{acao.numero}.</span> {acao.descricao}
                     </Link>
                   ) : (
                     <span className="truncate" title={acao.descricao}>
-                      <span className="tabular-nums text-textFaint">{acao.numero}.</span>{' '}
-                      {acao.descricao}
+                      <span className="tabular-nums text-textFaint">{acao.numero}.</span> {acao.descricao}
                     </span>
                   )}
                   <span className="truncate text-textMuted">
@@ -316,46 +310,82 @@ function Grade({ acoes, hoje }: { acoes: LinhaGantt[]; hoje: Date }) {
                   </span>
                 </div>
 
-                {/* Fundo das duas sublinhas — dá a raia de cada ação. */}
+                {/* A raia: linhas verticais a cada semana, alinhadas ao cabeçalho. */}
                 <div
-                  aria-hidden
-                  className="border-b border-borderSoft"
+                  className="relative shrink-0"
                   style={{
-                    gridRow: `${linhaPrevisto} / span 2`,
-                    gridColumn: `2 / span ${semanas.length}`,
+                    width: larguraGrade,
+                    backgroundImage:
+                      'repeating-linear-gradient(to right, var(--color-borderSoft) 0, var(--color-borderSoft) 1px, transparent 1px, transparent ' +
+                      LARGURA_SEMANA_PX +
+                      'px)',
                   }}
-                />
-
-                {/* Altura fixa das duas sublinhas — sem isto uma ação sem
-                    barra apontada colapsaria a raia. */}
-                {[linhaPrevisto, linhaRealizado].map((linha) => (
-                  <div
-                    key={linha}
-                    aria-hidden
-                    className="h-5"
-                    style={{ gridRow: linha, gridColumn: 2 }}
-                  />
-                ))}
-
-                {previsto !== null && (
-                  <Barra
-                    faixa={previsto}
-                    linha={linhaPrevisto}
-                    classe={emAtraso ? 'border border-warn bg-warn/20' : 'border border-previsto'}
-                    titulo={emAtraso ? 'Previsto — em atraso' : 'Previsto'}
-                  />
-                )}
-                {realizado !== null && (
-                  <Barra
-                    faixa={realizado}
-                    linha={linhaRealizado}
-                    classe="bg-realizado"
-                    titulo="Realizado"
-                  />
-                )}
+                >
+                  {previsto !== null && (
+                    <div
+                      className={`absolute h-[22px] rounded-sm border-2 ${emAtraso ? 'border-warn bg-warn/15' : 'border-previsto bg-previsto/10'}`}
+                      style={{ left: previsto.esquerda, width: previsto.largura, top: (ALTURA_LINHA_PX - 22) / 2 }}
+                      title={emAtraso ? 'Previsto — em atraso' : 'Previsto'}
+                    />
+                  )}
+                  {realizado !== null && (
+                    <div
+                      className="absolute h-2.5 rounded-sm bg-realizado"
+                      style={{ left: realizado.esquerda, width: realizado.largura, top: (ALTURA_LINHA_PX - 10) / 2 }}
+                      title="Realizado"
+                    />
+                  )}
+                  {(acao.riscos ?? []).map((risco) => {
+                    const x = risco.prazo ? xDeMarca(risco.prazo, semanas) : null
+                    if (x === null) return null
+                    const vencido = risco.prazo !== null && risco.prazo.getTime() < hoje.getTime()
+                    return (
+                      <span
+                        key={risco.id}
+                        className={`absolute size-3 rotate-45 border-2 ${
+                          vencido ? 'border-warn bg-warn' : 'border-text bg-surface'
+                        } ${risco.impacto === 'ALTO' ? 'scale-125' : ''}`}
+                        style={{ left: x - 6, top: 2 }}
+                        title={`${risco.tipo === 'BLOQUEIO' ? 'Bloqueio' : 'Risco'} (impacto ${risco.impacto.toLowerCase()}): ${risco.titulo}${vencido ? ' — prazo vencido' : ''}`}
+                      />
+                    )
+                  })}
+                </div>
               </div>
             )
           })}
+
+          {/* Camada por cima das raias: setas de dependência e a linha do "hoje". */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute z-10"
+            style={{ left: LARGURA_ROTULO_PX, top: ALTURA_CABECALHO_PX, width: larguraGrade, height: alturaCorpo }}
+          >
+            {setas.length > 0 && (
+              <svg className="absolute inset-0" height={alturaCorpo} width={larguraGrade}>
+                {setas.map((seta) => (
+                  <g key={seta.id} className={seta.bloqueada ? 'text-warn' : 'text-textMuted'}>
+                    <path d={seta.d} fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.5" />
+                    <path
+                      d={`M ${seta.x2} ${seta.y2} l -6 -3.5 v 7 Z`}
+                      fill="currentColor"
+                    />
+                  </g>
+                ))}
+              </svg>
+            )}
+            {xHoje !== null && (
+              <>
+                <div className="absolute bottom-0 w-0.5 bg-accent" style={{ left: xHoje - 1, top: 0 }} />
+                <span
+                  className="absolute rounded bg-accent px-1.5 py-0.5 text-[11px] font-semibold leading-none text-onAccent"
+                  style={{ left: xHoje, top: -ALTURA_CABECALHO_PX / 2 + 3, transform: 'translateX(-50%)' }}
+                >
+                  Hoje
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </section>

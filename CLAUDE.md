@@ -1092,7 +1092,30 @@ Server Actions em `projetos/acoes-dependencia.ts`, tela na edição da ação
   ativos); a decisão avisa quem pediu. Motivos `LIBERACAO_*`.
 - **Aviso de risco** na tela da ação: predecessora atrasada ou com término
   previsto depois do início previsto desta (`riscoDaPredecessora`). Ainda NÃO há
-  aviso proativo por e-mail nem setas no Gantt.
+  aviso proativo por e-mail (as setas no Gantt existem, ver "Gantt" abaixo).
+
+## Gantt do projeto (`gantt-projeto.tsx`, `gantt-geometria.ts`)
+
+O Gantt deixou de ser um CSS grid de colunas-semana (barra sempre em semanas
+inteiras, cabeçalho que desalinhava) e tem UMA régua em pixels: a semana mede
+`LARGURA_SEMANA_PX` e tudo é posicionado por DIA a partir do início da primeira
+semana da janela. Cabeçalho (mês e semana), raias, barras, "hoje", losangos e setas
+usam a mesma conta, em `gantt-geometria.ts` (puro, com teste).
+
+- **Previsto e Realizado na mesma linha**: contorno grosso (22 px) com o Realizado
+  sólido e mais fino (10 px) POR CIMA. Uma linha por ação (antes eram duas).
+- **Intervalo fechado**: o término ocupa o dia inteiro; ação de 1 dia tem largura
+  mínima visível; com uma ponta só a barra tem uma semana a partir dela.
+- **"Hoje"**: linha sólida de 2 px na cor de acento e etiqueta "Hoje" no cabeçalho
+  (antes, tracejado fino de 1 px). Na "foto em uma data" marca o dia da foto.
+- **Setas** (`montarSetas`): do FIM do previsto da predecessora ao INÍCIO do previsto
+  da dependente; laranja se a dependente está bloqueada. Só desenha com as duas
+  barras visíveis (janela, página e busca); se a dependente começa antes de a
+  predecessora terminar, o traço contorna pela fronteira das linhas.
+- **Losango de risco**: prazo de risco/bloqueio ABERTO com ação afetada; laranja e
+  cheio se vencido, maior se impacto alto. Risco sem ação ou sem prazo não aparece
+  (fica na seção de riscos). Na foto em uma data não há losangos (risco é de hoje).
+- `faixaDaBarra`/`colunaDeHoje` (em semanas) seguem em `gantt.ts` mas o Gantt não os usa mais.
 
 ## Comentários por ação
 

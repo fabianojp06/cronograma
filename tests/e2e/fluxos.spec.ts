@@ -1651,3 +1651,39 @@ test.describe('cabeçalho em grupos', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
   })
 })
+
+test.describe('Gantt: setas, risco e hoje', () => {
+  test('desenha a seta de dependência, o losango do risco e as barras na mesma régua', async ({ page }) => {
+    const [{ id: projeto }] = await consultar<{ id: string }>(`SELECT "id" FROM "Projeto" WHERE "nome" = 'Projeto E2E'`)
+    const [{ id: primeira }] = await consultar<{ id: string }>(`SELECT "id" FROM "Acao" WHERE "projetoId" = $1`, [projeto])
+    await consultar(
+      `INSERT INTO "Acao" ("id","projetoId","numero","descricao","previstoInicio","previstoTermino","realizadoInicio","realizadoTermino","updatedAt")
+       VALUES ('gantt-b',$1,2,'Segunda etapa','2026-03-23','2026-04-10','2026-03-25','2026-04-02',now())`,
+      [projeto],
+    )
+    await consultar(`INSERT INTO "DependenciaAcao" ("id","acaoId","predecessoraId") VALUES ('gantt-d','gantt-b',$1)`, [primeira])
+    await consultar(
+      `INSERT INTO "RiscoProjeto" ("id","projetoId","acaoId","tipo","titulo","impacto","status","prazo","criadoPor","atualizadoEm")
+       VALUES ('gantt-r',$1,'gantt-b','RISCO','Fornecedor atrasa','ALTO','ABERTO','2026-03-25','x',now())`,
+      [projeto],
+    )
+    await page.goto(`/projetos/${projeto}`)
+    const fechar = page.getByRole('button', { name: 'Fechar' })
+    if (await fechar.isVisible()) await fechar.click()
+    // Vai até a janela de março de 2026, por mês.
+    await page.getByLabel('Exibir por').selectOption({ index: 0 })
+    for (let i = 0; i < 12; i++) {
+      const rotulo = (await page.locator('section span.font-display').first().textContent()) ?? ''
+      if (/mar/i.test(rotulo)) break
+      await page.getByRole('button', { name: 'Período anterior' }).click()
+    }
+    await expect(page.locator('svg path[stroke="currentColor"]').first()).toBeVisible() // a seta
+    await expect(page.locator('[title^="Risco (impacto alto): Fornecedor atrasa"]')).toBeVisible() // o losango
+    // O Realizado fica POR CIMA do Previsto: o centro vertical dele está dentro da faixa do previsto.
+    const previsto = (await page.locator('[title="Previsto"], [title="Previsto — em atraso"]').nth(1).boundingBox())!
+    const realizado = (await page.locator('[title="Realizado"]').first().boundingBox())!
+    expect(realizado.y).toBeGreaterThan(previsto.y)
+    expect(realizado.y + realizado.height).toBeLessThan(previsto.y + previsto.height)
+    expect(realizado.x).toBeGreaterThanOrEqual(previsto.x)
+  })
+})
