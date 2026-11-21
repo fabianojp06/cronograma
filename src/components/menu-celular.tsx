@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 
-export type ItemDeMenu = { href: string; rotulo: string }
+import { itemAtivo, PAINEL, type GrupoDoMenu } from '@/lib/menu'
 
 /**
  * Menu do cabeçalho em tela estreita (celular e tablet em pé): um botão que
@@ -12,10 +12,10 @@ export type ItemDeMenu = { href: string; rotulo: string }
  * Fecha ao escolher uma tela e com Esc. Acima de `lg` não aparece: o cabeçalho
  * usa o menu em linha de sempre.
  */
-export function MenuCelular({ itens, administracao }: { itens: readonly ItemDeMenu[]; administracao: ItemDeMenu | null }) {
+export function MenuCelular({ grupos }: { grupos: readonly GrupoDoMenu[] }) {
   const caminho = usePathname()
   const [aberto, setAberto] = useState(false)
-  const todos = administracao ? [...itens, administracao] : [...itens]
+  const ativo = itemAtivo(caminho, grupos)?.href ?? null
 
   return (
     <div className="lg:hidden">
@@ -41,26 +41,36 @@ export function MenuCelular({ itens, administracao }: { itens: readonly ItemDeMe
           id="menu-celular"
         >
           <ul className="grid grid-cols-2 gap-1 sm:grid-cols-3">
-            {todos.map((item) => {
-              const atual = item.href === '/' ? caminho === '/' : caminho === item.href || caminho.startsWith(`${item.href}/`)
-              return (
-                <li key={item.href}>
-                  <Link
-                    aria-current={atual ? 'page' : undefined}
-                    className={`flex min-h-11 items-center rounded-md px-3 text-sm ${
-                      atual ? 'bg-accent font-semibold text-onAccent' : 'text-text hover:bg-borderSoft'
-                    }`}
-                    href={item.href}
-                    onClick={() => setAberto(false)}
-                  >
-                    {item.rotulo}
-                  </Link>
-                </li>
-              )
-            })}
+            <li>{item(PAINEL, ativo, () => setAberto(false))}</li>
           </ul>
+          {grupos.map((g) => (
+            <div className="mt-3" key={g.id}>
+              <p className="px-3 text-xs font-semibold text-textMuted">{g.rotulo}</p>
+              <ul className="mt-1 grid grid-cols-2 gap-1 sm:grid-cols-3">
+                {g.itens.map((i) => (
+                  <li key={i.href}>{item(i, ativo, () => setAberto(false))}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </nav>
       ) : null}
     </div>
+  )
+}
+
+function item(i: { href: string; rotulo: string }, ativo: string | null, fechar: () => void) {
+  const atual = i.href === ativo
+  return (
+    <Link
+      aria-current={atual ? 'page' : undefined}
+      className={`flex min-h-11 items-center rounded-md px-3 text-sm ${
+        atual ? 'bg-accent font-semibold text-onAccent' : 'text-text hover:bg-borderSoft'
+      }`}
+      href={i.href}
+      onClick={fechar}
+    >
+      {i.rotulo}
+    </Link>
   )
 }

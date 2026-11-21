@@ -840,6 +840,32 @@ em SVG/CSS sem biblioteca, componentes em `semaforo-equipes`, `mapa-de-calor`,
   a regra no módulo puro com teste, e confira no celular (a regra de não rolar a
   página de lado vale; gráfico largo rola com aviso).
 
+## Cabeçalho: menu em grupos e "Ajuda e preferências"
+
+O cabeçalho tinha 10 itens soltos, mais Manual, Tour, tema, sino e avatar: quebrava
+em duas linhas e misturava tudo. Agora (`menu.ts` é a fonte única):
+
+- **Painel + três grupos** (`GRUPOS_DO_MENU`): **Trabalho** (Projetos, Priorização,
+  Modelos), **Pessoas** (Meus projetos, Minhas ações, Card WIN, Equipe) e
+  **Análise** (Dashboards, Reunião). **Administração** (`GRUPO_ADMINISTRACAO`: visão
+  geral + `MENU_ADMIN`) só aparece para o administrador. Cada grupo abre uma lista
+  (`NavegacaoPrincipal`, padrão de "disclosure": botão com `aria-expanded`, não
+  `role=menu`); fecha ao escolher, com Esc e ao clicar fora; o grupo da página
+  atual fica destacado (`grupoAtivo`/`itemAtivo`: vence o endereço MAIS LONGO, então
+  `/priorizacao/pesos` é da Administração e não da Priorização).
+- **Item novo no menu** vai no grupo em que a pessoa o procuraria (e em `MENU`, que
+  é derivado dos grupos, para o teste do manual cobrar a seção). Grupo novo exige
+  passo no tour (`tour.test.ts` cobra). Se um grupo passar de ~6 itens, repense.
+- **"Ajuda e preferências"** (`MenuAjuda`, ícone de interrogação ao lado do sino):
+  Manual, "Fazer o tour" (`iniciarTour`) e o seletor de tema. O avatar continua o
+  `UserButton` do Clerk (conta e sair): o menu dele NÃO é personalizado porque o
+  ambiente de teste usa um Clerk falso e não dá para testar o componente real.
+- **Celular** (`MenuCelular`, abaixo de `lg`): o botão "Menu" abre a mesma estrutura,
+  com o Painel e cada grupo com o seu título. Os `data-tour` ficam nos botões de
+  grupo (só existem em tela larga): no celular os passos saem centralizados.
+- Menus abertos valem só para a página em que foram abertos (o caminho muda, e
+  eles se consideram fechados): evita efeito que mexa em estado.
+
 ## Celular e tablet (Dashboards e cabeçalho)
 
 Regra de ouro: **nenhuma tela pode rolar a página de lado**. O cabeçalho tinha

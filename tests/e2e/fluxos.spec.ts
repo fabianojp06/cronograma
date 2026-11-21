@@ -564,7 +564,8 @@ test.describe('meus projetos', () => {
     )
 
     await page.goto('/')
-    await page.getByRole('link', { name: 'Meus projetos' }).click()
+    await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('button', { name: 'Pessoas' }).click()
+    await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Meus projetos' }).click()
     await expect(page).toHaveURL(/\/meus-projetos$/)
     await expect(page.getByRole('heading', { name: 'Meus projetos' })).toBeVisible()
 
@@ -838,6 +839,7 @@ test.describe('dependência entre ações', () => {
 test.describe('manual e tour', () => {
   test('o manual abre, lista as novidades e a busca filtra', async ({ page }) => {
     await page.goto('/')
+    await page.getByRole('button', { name: 'Ajuda e preferências' }).click()
     await page.getByRole('link', { name: 'Manual', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Manual do usuário' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Novidades' })).toBeVisible()
@@ -863,16 +865,18 @@ test.describe('manual e tour', () => {
     await balao.getByRole('button', { name: 'Próximo' }).click()
     await expect(balao).toContainText('Painel')
     await page.keyboard.press('ArrowRight')
-    await expect(balao).toContainText('Projetos')
+    await expect(balao).toContainText('Trabalho')
+    await expect(balao).toContainText('Priorização')
     await page.keyboard.press('ArrowLeft')
     await expect(balao).toContainText('Painel')
     await page.keyboard.press('Escape')
     await expect(balao).toHaveCount(0)
 
-    // Visto: recarregar não oferece de novo, mas o botão refaz o tour.
+    // Visto: recarregar não oferece de novo, mas "Ajuda e preferências" refaz o tour.
     await page.reload()
     await expect(page.getByRole('region', { name: 'Convite para o tour' })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Tour', exact: true }).click()
+    await page.getByRole('button', { name: 'Ajuda e preferências' }).click()
+    await page.locator('#menu-ajuda').getByRole('button', { name: 'Fazer o tour' }).click()
     await expect(page.getByRole('dialog')).toContainText('Bem-vindo')
   })
 })
@@ -889,15 +893,17 @@ test.describe('menu por perfil', () => {
     )
     await page.goto('/')
     const menu = page.getByRole('navigation', { name: 'Navegação principal' })
+    await menu.getByRole('button', { name: 'Trabalho' }).click()
     await expect(menu.getByRole('link', { name: 'Modelos' })).toBeVisible()
-    await expect(menu.getByRole('link', { name: 'Administração' })).toHaveCount(0)
+    await expect(menu.getByRole('button', { name: 'Administração' })).toHaveCount(0)
     await expect(menu.getByRole('link', { name: 'Colaboradores' })).toHaveCount(0)
 
     await page.goto('/administracao')
     await expect(page.getByText('Só administradores acessam esta área.')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Tour', exact: true }).click()
-    await expect(page.getByRole('dialog')).toContainText('Passo 1 de 14')
+    await page.getByRole('button', { name: 'Ajuda e preferências' }).click()
+    await page.locator('#menu-ajuda').getByRole('button', { name: 'Fazer o tour' }).click()
+    await expect(page.getByRole('dialog')).toContainText('Passo 1 de 7')
 
     // O manual também esconde o que é só do administrador.
     await page.goto('/manual?busca=Administra%C3%A7%C3%A3o')
@@ -909,7 +915,11 @@ test.describe('menu por perfil', () => {
     await page.goto('/')
     // O administrador recebe o resumo semanal ao entrar: dispensa o popup.
     await page.getByRole('dialog').getByRole('button', { name: 'Fechar' }).click()
-    await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Administração' }).click()
+    const menuAdmin = page.getByRole('navigation', { name: 'Navegação principal' })
+    await menuAdmin.getByRole('button', { name: 'Administração' }).click()
+    // O grupo traz a visão geral e as ferramentas.
+    await expect(menuAdmin.getByRole('link', { name: 'Lixeira' })).toBeVisible()
+    await menuAdmin.getByRole('link', { name: 'Visão geral' }).click()
     await expect(page).toHaveURL(/\/administracao$/)
 
     const lista = page.getByRole('main')
@@ -921,8 +931,9 @@ test.describe('menu por perfil', () => {
     await page.goto('/colaboradores')
     await expect(page.getByRole('navigation', { name: 'Administração' })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Tour', exact: true }).click()
-    await expect(page.getByRole('dialog')).toContainText('Passo 1 de 15')
+    await page.getByRole('button', { name: 'Ajuda e preferências' }).click()
+    await page.locator('#menu-ajuda').getByRole('button', { name: 'Fazer o tour' }).click()
+    await expect(page.getByRole('dialog')).toContainText('Passo 1 de 8')
 
     await page.goto('/manual?busca=Administra%C3%A7%C3%A3o')
     await expect(page.getByRole('heading', { name: 'Área de Administração' })).toBeVisible()
@@ -1466,7 +1477,9 @@ test.describe('dashboards no celular e no tablet', () => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto('/dashboards?aba=prazos')
     await expect(page.getByRole('button', { name: 'Menu' })).toBeHidden()
-    await expect(page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Projetos', exact: true })).toBeVisible()
+    const menuLargo = page.getByRole('navigation', { name: 'Navegação principal' })
+    await menuLargo.getByRole('button', { name: 'Trabalho' }).click()
+    await expect(menuLargo.getByRole('link', { name: 'Projetos', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: /Filtros/ })).toBeHidden()
     await expect(page.getByLabel('Equipe', { exact: true })).toBeVisible()
     await expect(page.locator('thead th', { hasText: 'Ação' }).first()).toBeVisible()
@@ -1575,5 +1588,66 @@ test.describe('guia dos relatórios', () => {
     await secao.getByRole('link', { name: 'Ver no Guia dos relatórios do manual' }).click()
     await expect(page).toHaveURL(/\/manual#guia-ranking-atrasos$/)
     await expect(page.locator('#guia-ranking-atrasos')).toBeVisible()
+  })
+})
+
+test.describe('cabeçalho em grupos', () => {
+  test('numa linha só em tela larga, com grupos que abrem, destacam a página e fecham', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+    // Sem a faixa de convite do tour, que é uma segunda linha de propósito.
+    await page.getByRole('button', { name: 'Agora não' }).click()
+    const cabecalho = page.locator('header')
+    // Altura de uma linha de menu (antes quebrava em duas).
+    expect((await cabecalho.boundingBox())!.height).toBeLessThan(70)
+
+    const menu = page.getByRole('navigation', { name: 'Navegação principal' })
+    await expect(menu.getByRole('link', { name: 'Painel' })).toHaveAttribute('aria-current', 'page')
+    await expect(menu.getByRole('link', { name: 'Projetos' })).toHaveCount(0) // fechado: só o botão do grupo
+
+    // Abre, mostra os itens do grupo e escolhe: a lista fecha e o grupo da página fica destacado.
+    await menu.getByRole('button', { name: 'Trabalho' }).click()
+    await expect(menu.getByRole('button', { name: 'Trabalho' })).toHaveAttribute('aria-expanded', 'true')
+    for (const nome of ['Projetos', 'Priorização', 'Modelos']) await expect(menu.getByRole('link', { name: nome, exact: true })).toBeVisible()
+    await menu.getByRole('link', { name: 'Projetos', exact: true }).click()
+    await expect(page).toHaveURL(/\/projetos$/)
+    await expect(menu.getByRole('link', { name: 'Projetos' })).toHaveCount(0)
+    await expect(menu.getByRole('button', { name: 'Trabalho' })).toHaveClass(/font-semibold/)
+    await expect(menu.getByRole('button', { name: 'Análise' })).not.toHaveClass(/font-semibold/)
+
+    // Esc e clique fora fecham; abrir outro grupo troca.
+    await menu.getByRole('button', { name: 'Pessoas' }).click()
+    await expect(menu.getByRole('link', { name: 'Minhas ações' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(menu.getByRole('link', { name: 'Minhas ações' })).toHaveCount(0)
+    await menu.getByRole('button', { name: 'Pessoas' }).click()
+    await menu.getByRole('button', { name: 'Análise' }).click()
+    await expect(menu.getByRole('link', { name: 'Reunião' })).toBeVisible()
+    await expect(menu.getByRole('link', { name: 'Minhas ações' })).toHaveCount(0)
+    await page.locator('main').click({ position: { x: 5, y: 5 } })
+    await expect(menu.getByRole('link', { name: 'Reunião' })).toHaveCount(0)
+  })
+
+  test('"Ajuda e preferências" reúne Manual, tour e tema; o tema troca de verdade', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByRole('link', { name: 'Manual', exact: true })).toHaveCount(0) // não está mais solto no cabeçalho
+    await page.getByRole('button', { name: 'Ajuda e preferências' }).click()
+    await expect(page.getByRole('link', { name: 'Manual', exact: true })).toBeVisible()
+    await expect(page.locator('#menu-ajuda').getByRole('button', { name: 'Fazer o tour' })).toBeVisible()
+
+    await page.getByRole('radio', { name: 'Escuro' }).click()
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await page.getByRole('radio', { name: 'Claro' }).click()
+    await expect(page.locator('html')).not.toHaveClass(/dark/)
+  })
+
+  test('no celular o menu em botão traz os grupos, com o item da página destacado', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/dashboards')
+    await page.getByRole('button', { name: 'Menu' }).click()
+    const menu = page.getByRole('navigation', { name: 'Navegação principal' })
+    for (const grupo of ['Trabalho', 'Pessoas', 'Análise']) await expect(menu.getByText(grupo, { exact: true })).toBeVisible()
+    await expect(menu.getByRole('link', { name: 'Dashboards' })).toHaveAttribute('aria-current', 'page')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
   })
 })

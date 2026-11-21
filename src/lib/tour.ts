@@ -4,10 +4,10 @@
  * O tour destaca itens do cabeçalho (presentes em TODAS as telas, então ele
  * funciona de qualquer página) por `data-tour`. Passo cujo alvo não existe na
  * tela (menu escondido, tela estreita) aparece centralizado, sem destaque.
- * Item novo no menu exige um passo aqui: `tour.test.ts` cobra.
+ * Grupo novo no menu (ou o Painel) exige um passo aqui: `tour.test.ts` cobra.
  */
 
-import { alvoDoMenu } from './menu'
+import { alvoDoGrupo, alvoDoMenu } from './menu'
 
 export type PassoTour = {
   alvo: string | null
@@ -24,7 +24,7 @@ export const PASSOS_TOUR: readonly PassoTour[] = [
     alvo: null,
     titulo: 'Bem-vindo ao Cronograma CTCEA',
     texto:
-      'Este sistema substitui as planilhas de plano de ação e de cronograma. Em um minuto, veja onde fica cada coisa. Você pode sair a qualquer momento com Esc e refazer o tour pelo botão "Tour".',
+      'Este sistema substitui as planilhas de plano de ação e de cronograma. Em um minuto, veja onde fica cada coisa. Você pode sair a qualquer momento com Esc e refazer o tour em "Ajuda e preferências".',
   },
   {
     alvo: alvoDoMenu('/'),
@@ -32,70 +32,38 @@ export const PASSOS_TOUR: readonly PassoTour[] = [
     texto: 'A visão consolidada de todos os projetos: indicadores, atrasos e a lista com filtros e busca.',
   },
   {
-    alvo: alvoDoMenu('/projetos'),
-    titulo: 'Projetos',
-    texto: 'A lista de projetos. Daqui você abre um projeto para ver o cronograma (Gantt), criar ações e registrar o realizado.',
+    alvo: alvoDoGrupo('trabalho'),
+    titulo: 'Trabalho',
+    texto:
+      'O plano em si. Projetos: a lista, o cronograma (Gantt) de cada um, as ações e o realizado. Priorização: a matriz Benefício × Esforço que recomenda a ordem. Modelos: moldes para criar projetos que se repetem.',
   },
   {
-    alvo: alvoDoMenu('/dashboards'),
-    titulo: 'Dashboards',
-    texto: 'Relatórios por abas (prazos, evolução, qualidade dos dados, Card WIN, auditoria), com resumo do que pede atenção.',
+    alvo: alvoDoGrupo('pessoas'),
+    titulo: 'Pessoas',
+    texto:
+      'O que é seu e da equipe. Meus projetos e Minhas ações: o que está sob a sua responsabilidade (a tela do dia a dia). Card WIN: o seu compromisso semanal, de até 3 itens. Equipe: os cards de todos, para a daily.',
   },
   {
-    alvo: alvoDoMenu('/priorizacao'),
-    titulo: 'Priorização',
-    texto: 'A matriz Benefício x Esforço, ponderada por GUT, que recomenda a ordem dos projetos.',
+    alvo: alvoDoGrupo('analise'),
+    titulo: 'Análise',
+    texto:
+      'Ler e apresentar os números. Dashboards: relatórios por abas, com a aba Gestão para diretoria e gerência. Reunião: telas grandes para projetar na daily, com atrasos, vencimentos, replanejamentos e riscos.',
   },
   {
-    alvo: alvoDoMenu('/meus-projetos'),
-    titulo: 'Meus projetos',
-    texto: 'Só os projetos em que você é responsável, tem ações ou dá apoio.',
-  },
-  {
-    alvo: alvoDoMenu('/minhas-acoes'),
-    titulo: 'Minhas ações',
-    texto: 'As ações pelas quais você responde, separadas em atrasadas, em aberto e concluídas. É a tela do dia a dia.',
-  },
-  {
-    alvo: alvoDoMenu('/wins'),
-    titulo: 'Card WIN',
-    texto: 'O seu compromisso semanal: até 3 WINs por semana. O que se repete por 3 semanas vira ação no plano.',
-  },
-  {
-    alvo: alvoDoMenu('/wins/equipe'),
-    titulo: 'Equipe',
-    texto: 'Os cards de toda a equipe na semana, para a daily. Somente leitura.',
-  },
-  {
-    alvo: alvoDoMenu('/reuniao'),
-    titulo: 'Reunião',
-    texto: 'Modo de projeção para a daily: telas grandes com atrasadas, vencimentos, replanejadas e concluídas da semana, por equipe.',
-  },
-  {
-    alvo: alvoDoMenu('/modelos'),
-    titulo: 'Modelos',
-    texto: 'Moldes de projeto: crie um projeto novo, com as ações e as datas recalculadas, a partir de um modelo.',
-  },
-  {
-    alvo: 'administracao',
+    alvo: alvoDoGrupo('administracao'),
     titulo: 'Administração',
-    texto: 'Área só de quem administra: colaboradores e perfis, pesos da priorização, painel do sistema e registro de erros.',
+    texto: 'Área só de quem administra: colaboradores e perfis, pesos da priorização, resumo semanal, lixeira de projetos, painel do sistema e registro de erros.',
     somenteAdmin: true,
   },
   {
     alvo: 'sino',
     titulo: 'Notificações',
-    texto: 'O sino avisa quando alguém comenta uma ação sua, marca você ou pede/decide uma liberação de início.',
+    texto: 'O sino avisa quando alguém comenta uma ação sua, marca você, pede ou decide uma liberação de início, ou atribui um risco a você.',
   },
   {
-    alvo: 'tema',
-    titulo: 'Tema claro ou escuro',
-    texto: 'Escolha Sistema, Claro ou Escuro. A escolha fica guardada neste navegador.',
-  },
-  {
-    alvo: 'manual',
-    titulo: 'Manual',
-    texto: 'Passo a passo de cada tela, com busca e a lista de novidades. Dúvida? Comece por ele.',
+    alvo: 'ajuda',
+    titulo: 'Ajuda e preferências',
+    texto: 'Aqui ficam o Manual (passo a passo de cada tela e guia dos relatórios), este tour e a escolha do tema claro ou escuro.',
   },
 ]
 
