@@ -785,6 +785,33 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
   navegador); passo sem alvo visível aparece centralizado.
 
+## Reunião (`/reuniao`): apresentação para a daily
+
+Telas grandes, uma de cada vez, sobre o cabeçalho (`fixed inset-0 z-40`):
+**Panorama, Atrasadas, Vencem em 7 dias, Replanejadas na semana, Concluídas na
+semana**. Regra pura em `reuniao.ts`, dados em `reuniao-servidor.ts`, tela em
+`apresentacao-reuniao.tsx` (cliente). No menu de trabalho, para todos os perfis
+(só consulta).
+
+- **Dados de AGORA, não foto** (o retrato semanal é o Resumo semanal). A
+  classificação das ações é `classificarAcao` (`resumo-semanal.ts`), a mesma do
+  resumo e do painel: concluída = término realizado nos 7 dias até hoje; atrasada
+  = `acaoEstaAtrasada`; vence = previsto de hoje a hoje+7.
+- **Filtro por equipe na URL** (`?equipe=STI`; `Sem equipe` para projetos sem
+  equipe): vale o link guardado da daily de cada equipe. Equipe desconhecida =
+  todas (`lerEquipe`).
+- **Replanejadas** = mudanças de `previstoTermino`/`previstoInicio` nos últimos
+  7 dias (`HistoricoAlteracao`), UMA linha por ação: data de antes (primeira
+  mudança da janela), de depois (a última), total de mudanças e quem fez a
+  última. Mostra o término; o início só se ele for o único que mudou. Ida e
+  volta à data original não conta (`agruparReplanejadas`).
+- **Lista longa vira telas** (`ITENS_POR_TELA` = 6, "2/3"): ninguém rola a
+  página numa reunião. Tela vazia continua na sequência, com a mensagem (dizer
+  "nenhuma atrasada" também é informação).
+- **Teclado**: setas/PageUp/PageDown/espaço navegam, F alterna a tela cheia, Esc
+  sai (com tela cheia ligada, o primeiro Esc é do navegador). Ignora teclas em
+  campos de formulário.
+
 ## Resumo semanal para os administradores (`/resumo-semanal`)
 
 Uma FOTO por semana (`ResumoSemanal`, `semana` = a segunda-feira, `aaaa-mm-dd`,

@@ -16,6 +16,7 @@ export const MENU = [
   { href: '/minhas-acoes', rotulo: 'Minhas ações' },
   { href: '/wins', rotulo: 'Card WIN' },
   { href: '/wins/equipe', rotulo: 'Equipe' },
+  { href: '/reuniao', rotulo: 'Reunião' },
   { href: '/modelos', rotulo: 'Modelos' },
 ] as const
 
