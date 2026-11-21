@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { AlternadorTema } from "@/components/alternador-tema";
 import { SinoNotificacoes } from "@/components/sino-notificacoes";
+import { MenuCelular } from "@/components/menu-celular";
 import { BotaoTour, TourGuiado } from "@/components/tour-guiado";
 import { contaPodeAdministrar } from "@/lib/administracao-servidor";
 import { alvoDoMenu, MENU, ROTA_ADMINISTRACAO } from "@/lib/menu";
@@ -26,14 +27,18 @@ async function sessaoAdministra(): Promise<boolean> {
 export async function Cabecalho() {
   const administrador = await sessaoAdministra();
   return (
-    <header className="print:hidden flex flex-wrap items-center gap-x-8 gap-y-2 border-b border-border bg-surface px-6 py-3">
+    <header className="relative print:hidden flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-surface px-4 py-3 sm:px-6 lg:gap-x-8">
       <Link href="/" className="font-display text-sm font-extrabold tracking-tight">
         CTCEA <span className="text-accent">Cronograma</span>
       </Link>
 
       {/* O menu só faz sentido com sessão — as telas de domínio são fechadas. */}
       <Show when="signed-in">
-        <nav aria-label="Navegação principal" className="flex items-center gap-6">
+        <MenuCelular
+          administracao={administrador ? { href: ROTA_ADMINISTRACAO, rotulo: "Administração" } : null}
+          itens={MENU}
+        />
+        <nav aria-label="Navegação principal" className="hidden items-center gap-6 lg:flex">
           {MENU.map((item) => (
             <Link
               key={item.href}

@@ -82,3 +82,43 @@ body {
 h1, h2, h3, h4 {
   font-family: var(--font-manrope), system-ui, sans-serif;
 }
+
+/* Tabela vira lista de cartões no celular (ver `TabelaEmpilhavel`). Só na tela:
+   a impressão e a tela larga mantêm a tabela. */
+@media screen and (max-width: 767px) {
+  .tabela-empilhavel table {
+    min-width: 0;
+    width: 100%;
+  }
+  .tabela-empilhavel thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .tabela-empilhavel tbody,
+  .tabela-empilhavel tr,
+  .tabela-empilhavel td {
+    display: block;
+    width: 100%;
+  }
+  .tabela-empilhavel tr {
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0;
+  }
+  .tabela-empilhavel td {
+    padding: 0.35rem 0.75rem !important;
+    text-align: left !important;
+    border-left-width: 0 !important;
+  }
+  .tabela-empilhavel td[data-rotulo]::before {
+    content: attr(data-rotulo);
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+}

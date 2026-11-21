@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { TabelaEmpilhavel } from '@/components/tabela-empilhavel'
 
 import { DashboardSecao, SemDados } from '@/components/dashboard-secao'
 import {
@@ -65,7 +66,7 @@ export function SecoesAuditoria({
               <SemDados>Nenhuma data prevista foi alterada até agora.</SemDados>
             </div>
           ) : (
-            <div className="mt-4 overflow-x-auto">
+            <TabelaEmpilhavel className="mt-4">
               <table className="w-full min-w-2xl border-collapse text-sm">
                 <thead>
                   <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
@@ -106,7 +107,7 @@ export function SecoesAuditoria({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TabelaEmpilhavel>
           )}
         </DashboardSecao>
 

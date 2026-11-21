@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { TabelaEmpilhavel } from '@/components/tabela-empilhavel'
 
 import { DashboardSecao, SemDados } from '@/components/dashboard-secao'
 import { GraficoWinsSemana } from '@/components/grafico-wins-semana'
@@ -24,7 +25,7 @@ export function SecoesWins({
           ) : (
             <>
               <GraficoWinsSemana semanas={conclusaoSemanal} />
-              <div className="mt-4 overflow-x-auto">
+              <TabelaEmpilhavel className="mt-4">
                 <table className="w-full min-w-2xl border-collapse text-sm">
                   <thead>
                     <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
@@ -67,7 +68,7 @@ export function SecoesWins({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TabelaEmpilhavel>
             </>
           )}
         </DashboardSecao>
@@ -76,7 +77,7 @@ export function SecoesWins({
           {reincidentes.length === 0 ? (
             <SemDados>Nenhum WIN apareceu em mais de uma semana.</SemDados>
           ) : (
-            <div className="overflow-x-auto">
+            <TabelaEmpilhavel >
               <table className="w-full min-w-2xl border-collapse text-sm">
                 <thead>
                   <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
@@ -132,7 +133,7 @@ export function SecoesWins({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TabelaEmpilhavel>
           )}
         </DashboardSecao>
     </>

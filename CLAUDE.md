@@ -785,6 +785,34 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
   navegador); passo sem alvo visível aparece centralizado.
 
+## Celular e tablet (Dashboards e cabeçalho)
+
+Regra de ouro: **nenhuma tela pode rolar a página de lado**. O cabeçalho tinha
+um menu em linha que não quebrava e estourava a largura de TODAS as telas (516
+px a mais no celular, 138 no tablet). O e2e `dashboards no celular e no tablet`
+confere `scrollWidth <= innerWidth` em todas as abas, a 390 px e a 768 px.
+
+- **Cabeçalho**: abaixo de `lg` (1024 px) o menu em linha some (`hidden lg:flex`)
+  e entra o botão "Menu" (`menu-celular.tsx`): grade de 2 (3 em `sm`) itens com
+  área de toque de 44 px, fecha ao escolher uma tela. Os `data-tour` ficam só no
+  menu em linha: no celular os passos do tour sem alvo visível saem centralizados.
+- **Dashboards**: abas numa faixa que rola de lado (`lg:flex-wrap` volta ao normal);
+  filtros atrás do botão "Filtros (N ativos)" abaixo de `md`
+  (`filtros-recolhiveis.tsx`: o servidor renderiza RECOLHIDO e o CSS `md:block`
+  mostra em tela larga — sem "piscada" em nenhum dos dois); tabelas viram
+  cartões (`TabelaEmpilhavel` + CSS em `globals.css`, só `screen` abaixo de
+  768 px: a impressão e a tela larga ficam como sempre); gráficos largos
+  (evolução, carga por mês) rolam de lado com um aviso.
+- **`TabelaEmpilhavel`** lê os rótulos do `<thead>` e os põe em `data-rotulo` nas
+  células (efeito no cliente): tabela nova ou com coluna nova funciona sem
+  marcar célula por célula. Antes da hidratação os cartões saem sem rótulo.
+- **Ao criar tela nova**, confira no celular (390 px) e no tablet (768 px): sem
+  rolagem lateral, com alvos de toque de pelo menos 40 px. Tabela larga: use
+  `TabelaEmpilhavel`. Gráfico largo: `overflow-x-auto` com largura mínima.
+- Fora dos Dashboards só se conferiu a ROLAGEM LATERAL das telas principais
+  (painel, projetos, projeto, ação, minhas ações, Card WIN, modelos, reunião e
+  manual: nenhuma estoura). Layout fino de cada uma no celular ainda não foi revisto.
+
 ## Links e anexos por ação (`LinkAcao`)
 
 Só o ENDEREÇO de ata, contrato ou planilha de apoio: o arquivo fica onde a CTCEA

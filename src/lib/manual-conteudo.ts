@@ -58,6 +58,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     perfil: 'todos',
     rotas: ['/notificacoes'],
     passos: [
+      'No celular e no tablet em pé, o menu vira o botão "Menu", no alto: toque nele para abrir a lista de telas e escolha uma. Em tela larga, o menu fica em linha.',
       'O menu no topo leva às telas de trabalho, as mesmas para todos os perfis. Quem administra o sistema vê também o item "Administração", numa área separada. "Tour" mostra, em 1 minuto, onde fica cada coisa; "Manual" abre esta página.',
       'O sino mostra quantas notificações você não leu. Clique para ver os avisos de comentários e de liberações de início, e use "Marcar como lida" ou "Marcar todas como lidas".',
       'No seletor de tema, escolha Sistema (padrão), Claro ou Escuro. A escolha fica guardada neste navegador.',
@@ -414,6 +415,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'Escolha a aba: Panorama, Distribuição, Prazos, Evolução no tempo, Qualidade, Card WIN, Auditoria, ou Todas.',
       'Os filtros e o período valem para as abas (menos Card WIN e Auditoria, que olham o sistema inteiro) e acompanham a troca de aba.',
       'Para PDF, abra a aba e imprima; para a tela inteira, abra "Todas" antes.',
+      'No celular e no tablet, os Dashboards se adaptam: as abas viram uma faixa que rola de lado, os filtros ficam atrás do botão "Filtros" (que mostra quantos estão ativos), as tabelas viram cartões, com o nome de cada coluna, e os gráficos largos rolam de lado.',
     ],
     dicas: [
       'Cada relatório responde a uma pergunta de negócio, escrita no próprio título.',

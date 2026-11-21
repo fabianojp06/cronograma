@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { TabelaEmpilhavel } from '@/components/tabela-empilhavel'
 
 import type { LinhaDimensao } from '@/lib/dashboard-dimensoes'
 
@@ -24,7 +25,7 @@ export function DashboardBarras({
   filtro?: string
 }) {
   return (
-    <div className="overflow-x-auto">
+    <TabelaEmpilhavel >
       <table className="w-full min-w-2xl border-collapse text-sm">
         <thead>
           <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
@@ -87,6 +88,6 @@ export function DashboardBarras({
           })}
         </tbody>
       </table>
-    </div>
+    </TabelaEmpilhavel>
   )
 }

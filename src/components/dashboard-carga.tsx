@@ -58,6 +58,7 @@ export function DashboardCarga({ pontos }: { pontos: PontoCarga[] }) {
   const maximo = Math.max(1, ...pontos.flatMap((p) => [p.inicios, p.terminos]))
 
   return (
+    <div>
     <div className="overflow-x-auto">
       <div className="min-w-2xl space-y-5">
         <Faixa
@@ -83,6 +84,8 @@ export function DashboardCarga({ pontos }: { pontos: PontoCarga[] }) {
           ))}
         </div>
       </div>
+    </div>
+    <p className="mt-1 text-xs text-textFaint md:hidden">Arraste para o lado para ver todos os meses.</p>
     </div>
   )
 }
