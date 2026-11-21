@@ -15,6 +15,7 @@ import { formatarValorHistorico, rotularAutor } from '@/lib/historico-exibicao'
 import { podeApagarComentario } from '@/lib/comentario-validacao'
 import { contaELiderDoProjeto } from '@/lib/dependencia-servidor'
 import { SecaoDependencias } from '@/components/secao-dependencias'
+import { LinksAcao } from '@/components/links-acao'
 import { prisma } from '@/lib/prisma'
 import { descreverMotivo } from '@/lib/motivo-replanejamento'
 
@@ -74,6 +75,10 @@ export default async function EditarAcaoPage({
           solicitante: true,
           criadoEm: true,
         },
+      },
+      links: {
+        orderBy: { criadoEm: 'asc' },
+        select: { id: true, titulo: true, url: true, tipo: true },
       },
       riscos: {
         where: { status: { in: ['ABERTO', 'EM_TRATAMENTO'] } },
@@ -237,6 +242,10 @@ export default async function EditarAcaoPage({
             projetoId={acao.projeto.id}
             vinculos={acao.dependeDe}
           />
+        </div>
+
+        <div className="lg:col-start-1">
+          <LinksAcao acaoId={acao.id} links={acao.links} podeEditar={podeEditar} />
         </div>
 
         {acao.riscos.length > 0 ? (

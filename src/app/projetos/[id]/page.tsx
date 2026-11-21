@@ -149,8 +149,14 @@ export default async function ProjetoPage({
         ])
       : [[], []]
   const liberadasIds = new Set(liberadas.map((l) => l.acaoId))
+  const contagemLinks =
+    em === null
+      ? await prisma.linkAcao.groupBy({ by: ['acaoId'], where: { acao: { projetoId: projeto.id } }, _count: { _all: true } })
+      : []
+  const linksPorAcao = new Map(contagemLinks.map((c) => [c.acaoId, c._count._all]))
   const acoes: LinhaGantt[] = pagina.itens.map((acao) => ({
     ...acao,
+    links: linksPorAcao.get(acao.id) ?? 0,
     dependencia: etiquetaDaDependencia({
       predecessoras: vinculos.filter((v) => v.acaoId === acao.id).map((v) => v.predecessora),
       iniciada: acaoIniciada(acao),
