@@ -8,6 +8,7 @@
  */
 
 import { CAMPOS_AUDITADOS, type CampoAuditado } from './acao-historico'
+import { nomeDoMotivo } from './motivo-replanejamento'
 
 export const ROTULO_CAMPO_AUDITADO: Record<CampoAuditado, string> = {
   status: 'Status',
@@ -42,6 +43,8 @@ export type RegistroHistorico = {
   acaoDescricao: string
   projetoId: string
   projetoNome: string
+  /** Código do motivo do replanejamento (só nas linhas de data prevista), se informado. */
+  motivo?: string | null
 }
 
 export type ContagemCampo = {
@@ -156,4 +159,37 @@ export function resumirAuditoria(registros: RegistroHistorico[]): ResumoAuditori
     acoesReplanejadas: new Set(doPlano.map((r) => r.acaoId)).size,
     autores: new Set(registros.map((r) => r.alteradoPor ?? '(não identificado)')).size,
   }
+}
+
+export type ContagemMotivo = { motivo: string | null; rotulo: string; quantidade: number }
+
+/**
+ * Replanejamentos por motivo. Conta EVENTOS, não linhas: editar início e término
+ * da mesma ação de uma vez grava duas linhas no mesmo instante (a transação),
+ * e a contagem seria dobrada. As mudanças de antes do registro do motivo (ou
+ * feitas por fora) entram como "Sem motivo registrado". Só mudança de data que
+ * já existia conta — preencher uma data vazia não é replanejamento.
+ */
+export function contarPorMotivo(registros: RegistroHistorico[]): ContagemMotivo[] {
+  const eventos = new Map<string, string | null>()
+  for (const r of registros) {
+    if (!(CAMPOS_REPLANEJAMENTO as readonly string[]).includes(r.campo)) continue
+    if (r.valorAntigo === null) continue
+    const chave = `${r.acaoId}|${r.alteradoEm.getTime()}`
+    // Se alguma das linhas do evento tem motivo, o evento tem.
+    if (!eventos.has(chave) || (eventos.get(chave) ?? null) === null) eventos.set(chave, r.motivo ?? null)
+  }
+
+  const contagem = new Map<string | null, number>()
+  for (const motivo of eventos.values()) contagem.set(motivo, (contagem.get(motivo) ?? 0) + 1)
+
+  return [...contagem.entries()]
+    .map(([motivo, quantidade]) => ({ motivo, rotulo: nomeDoMotivo(motivo), quantidade }))
+    .sort((a, b) => {
+      if (b.quantidade !== a.quantidade) return b.quantidade - a.quantidade
+      // "Sem motivo" por último nos empates.
+      if (a.motivo === null) return 1
+      if (b.motivo === null) return -1
+      return a.rotulo.localeCompare(b.rotulo, 'pt-BR')
+    })
 }

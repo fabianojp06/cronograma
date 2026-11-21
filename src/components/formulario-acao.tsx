@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 
 import {
   atualizarAcao,
@@ -17,6 +17,7 @@ import {
   type StatusAcao,
 } from '@/lib/acao-validacao'
 import { Processando } from '@/components/indicador-envio'
+import { MOTIVOS_REPLANEJAMENTO, ROTULO_MOTIVO_REPLANEJAMENTO } from '@/lib/motivo-replanejamento'
 
 const ESTADO_INICIAL: EstadoFormularioAcao = {}
 
@@ -35,12 +36,15 @@ function CampoData({
   rotulo,
   erros,
   valor,
+  aoMudar,
 }: {
   nome: CampoData
   rotulo: string
   erros?: ErrosAcao
   /** `aaaa-mm-dd`, ou ausente para começar vazio. */
   valor?: string | null
+  /** Quando informado, o campo é controlado e avisa cada mudança. */
+  aoMudar?: (valor: string) => void
 }) {
   return (
     <div>
@@ -52,7 +56,9 @@ function CampoData({
         id={nome}
         name={nome}
         type="date"
-        defaultValue={valor ?? ''}
+        {...(aoMudar
+          ? { value: valor ?? '', onChange: (e: React.ChangeEvent<HTMLInputElement>) => aoMudar(e.target.value) }
+          : { defaultValue: valor ?? '' })}
       />
       <Erro mensagem={erros?.[nome]} />
     </div>
@@ -104,6 +110,17 @@ export function FormularioAcao({
     ESTADO_INICIAL,
   )
   const erros = estado.erros
+
+  // Previsto controlado: mudar uma data que já existia pede o motivo. A base da
+  // comparação é o que está gravado (depois de salvar, o que acabou de ser salvo).
+  const [previstoInicio, setPrevistoInicio] = useState(valores?.previstoInicio ?? '')
+  const [previstoTermino, setPrevistoTermino] = useState(valores?.previstoTermino ?? '')
+  const [motivo, setMotivo] = useState('')
+  const [detalhe, setDetalhe] = useState('')
+  const baseInicio = (estado.salva ? estado.salva.previstoInicio : valores?.previstoInicio) ?? ''
+  const baseTermino = (estado.salva ? estado.salva.previstoTermino : valores?.previstoTermino) ?? ''
+  const pedeMotivo =
+    editando && ((baseInicio !== '' && previstoInicio !== baseInicio) || (baseTermino !== '' && previstoTermino !== baseTermino))
 
   return (
     <>
@@ -219,15 +236,59 @@ export function FormularioAcao({
               nome="previstoInicio"
               rotulo="Início previsto"
               erros={erros}
-              valor={valores?.previstoInicio}
+              valor={editando ? previstoInicio : undefined}
+              aoMudar={editando ? setPrevistoInicio : undefined}
             />
             <CampoData
               nome="previstoTermino"
               rotulo="Término previsto"
               erros={erros}
-              valor={valores?.previstoTermino}
+              valor={editando ? previstoTermino : undefined}
+              aoMudar={editando ? setPrevistoTermino : undefined}
             />
           </div>
+          {pedeMotivo ? (
+            <div className="mt-4 border-l-2 border-warn bg-surface py-3 pl-4" role="group" aria-labelledby="titulo-motivo">
+              <p className="text-sm font-medium" id="titulo-motivo">
+                Por que a data prevista mudou?
+              </p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className={classeRotulo} htmlFor="motivoReplanejamento">
+                    Motivo *
+                  </label>
+                  <select
+                    className={classeCampo}
+                    id="motivoReplanejamento"
+                    name="motivoReplanejamento"
+                    onChange={(e) => setMotivo(e.target.value)}
+                    value={motivo}
+                  >
+                    <option value="">Escolha…</option>
+                    {MOTIVOS_REPLANEJAMENTO.map((m) => (
+                      <option key={m} value={m}>
+                        {ROTULO_MOTIVO_REPLANEJAMENTO[m]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={classeRotulo} htmlFor="motivoDetalhe">
+                    Detalhe {motivo === 'OUTRO' ? '*' : '(opcional)'}
+                  </label>
+                  <input
+                    className={classeCampo}
+                    id="motivoDetalhe"
+                    maxLength={500}
+                    name="motivoDetalhe"
+                    onChange={(e) => setDetalhe(e.target.value)}
+                    value={detalhe}
+                  />
+                </div>
+              </div>
+              <Erro mensagem={erros?.motivo} />
+            </div>
+          ) : null}
         </section>
 
         <section className="border-l-2 border-realizado pl-4">

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState, useRef } from 'react'
+import { useActionState, useRef, useState } from 'react'
 
 import {
   aplicarLote,
@@ -12,6 +12,7 @@ import {
 import { Spinner } from '@/components/indicador-envio'
 import { LIMITE_LOTE, MAX_DIAS_UTEIS, ROTULO_CAMPO_LOTE, SEM_RESPONSAVEL } from '@/lib/edicao-lote'
 import { formatarValorHistorico } from '@/lib/historico-exibicao'
+import { MOTIVOS_REPLANEJAMENTO, ROTULO_MOTIVO_REPLANEJAMENTO } from '@/lib/motivo-replanejamento'
 
 export type AcaoParaLote = {
   id: string
@@ -41,6 +42,8 @@ export function FormularioLote({
   const [previa, pedirPrevia, gerando] = useActionState(previaLote, PREVIA_INICIAL)
   const [aplicacao, aplicar, gravando] = useActionState(aplicarLote, APLICACAO_INICIAL)
   const formulario = useRef<HTMLFormElement>(null)
+  const [motivo, setMotivo] = useState('')
+  const [detalhe, setDetalhe] = useState('')
 
   function marcarTodas(marcar: boolean) {
     formulario.current
@@ -252,6 +255,47 @@ export function FormularioLote({
             {previa.previa.linhas.map((l) => (
               <input key={l.acaoId} name="versao" type="hidden" value={`${l.acaoId}|${l.versao}`} />
             ))}
+            {previa.previa.precisaMotivo ? (
+              <div className="mb-4 border-l-2 border-warn bg-surface py-3 pl-4" role="group" aria-labelledby="titulo-motivo-lote">
+                <p className="text-sm font-medium" id="titulo-motivo-lote">
+                  Por que as datas previstas mudam? Vale para todas as ações acima.
+                </p>
+                <div className="mt-2 grid max-w-2xl gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-textMuted" htmlFor="lote-motivo">
+                      Motivo *
+                    </label>
+                    <select
+                      className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
+                      id="lote-motivo"
+                      name="motivoReplanejamento"
+                      onChange={(e) => setMotivo(e.target.value)}
+                      value={motivo}
+                    >
+                      <option value="">Escolha…</option>
+                      {MOTIVOS_REPLANEJAMENTO.map((m) => (
+                        <option key={m} value={m}>
+                          {ROTULO_MOTIVO_REPLANEJAMENTO[m]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-textMuted" htmlFor="lote-motivo-detalhe">
+                      Detalhe {motivo === 'OUTRO' ? '*' : '(opcional)'}
+                    </label>
+                    <input
+                      className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
+                      id="lote-motivo-detalhe"
+                      maxLength={500}
+                      name="motivoDetalhe"
+                      onChange={(e) => setDetalhe(e.target.value)}
+                      value={detalhe}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {aplicacao.erro ? (
               <p className="mb-3 text-sm text-warn" role="alert">
                 {aplicacao.erro}

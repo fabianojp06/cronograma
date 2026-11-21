@@ -96,6 +96,9 @@ model HistoricoAlteracao {
   valorNovo   String?
   alteradoEm  DateTime @default(now())
   alteradoPor String? // login/nome de quem alterou, se aplicável
+  /// Só nas mudanças de data PREVISTA: por que o plano mudou (código de `motivo-replanejamento.ts`).
+  motivo        String?
+  motivoDetalhe String?
 
   @@index([acaoId, alteradoEm])
 }

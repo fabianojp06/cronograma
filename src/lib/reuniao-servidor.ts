@@ -47,6 +47,8 @@ export async function carregarReuniao(
         valorNovo: true,
         alteradoEm: true,
         alteradoPor: true,
+        motivo: true,
+        motivoDetalhe: true,
         acao: {
           select: {
             id: true,
@@ -91,6 +93,8 @@ export async function carregarReuniao(
     valorNovo: h.valorNovo,
     alteradoEm: h.alteradoEm,
     alteradoPor: h.alteradoPor ? (nomePorConta.get(h.alteradoPor) ?? null) : null,
+    motivo: h.motivo,
+    motivoDetalhe: h.motivoDetalhe,
   }))
 
   const nomesDeEquipe = projetos.map((p) => p.equipe?.trim() || SEM_EQUIPE)

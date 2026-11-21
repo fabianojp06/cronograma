@@ -1,5 +1,6 @@
 import {
   contarPorCampo,
+  contarPorMotivo,
   rankingReplanejamentos,
   resumirAuditoria,
   type RegistroHistorico,
@@ -107,6 +108,7 @@ export async function carregarDashboard(parametros: Record<string, string | stri
         valorNovo: true,
         alteradoEm: true,
         alteradoPor: true,
+        motivo: true,
         acao: {
           select: {
             id: true,
@@ -198,6 +200,7 @@ export async function carregarDashboard(parametros: Record<string, string | stri
     valorNovo: registro.valorNovo,
     alteradoEm: registro.alteradoEm,
     alteradoPor: registro.alteradoPor,
+    motivo: registro.motivo,
     acaoId: registro.acao.id,
     acaoNumero: registro.acao.numero,
     acaoDescricao: registro.acao.descricao,
@@ -208,6 +211,7 @@ export async function carregarDashboard(parametros: Record<string, string | stri
   const auditoria = resumirAuditoria(registros)
   const porCampo = contarPorCampo(registros)
   const replanejamentos = rankingReplanejamentos(registros)
+  const porMotivo = contarPorMotivo(registros)
   return {
     filtros,
     periodo,
@@ -228,5 +232,6 @@ export async function carregarDashboard(parametros: Record<string, string | stri
     auditoria,
     porCampo,
     replanejamentos,
+    porMotivo,
   }
 }

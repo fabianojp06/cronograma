@@ -4,6 +4,7 @@ import { DashboardSecao, SemDados } from '@/components/dashboard-secao'
 import {
   rotularCampo,
   type contarPorCampo,
+  type contarPorMotivo,
   type rankingReplanejamentos,
   type RegistroHistorico,
   type resumirAuditoria,
@@ -16,11 +17,13 @@ export function SecoesAuditoria({
   replanejamentos,
   registros,
   porCampo,
+  porMotivo,
 }: {
   auditoria: ReturnType<typeof resumirAuditoria>
   replanejamentos: ReturnType<typeof rankingReplanejamentos>
   registros: RegistroHistorico[]
   porCampo: ReturnType<typeof contarPorCampo>
+  porMotivo: ReturnType<typeof contarPorMotivo>
 }) {
   return (
     <>
@@ -104,6 +107,37 @@ export function SecoesAuditoria({
                 </tbody>
               </table>
             </div>
+          )}
+        </DashboardSecao>
+
+        <DashboardSecao relatorio={rel('replanejamentos-por-motivo')}>
+          {porMotivo.length === 0 ? (
+            <SemDados>Nenhuma data prevista foi alterada até agora.</SemDados>
+          ) : (
+            <>
+              <p className="text-sm text-textMuted">
+                Cada mudança de data prevista conta uma vez, mesmo que início e término tenham
+                mudado juntos. Mudanças de antes do registro do motivo aparecem como &quot;Sem
+                motivo registrado&quot;.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {porMotivo.map((m) => {
+                  const maior = porMotivo[0].quantidade
+                  return (
+                    <li className="grid grid-cols-[minmax(0,16rem)_1fr_3rem] items-center gap-3 text-sm" key={m.motivo ?? 'sem'}>
+                      <span className={m.motivo === null ? 'text-textFaint' : undefined}>{m.rotulo}</span>
+                      <span aria-hidden="true" className="h-3 bg-borderSoft">
+                        <span
+                          className={`block h-3 ${m.motivo === null ? 'bg-textFaint' : 'bg-accent'}`}
+                          style={{ width: `${(m.quantidade / maior) * 100}%` }}
+                        />
+                      </span>
+                      <span className="text-right tabular-nums">{m.quantidade}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
           )}
         </DashboardSecao>
 

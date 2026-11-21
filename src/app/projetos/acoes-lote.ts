@@ -20,6 +20,7 @@ import {
   type PedidoLote,
 } from '@/lib/edicao-lote'
 import { enviarEmail } from '@/lib/enviar-email'
+import { lerMotivoReplanejamento } from '@/lib/motivo-replanejamento'
 import { lerIdProjeto } from '@/lib/projeto-edicao'
 import { prisma } from '@/lib/prisma'
 import { registrarFalha } from '@/lib/registrar-erro'
@@ -41,6 +42,8 @@ export type EstadoPrevia = {
     resumo: string
     linhas: LinhaPrevia[]
     quantasMudam: number
+    /** Alguma data prevista vai mudar: a confirmação pede o motivo (um para o lote todo). */
+    precisaMotivo: boolean
     /** Os campos do formulário, repetidos tal como foram pré-visualizados. */
     campos: { ids: string[]; quantidade: string; sentido: string; responsavelId: string }
   }
@@ -157,6 +160,7 @@ export async function previaLote(
         projetoId,
         resumo: descreverPedido(lido.pedido, base.nome),
         quantasMudam,
+        precisaMotivo: plano.some((i) => i.mudancas.some((m) => m.campo !== 'responsavel')),
         linhas: plano.map((i) => ({
           acaoId: i.acaoId,
           numero: i.numero,
@@ -223,7 +227,15 @@ export async function aplicarLote(
       }
     })
 
-    const { gravadas, conflitos } = await gravarLote(prisma, itens, acesso.userId)
+    // Data prevista que vai mudar (a ação já tinha data): pede o motivo, um só para o lote.
+    let motivo: { motivo: string; detalhe: string | null } | undefined
+    if (itens.some((i) => i.mudancas.some((m) => m.campo !== 'responsavel'))) {
+      const lidoMotivo = lerMotivoReplanejamento(formData)
+      if (!lidoMotivo.ok) return { erro: lidoMotivo.erro }
+      motivo = lidoMotivo.motivo
+    }
+
+    const { gravadas, conflitos } = await gravarLote(prisma, itens, acesso.userId, motivo)
 
     revalidatePath('/projetos')
     revalidatePath(`/projetos/${projetoId}`)

@@ -73,6 +73,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
     auditoria,
     porCampo,
     replanejamentos,
+    porMotivo,
   } = dados
 
   // O que a pessoa já escolheu (filtros e período) acompanha cada link de aba.
@@ -196,6 +197,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
             replanejamentos={replanejamentos}
             registros={registros}
             porCampo={porCampo}
+            porMotivo={porMotivo}
           />
         ) : null}
       </div>

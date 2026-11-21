@@ -16,6 +16,7 @@ import { podeApagarComentario } from '@/lib/comentario-validacao'
 import { contaELiderDoProjeto } from '@/lib/dependencia-servidor'
 import { SecaoDependencias } from '@/components/secao-dependencias'
 import { prisma } from '@/lib/prisma'
+import { descreverMotivo } from '@/lib/motivo-replanejamento'
 
 export const metadata = { title: 'Editar ação — Cronograma CTCEA' }
 
@@ -92,6 +93,8 @@ export default async function EditarAcaoPage({
           valorNovo: true,
           alteradoEm: true,
           alteradoPor: true,
+          motivo: true,
+          motivoDetalhe: true,
         },
       },
     },
@@ -320,6 +323,13 @@ export default async function EditarAcaoPage({
                       {formatarValorHistorico(linha.campo, linha.valorNovo)}
                     </span>
                   </p>
+                  {linha.campo === 'previstoInicio' || linha.campo === 'previstoTermino' ? (
+                    linha.motivo ? (
+                      <p className="mt-0.5 text-xs text-text">Motivo: {descreverMotivo(linha.motivo, linha.motivoDetalhe)}</p>
+                    ) : linha.valorAntigo !== null ? (
+                      <p className="mt-0.5 text-xs text-textFaint">{descreverMotivo(null, null)}</p>
+                    ) : null
+                  ) : null}
                   <p className="mt-0.5 text-xs text-textFaint">
                     {formatoMomento.format(linha.alteradoEm)} ·{' '}
                     {rotularAutor(linha.alteradoPor, nomePorConta)}

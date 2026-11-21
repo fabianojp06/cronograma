@@ -6,7 +6,12 @@
  * ou nenhuma linha muda.
  */
 
-import { alteracoesDeAcao, type EstadoAuditado, type LinhaHistorico } from './acao-historico'
+import {
+  alteracoesDeAcao,
+  type EstadoAuditado,
+  type LinhaHistorico,
+  type MotivoDaMudanca,
+} from './acao-historico'
 import type { ItemDoPlano } from './edicao-lote'
 
 export type ClienteTransacaoLote = {
@@ -34,6 +39,8 @@ export async function gravarLote(
   cliente: ClienteLote,
   itens: ItemParaGravar[],
   alteradoPor: string | null,
+  /** Por que as datas previstas mudaram: o MESMO motivo para o lote inteiro. */
+  motivo?: MotivoDaMudanca,
 ): Promise<{ gravadas: string[]; conflitos: string[] }> {
   return cliente.$transaction(async (tx) => {
     const gravadas: string[] = []
@@ -51,7 +58,7 @@ export async function gravarLote(
         continue
       }
       gravadas.push(item.acaoId)
-      for (const linha of alteracoesDeAcao(item.atual, item.novos, alteradoPor)) {
+      for (const linha of alteracoesDeAcao(item.atual, item.novos, alteradoPor, motivo)) {
         historico.push({ ...linha, acaoId: item.acaoId })
       }
     }

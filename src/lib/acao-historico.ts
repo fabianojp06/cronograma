@@ -37,7 +37,13 @@ export type LinhaHistorico = {
   valorAntigo: string | null
   valorNovo: string | null
   alteradoPor: string | null
+  /** Só nas linhas de data PREVISTA, quando o motivo do replanejamento foi informado. */
+  motivo?: string
+  motivoDetalhe?: string | null
 }
+
+/** O motivo informado para uma mudança de data prevista. */
+export type MotivoDaMudanca = { motivo: string; detalhe: string | null }
 
 /**
  * Forma de gravação do valor no histórico: datas viram `aaaa-mm-dd` em UTC
@@ -61,6 +67,7 @@ export function alteracoesDeAcao(
   atual: Partial<EstadoAuditado>,
   novos: Partial<EstadoAuditado>,
   alteradoPor: string | null = null,
+  motivo?: MotivoDaMudanca,
 ): LinhaHistorico[] {
   const linhas: LinhaHistorico[] = []
 
@@ -69,7 +76,19 @@ export function alteracoesDeAcao(
     const valorAntigo = serializarValor(atual[campo])
     const valorNovo = serializarValor(novos[campo])
     if (valorAntigo === valorNovo) continue
-    linhas.push({ campo, valorAntigo, valorNovo, alteradoPor })
+    // O motivo acompanha só as mudanças de data PREVISTA que já tinham valor:
+    // preencher uma data vazia não é replanejamento.
+    const ehReplanejamento =
+      motivo !== undefined &&
+      (campo === 'previstoInicio' || campo === 'previstoTermino') &&
+      valorAntigo !== null
+    linhas.push({
+      campo,
+      valorAntigo,
+      valorNovo,
+      alteradoPor,
+      ...(ehReplanejamento ? { motivo: motivo.motivo, motivoDetalhe: motivo.detalhe } : {}),
+    })
   }
 
   return linhas
@@ -146,6 +165,8 @@ export async function gravarAcaoComHistorico(
      */
     novos?: Partial<EstadoAuditado>
     alteradoPor?: string | null
+    /** Por que a data prevista mudou (vai nas linhas de data prevista que mudaram). */
+    motivo?: MotivoDaMudanca
     /**
      * `updatedAt` que a pessoa viu ao abrir a edição. Com ele, a gravação só
      * acontece se a Ação ainda estiver nessa versão (`ConflitoDeEdicao` se
@@ -159,6 +180,7 @@ export async function gravarAcaoComHistorico(
     entrada.atual,
     entrada.novos ?? (entrada.dados as Partial<EstadoAuditado>),
     entrada.alteradoPor ?? null,
+    entrada.motivo,
   )
 
   const versao = await cliente.$transaction(async (tx) => {

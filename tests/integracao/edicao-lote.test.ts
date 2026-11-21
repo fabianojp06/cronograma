@@ -70,7 +70,7 @@ async function preVisualizar(campos: Record<string, string | string[]>) {
   return r
 }
 
-async function aplicarDaPrevia(campos: Record<string, string | string[]>) {
+async function aplicarDaPrevia(campos: Record<string, string | string[]>, extras?: Record<string, string>) {
   const r = await preVisualizar(campos)
   if (!r.previa) throw new Error(r.erro)
   const { previa } = r
@@ -83,6 +83,7 @@ async function aplicarDaPrevia(campos: Record<string, string | string[]>) {
       sentido: previa.campos.sentido,
       responsavelId: previa.campos.responsavelId,
       versao: previa.linhas.map((l) => `${l.acaoId}|${l.versao}`),
+      ...(extras ?? { motivoReplanejamento: 'ESCOPO' }),
     }),
   )
 }
@@ -177,6 +178,7 @@ describe('aplicar', () => {
         sentido: previa.campos.sentido,
         responsavelId: previa.campos.responsavelId,
         versao: previa.linhas.map((l) => `${l.acaoId}|${l.versao}`),
+        motivoReplanejamento: 'ESCOPO',
       }),
     )
     expect(res.resultado?.gravadas).toBe(1)
@@ -188,10 +190,47 @@ describe('aplicar', () => {
   })
 
   it('sem a versão da prévia, a ação conflita em vez de gravar às cegas', async () => {
-    const res = await aplicarLote({}, fd({ id: projetoId, ids: [a1], quantidade: '1' }))
+    const res = await aplicarLote({}, fd({ id: projetoId, ids: [a1], quantidade: '1', motivoReplanejamento: 'ESCOPO' }))
     expect(res.resultado?.gravadas).toBe(0)
     expect(res.resultado?.conflitos).toHaveLength(1)
     expect(await prisma.historicoAlteracao.count()).toBe(0)
+  })
+})
+
+describe('motivo do replanejamento', () => {
+  it('a prévia diz se pede o motivo: só quando alguma data prevista vai mudar', async () => {
+    expect((await preVisualizar({ ids: [a1], quantidade: '1' })).previa?.precisaMotivo).toBe(true)
+    expect((await preVisualizar({ ids: [a1], responsavelId: bruno })).previa?.precisaMotivo).toBe(false)
+  })
+
+  it('sem motivo, o lote que muda data não grava nada', async () => {
+    const r = await aplicarDaPrevia({ ids: [a1, a2], quantidade: '2' }, {})
+    expect(r.erro).toBe('Informe o motivo da mudança de data.')
+    expect(await prisma.historicoAlteracao.count()).toBe(0)
+    expect(iso((await prisma.acao.findUniqueOrThrow({ where: { id: a1 } })).previstoTermino)).toBe('2026-03-06')
+  })
+
+  it('"Outro" sem detalhe é recusado', async () => {
+    const r = await aplicarDaPrevia({ ids: [a1], quantidade: '2' }, { motivoReplanejamento: 'OUTRO' })
+    expect(r.erro).toContain('Outro')
+  })
+
+  it('com motivo, as linhas de DATA recebem o mesmo motivo e a de responsável não', async () => {
+    const r = await aplicarDaPrevia(
+      { ids: [a1, a2], quantidade: '2', responsavelId: bruno },
+      { motivoReplanejamento: 'DEPENDENCIA_EXTERNA', motivoDetalhe: 'Fornecedor atrasou' },
+    )
+    expect(r.resultado?.gravadas).toBe(2)
+    const hist = await prisma.historicoAlteracao.findMany()
+    const datas = hist.filter((h) => h.campo.startsWith('previsto'))
+    expect(datas.length).toBe(4)
+    expect(datas.every((h) => h.motivo === 'DEPENDENCIA_EXTERNA' && h.motivoDetalhe === 'Fornecedor atrasou')).toBe(true)
+    expect(hist.filter((h) => h.campo === 'responsavel').every((h) => h.motivo === null)).toBe(true)
+  })
+
+  it('lote só de responsável não pede motivo', async () => {
+    const r = await aplicarDaPrevia({ ids: [a1], responsavelId: bruno }, {})
+    expect(r.resultado?.gravadas).toBe(1)
   })
 })
 
