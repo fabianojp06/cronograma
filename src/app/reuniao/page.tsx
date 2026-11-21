@@ -20,6 +20,7 @@ export default async function ReuniaoPage({
   const telas = montarTelas({
     acoes: dados.acoes,
     replanejadas: dados.replanejadas,
+    riscos: dados.riscos,
     projetosAtivos: dados.projetosAtivos,
     hoje: dados.hoje,
   })

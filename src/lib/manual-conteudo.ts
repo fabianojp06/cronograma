@@ -213,6 +213,30 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     palavras: ['dependência', 'bloqueio', 'bloqueada', 'liberar', 'predecessora', 'líder'],
   },
   {
+    id: 'riscos',
+    grupo: 'Projetos e ações',
+    titulo: 'Riscos e bloqueios do projeto',
+    resumo: 'Registrar o que ameaça (risco) ou já trava (bloqueio) um projeto, com responsável e prazo.',
+    perfil: 'editor',
+    rotas: ['/projetos/[id]/riscos/novo', '/projetos/[id]/riscos/[riscoId]/editar'],
+    passos: [
+      'Na tela do projeto, desça até "Riscos e bloqueios" e clique em "Registrar risco ou bloqueio".',
+      'Escolha o tipo: Risco é o que pode acontecer; Bloqueio é o que já está travando o trabalho. Dê um título e, se quiser, a descrição.',
+      'Marque o impacto (baixo, médio ou alto), o responsável pelo tratamento (da lista de colaboradores), o prazo para tratar, a ação do projeto que ele afeta e o plano de ação.',
+      'Para atualizar, clique em "Editar" no registro e mude o status: Aberto, Em tratamento, Resolvido ou Aconteceu (para um risco que virou realidade). Registros resolvidos ou ocorridos ficam recolhidos na lista.',
+      'Cada mudança de tipo, impacto, status, responsável ou prazo fica no histórico do registro, com quem fez e quando.',
+    ],
+    dicas: [
+      'O responsável escolhido recebe um aviso no sino.',
+      'Os abertos aparecem por ordem de atenção: impacto alto primeiro, bloqueio antes de risco, prazo mais próximo antes. Prazo vencido aparece em destaque.',
+      'Na tela Reunião, há uma tela "Riscos e bloqueios abertos", por equipe. A ação afetada mostra os registros abertos dela na sua tela de edição.',
+      'Resolver é mudar o status, não excluir: excluir apaga também o histórico. Só quem registrou, ou um administrador, exclui.',
+      'O Leitor vê os registros, mas não cria nem edita.',
+    ],
+    desde: '2026-11-21',
+    palavras: ['risco', 'bloqueio', 'impedimento', 'alerta', 'impacto', 'mitigação', 'problema'],
+  },
+  {
     id: 'acao-duplicar',
     grupo: 'Projetos e ações',
     titulo: 'Duplicar ação',
@@ -382,7 +406,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     passos: [
       'Abra "Reunião" no menu. A tela cobre o sistema inteiro, com letra grande, no tema claro ou escuro que você escolheu.',
       'Escolha a equipe na barra do alto ("Todas as equipes", STI, GIA...). A escolha vai no endereço: guarde o link da daily de cada equipe.',
-      'Avance com a seta para a direita, a barra de espaço ou "Próxima"; volte com a seta para a esquerda. As telas são: Panorama, Atrasadas, Vencem nos próximos 7 dias, Replanejadas na semana e Concluídas na semana.',
+      'Avance com a seta para a direita, a barra de espaço ou "Próxima"; volte com a seta para a esquerda. As telas são: Panorama, Atrasadas, Vencem nos próximos 7 dias, Replanejadas na semana, Riscos e bloqueios abertos e Concluídas na semana.',
       'Use F (ou "Tela cheia") para projetar em tela cheia. Esc sai da apresentação e volta ao painel.',
     ],
     dicas: [

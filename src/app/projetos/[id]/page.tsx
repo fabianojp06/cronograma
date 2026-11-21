@@ -1,3 +1,4 @@
+import { auth } from '@clerk/nextjs/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -9,7 +10,8 @@ import { GanttProjeto, type LinhaGantt } from '@/components/gantt-projeto'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { corteDaFoto, fotoDoProjeto, lerDataDaFoto } from '@/lib/foto-em-data'
 import { formatarDataBR } from '@/lib/formatacao'
-import { sessaoPodeEditar } from '@/lib/administracao-servidor'
+import { contaPodeAdministrar, sessaoPodeEditar } from '@/lib/administracao-servidor'
+import { SecaoRiscos } from '@/components/secao-riscos'
 import {
   correspondeABusca,
   lerPagina,
@@ -32,6 +34,17 @@ export default async function ProjetoPage({
   const { id } = await params
   const agora = inicioDeHojeUTC()
   const podeEditar = await sessaoPodeEditar()
+  const { userId } = await auth()
+  const administrador = userId !== null && (await contaPodeAdministrar(userId))
+  const riscosDoProjeto = await prisma.riscoProjeto.findMany({
+    where: { projetoId: id },
+    select: {
+      id: true, tipo: true, titulo: true, descricao: true, impacto: true, status: true, prazo: true,
+      plano: true, criadoPor: true, criadoEm: true,
+      responsavel: { select: { nome: true } },
+      acao: { select: { numero: true } },
+    },
+  })
   // `?em=aaaa-mm-dd`: o projeto como estava no fim daquele dia, reconstruído do histórico.
   const parametros = await searchParams
   const em = lerDataDaFoto(parametros.em, agora)
@@ -258,6 +271,17 @@ export default async function ProjetoPage({
         }}
         rota={`/projetos/${projeto.id}`}
       />
+
+      {em === null ? (
+        <SecaoRiscos
+          administrador={administrador}
+          hoje={hoje}
+          podeEditar={podeEditar}
+          projetoId={projeto.id}
+          riscos={riscosDoProjeto}
+          userId={userId}
+        />
+      ) : null}
     </main>
   )
 }

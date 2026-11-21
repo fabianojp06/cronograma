@@ -1097,7 +1097,7 @@ test.describe('reunião', () => {
 
     await expect(page.getByRole('heading', { name: 'Panorama' })).toBeVisible()
     await expect(page.getByText('Ações atrasadas')).toBeVisible()
-    await expect(page.getByRole('status').filter({ hasText: 'Tela 1 de 5' })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: 'Tela 1 de 6' })).toBeVisible()
 
     await page.keyboard.press('ArrowRight')
     await expect(page.getByRole('heading', { name: /Atrasadas/ })).toBeVisible()
@@ -1131,5 +1131,73 @@ test.describe('reunião', () => {
     await page.goto('/reuniao?equipe=NaoExiste')
     await expect(page.getByRole('heading', { name: 'Panorama' })).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Equipe' }).getByRole('link', { name: 'Todas as equipes' })).toHaveAttribute('aria-current', 'true')
+  })
+})
+
+test.describe('riscos e bloqueios', () => {
+  test('registra, aparece no projeto e na reunião, e resolver tira da lista de abertos', async ({ page }) => {
+    await page.goto(`/projetos/${projetoId}`)
+    await expect(page.getByText('Nenhum risco ou bloqueio aberto neste projeto.')).toBeVisible()
+
+    await page.getByRole('link', { name: 'Registrar risco ou bloqueio' }).click()
+    await expect(page).toHaveURL(/\/riscos\/novo$/)
+    await page.getByRole('radio', { name: /Bloqueio/ }).check()
+    await page.getByLabel('Título *').fill('Servidor sem acesso à rede')
+    await page.getByLabel('Impacto *').selectOption('ALTO')
+    await page.getByLabel('Responsável pelo tratamento').selectOption({ label: 'Ana Souza' })
+    await page.getByLabel('Ação afetada').selectOption({ index: 1 })
+    await page.getByLabel('Prazo para tratar').fill('2026-03-01')
+    await page.getByLabel('Plano de ação (o que será feito)').fill('Abrir chamado com a infraestrutura')
+    await page.getByRole('button', { name: 'Registrar' }).click()
+
+    // Volta ao projeto, na seção; prazo no passado = vencido.
+    await expect(page).toHaveURL(new RegExp(`/projetos/${projetoId}#riscos`))
+    const secao = page.getByRole('region', { name: /Riscos e bloqueios/ })
+    await expect(secao.getByText('Servidor sem acesso à rede')).toBeVisible()
+    await expect(secao.getByText('(vencido)')).toBeVisible()
+    await expect(secao.getByText('Plano: Abrir chamado com a infraestrutura')).toBeVisible()
+
+    // A ação afetada mostra o registro na sua tela.
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await expect(page.getByRole('link', { name: /Bloqueio: Servidor sem acesso à rede/ })).toBeVisible()
+
+    // Reunião: tela de riscos, e o Panorama conta 1.
+    await page.goto('/reuniao')
+    await expect(page.getByText('Riscos e bloqueios abertos')).toBeVisible()
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByRole('heading', { name: /Riscos e bloqueios abertos/ })).toBeVisible()
+    await expect(page.getByText('Servidor sem acesso à rede')).toBeVisible()
+
+    // Resolver: sai dos abertos, vai para "Resolvidos ou ocorridos", e o histórico registra.
+    await page.goto(`/projetos/${projetoId}`)
+    await page.getByRole('link', { name: 'Editar' }).last().click()
+    await page.getByLabel('Status').selectOption('RESOLVIDO')
+    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await expect(page.getByText('Nenhum risco ou bloqueio aberto neste projeto.')).toBeVisible()
+    await page.getByText(/Resolvidos ou ocorridos/).click()
+    await expect(page.getByText('Servidor sem acesso à rede')).toBeVisible()
+    await page.getByRole('link', { name: 'Editar' }).last().click()
+    await expect(page.getByRole('heading', { name: 'Histórico' })).toBeVisible()
+    const mudanca = page.locator('section[aria-labelledby="titulo-historico-risco"] li').first()
+    await expect(mudanca).toContainText('Status')
+    await expect(mudanca).toContainText('Aberto')
+    await expect(mudanca).toContainText('Resolvido')
+  })
+
+  test('o Leitor vê os registros, mas não tem como registrar', async ({ page }) => {
+    await consultar(
+      `INSERT INTO "RiscoProjeto" ("id","projetoId","tipo","titulo","impacto","status","criadoPor","atualizadoEm")
+       VALUES (gen_random_uuid()::text,$1,'RISCO','Risco existente','MEDIO','ABERTO','user_outro',now())`,
+      [projetoId],
+    )
+    await consultar(`UPDATE "Colaborador" SET "somenteLeitura" = true WHERE "clerkUserId" = 'user_e2e'`)
+    await page.goto(`/projetos/${projetoId}`)
+    await expect(page.getByText('Risco existente')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Registrar risco ou bloqueio' })).toHaveCount(0)
+    await page.goto(`/projetos/${projetoId}/riscos/novo`)
+    await expect(page.getByText('Seu perfil é somente leitura.')).toBeVisible()
   })
 })

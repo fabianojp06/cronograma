@@ -42,6 +42,7 @@ model Projeto {
   acoes     Acao[]
   avaliacao AvaliacaoProjeto?
   wins      Win[]
+  riscos    RiscoProjeto[]
 
   @@index([ativo])
   @@index([equipe])
@@ -79,6 +80,7 @@ model Acao {
   /// Ações que esperam por esta.
   predecessoraDe DependenciaAcao[] @relation("Predecessora")
   liberacoes  LiberacaoAcao[]
+  riscos      RiscoProjeto[]
 
   @@unique([projetoId, numero])
   @@index([projetoId])
@@ -226,6 +228,7 @@ model Colaborador {
   notificacoes Notificacao[]
   /// Projetos de que é o líder (escolhido na lista, em `Projeto.liderId`).
   projetosLiderados Projeto[] @relation("LiderDoProjeto")
+  riscosSobResponsabilidade RiscoProjeto[]
 
   @@index([ativo])
 }
@@ -382,6 +385,9 @@ model Notificacao {
   /// Aviso do resumo semanal (motivo RESUMO_SEMANAL): preenchido; senão, nulo.
   resumoId      String?
   resumo        ResumoSemanal? @relation(fields: [resumoId], references: [id], onDelete: Cascade)
+  /// Aviso de risco/bloqueio atribuído (motivo RISCO_RESPONSAVEL): preenchido; senão, nulo.
+  riscoId       String?
+  risco         RiscoProjeto?  @relation(fields: [riscoId], references: [id], onDelete: Cascade)
   /// MARCADO (a pessoa foi escolhida em "Avisar") ou RESPONSAVEL (responde pela ação);
   /// LIBERACAO_PEDIDA, LIBERACAO_APROVADA ou LIBERACAO_RECUSADA nos avisos de liberação.
   motivo        String
@@ -393,6 +399,7 @@ model Notificacao {
   @@index([destinatarioId, lida, criadoEm])
   @@index([liberacaoId])
   @@index([resumoId])
+  @@index([riscoId])
 }
 
 /// Resumo semanal para quem administra: uma FOTO do que concluiu, atrasou e
@@ -482,4 +489,54 @@ model ModeloAcao {
   duracaoDiasUteis Int?
 
   @@unique([modeloId, ordem])
+}
+
+/// Risco (pode acontecer) ou bloqueio (já está travando) de um projeto: o campo
+/// estruturado do que o Card WIN chama de "alerta de riscos". Strings, como o
+/// resto do sistema: `tipo` RISCO|BLOQUEIO, `impacto` BAIXO|MEDIO|ALTO e
+/// `status` ABERTO|EM_TRATAMENTO|RESOLVIDO|ACONTECEU (ver `risco-projeto.ts`).
+model RiscoProjeto {
+  id            String       @id @default(cuid())
+  projetoId     String
+  projeto       Projeto      @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  /// A ação que ele afeta, quando houver.
+  acaoId        String?
+  acao          Acao?        @relation(fields: [acaoId], references: [id], onDelete: SetNull)
+  tipo          String
+  titulo        String
+  descricao     String?
+  impacto       String
+  status        String       @default("ABERTO")
+  responsavelId String?
+  responsavel   Colaborador? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  /// Até quando tratar (data de negócio, meia-noite UTC).
+  prazo         DateTime?
+  plano         String?
+  /// `userId` do Clerk de quem registrou: só ele (ou um administrador) exclui.
+  criadoPor     String
+  criadoEm      DateTime     @default(now())
+  atualizadoEm  DateTime     @updatedAt
+  /// Quando saiu de aberto (resolvido ou "aconteceu"); nulo enquanto aberto.
+  resolvidoEm   DateTime?
+
+  historico    RiscoHistorico[]
+  notificacoes Notificacao[]
+
+  @@index([projetoId, status])
+  @@index([acaoId])
+  @@index([responsavelId])
+}
+
+/// Trilha de mudanças de um risco (status, impacto, tipo, responsável e prazo).
+model RiscoHistorico {
+  id          String       @id @default(cuid())
+  riscoId     String
+  risco       RiscoProjeto @relation(fields: [riscoId], references: [id], onDelete: Cascade)
+  campo       String
+  valorAntigo String?
+  valorNovo   String?
+  alteradoEm  DateTime     @default(now())
+  alteradoPor String?
+
+  @@index([riscoId, alteradoEm])
 }
