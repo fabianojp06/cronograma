@@ -11,13 +11,13 @@ import {
 import { GRUPOS_RELATORIO, RELATORIOS, ROTULO_GRUPO } from './dashboard-catalogo'
 
 describe('lerAba', () => {
-  it('lê o slug e cai no panorama quando falta ou é inválido', () => {
+  it('lê o slug e cai na aba padrão (Gestão) quando falta ou é inválido', () => {
     expect(lerAba('prazos')).toBe('PRAZOS')
     expect(lerAba('todas')).toBe('TODAS')
     expect(lerAba(['wins', 'x'])).toBe('WINS')
-    expect(lerAba(undefined)).toBe('PANORAMA')
-    expect(lerAba('inexistente')).toBe('PANORAMA')
-    expect(lerAba('PRAZOS')).toBe('PANORAMA') // o slug é minúsculo; não adivinha
+    expect(lerAba(undefined)).toBe('GESTAO')
+    expect(lerAba('inexistente')).toBe('GESTAO')
+    expect(lerAba('PRAZOS')).toBe('GESTAO') // o slug é minúsculo; não adivinha
   })
   it('todo grupo do catálogo tem aba (nenhum relatório fica inalcançável)', () => {
     for (const grupo of GRUPOS_RELATORIO) expect(lerAba(slugDaAba(grupo))).toBe(grupo)
@@ -48,8 +48,9 @@ describe('hrefDaAba', () => {
     expect(hrefDaAba('PRAZOS', { equipe: 'STI', de: '2026-03-01' })).toBe(
       '/dashboards?equipe=STI&de=2026-03-01&aba=prazos',
     )
-    expect(hrefDaAba('PANORAMA', { equipe: 'STI', aba: 'prazos' })).toBe('/dashboards?equipe=STI')
-    expect(hrefDaAba('PANORAMA', {})).toBe('/dashboards')
+    expect(hrefDaAba('GESTAO', { equipe: 'STI', aba: 'prazos' })).toBe('/dashboards?equipe=STI')
+    expect(hrefDaAba('GESTAO', {})).toBe('/dashboards')
+    expect(hrefDaAba('PANORAMA', {})).toBe('/dashboards?aba=panorama')
   })
   it('acrescenta a âncora e descarta a página', () => {
     expect(hrefDaAba('QUALIDADE', { pagina: '3' }, 'higiene-dados')).toBe(

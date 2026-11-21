@@ -14,6 +14,9 @@
   --accent: #0F766E;
   --on-accent: #FFFFFF;
   --warn: #E76F51;
+  /* Atenção (amarelo do semáforo de gestão): só para o estado "atenção", nunca
+     para dado comum. Texto/borda; contraste sobre `surface` validado >= 3:1. */
+  --atencao: #A16207;
   --table-head-bg: #FAFBFC;
 
   /* Tintas dos quadrantes da Matriz de Priorização. São fundo de região, não
@@ -37,6 +40,7 @@
   --accent: #2DD4BF;
   --on-accent: #0B1418;
   --warn: #F3866A;
+  --atencao: #E3B341;
   --table-head-bg: #0F1A1F;
 
   --quad-quick-wins: #0F2A22;
@@ -56,6 +60,7 @@
   --color-accent: var(--accent);
   --color-onAccent: var(--on-accent);
   --color-warn: var(--warn);
+  --color-atencao: var(--atencao);
   --color-tableHeadBg: var(--table-head-bg);
 
   --color-quadQuickWins: var(--quad-quick-wins);

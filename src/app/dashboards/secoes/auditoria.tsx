@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { TabelaEmpilhavel } from '@/components/tabela-empilhavel'
 
 import { DashboardSecao, SemDados } from '@/components/dashboard-secao'
+import { MapaDeCalor } from '@/components/mapa-de-calor'
+import type { MatrizDeCalor } from '@/lib/dashboard-gestao'
 import {
   rotularCampo,
   type contarPorCampo,
@@ -19,12 +21,14 @@ export function SecoesAuditoria({
   registros,
   porCampo,
   porMotivo,
+  motivosEquipe,
 }: {
   auditoria: ReturnType<typeof resumirAuditoria>
   replanejamentos: ReturnType<typeof rankingReplanejamentos>
   registros: RegistroHistorico[]
   porCampo: ReturnType<typeof contarPorCampo>
   porMotivo: ReturnType<typeof contarPorMotivo>
+  motivosEquipe: MatrizDeCalor
 }) {
   return (
     <>
@@ -139,6 +143,14 @@ export function SecoesAuditoria({
                 })}
               </ul>
             </>
+          )}
+        </DashboardSecao>
+
+        <DashboardSecao relatorio={rel('motivos-por-equipe')}>
+          {motivosEquipe.linhas.length === 0 ? (
+            <SemDados>Nenhuma data prevista foi alterada até agora.</SemDados>
+          ) : (
+            <MapaDeCalor matriz={motivosEquipe} rotuloDasLinhas="Motivo" />
           )}
         </DashboardSecao>
 

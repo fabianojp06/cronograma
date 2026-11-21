@@ -17,6 +17,22 @@ import {
   type AcaoComPrazo,
 } from '@/lib/dashboard-prazos'
 import { apurarPendencias } from '@/lib/dashboard-qualidade'
+import {
+  eventosRecentesPorEquipe,
+  idadeDoAtraso,
+  mapaDeCalorEquipeStatus,
+  motivosPorEquipe,
+  prioridadeXAtraso,
+  riscosPorEquipe,
+  ritmoDeEntrega,
+  semaforoPorEquipe,
+  type RegistroDeMotivo,
+  type RiscoParaGestao,
+} from '@/lib/dashboard-gestao'
+import { calcularAvaliacao, type Avaliacao } from '@/lib/matriz-calculo'
+import { montarPesos } from '@/lib/matriz-validacao'
+import { MOTIVOS_REPLANEJAMENTO } from '@/lib/motivo-replanejamento'
+import { ROTULO_STATUS_AGREGADO } from '@/lib/projeto-resumo'
 import { cargaMensal, evolucaoMensal } from '@/lib/dashboard-temporal'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { resumirPainel } from '@/lib/painel-consolidado'
@@ -39,7 +55,7 @@ export async function carregarDashboard(parametros: Record<string, string | stri
   const periodo = lerPeriodo(parametros)
   const hoje = inicioDeHojeUTC()
 
-  const [projetosBrutos, valores, registrosWin, winsTodos, historico] = await Promise.all([
+  const [projetosBrutos, valores, registrosWin, winsTodos, historico, riscosAbertos, linhasPeso] = await Promise.all([
     prisma.projeto.findMany({
       where: whereProjetoAtivo(filtros),
       orderBy: [{ prioridade: 'asc' }, { nome: 'asc' }],
@@ -52,10 +68,12 @@ export async function carregarDashboard(parametros: Record<string, string | stri
         categoria: true,
         responsavel: true,
         prioridade: true,
+        avaliacao: true,
         acoes: {
           orderBy: { numero: 'asc' },
           select: {
             id: true,
+            createdAt: true,
             numero: true,
             descricao: true,
             status: true,
@@ -69,7 +87,7 @@ export async function carregarDashboard(parametros: Record<string, string | stri
     }),
     prisma.projeto.findMany({
       where: { ativo: true },
-      select: { equipe: true, categoria: true, responsavel: true },
+      select: { id: true, equipe: true, categoria: true, responsavel: true },
     }),
     // Auditoria e Card WIN NÃO seguem os filtros da carteira (equipe,
     // responsável, categoria, status): a auditoria pergunta "o que mudou no
@@ -119,6 +137,13 @@ export async function carregarDashboard(parametros: Record<string, string | stri
         },
       },
     }),
+    // Riscos e bloqueios ABERTOS, para os relatórios de gestão (o recorte pela
+    // carteira filtrada é feito abaixo, pelos ids dos projetos visíveis).
+    prisma.riscoProjeto.findMany({
+      where: { status: { in: ['ABERTO', 'EM_TRATAMENTO'] }, projeto: { ativo: true } },
+      select: { projetoId: true, impacto: true, tipo: true, prazo: true },
+    }),
+    prisma.pesoCriterio.findMany({ select: { criterio: true, peso: true } }),
   ])
 
   const { projetos, semDataPrevista } = recortarPorPeriodo(projetosBrutos, periodo)
@@ -208,6 +233,54 @@ export async function carregarDashboard(parametros: Record<string, string | stri
     projetoNome: registro.acao.projeto.nome,
   }))
 
+  // ── Gestão: cruzamentos. Seguem os filtros da carteira (equipe, responsável,
+  // categoria, status e período), menos o histórico, que é o da auditoria.
+  const idsVisiveis = new Set(visiveis.map((p) => p.id))
+  const equipePorProjeto = new Map(valores.map((v) => [v.id, v.equipe]))
+  const riscosGestao: RiscoParaGestao[] = riscosAbertos
+    .filter((r) => idsVisiveis.has(r.projetoId))
+    .map((r) => ({ ...r, equipe: equipePorProjeto.get(r.projetoId) ?? null }))
+  const registrosDeMotivo: RegistroDeMotivo[] = historico.map((h) => ({
+    acaoId: h.acao.id,
+    campo: h.campo,
+    valorAntigo: h.valorAntigo,
+    alteradoEm: h.alteradoEm,
+    motivo: h.motivo,
+    equipe: equipePorProjeto.get(h.acao.projeto.id) ?? null,
+  }))
+  const pesos = montarPesos(linhasPeso)
+  const acoesPorProjeto = new Map<string, AcaoComPrazo[]>()
+  for (const a of acoes) acoesPorProjeto.set(a.projetoId, [...(acoesPorProjeto.get(a.projetoId) ?? []), a])
+
+  const semaforo = semaforoPorEquipe({
+    acoes,
+    riscos: riscosGestao,
+    replanejamentos: eventosRecentesPorEquipe(registrosDeMotivo, hoje),
+    hoje,
+  })
+  const mapaCalor = mapaDeCalorEquipeStatus(
+    visiveis.map((p) => ({ equipe: p.equipe, resumo: resumoPorId.get(p.id)! })),
+    ROTULO_STATUS_AGREGADO,
+  )
+  const prioridadeAtraso = prioridadeXAtraso(
+    visiveis.map((p) => ({
+      id: p.id,
+      nome: p.nome,
+      equipe: p.equipe,
+      resultado: p.avaliacao ? calcularAvaliacao(p.avaliacao as unknown as Avaliacao, pesos) : null,
+      acoes: acoesPorProjeto.get(p.id) ?? [],
+    })),
+    hoje,
+  )
+  const riscosEquipe = riscosPorEquipe(riscosGestao, hoje)
+  const ritmo = ritmoDeEntrega(
+    acoes.flatMap((a) => (a.realizadoTermino ? [a.realizadoTermino] : [])),
+    visiveis.flatMap((p) => p.acoes.map((a) => a.createdAt)),
+    hoje,
+  )
+  const idadeAtraso = idadeDoAtraso(acoes, hoje)
+  const motivosEquipe = motivosPorEquipe(registrosDeMotivo, MOTIVOS_REPLANEJAMENTO)
+
   const auditoria = resumirAuditoria(registros)
   const porCampo = contarPorCampo(registros)
   const replanejamentos = rankingReplanejamentos(registros)
@@ -233,5 +306,12 @@ export async function carregarDashboard(parametros: Record<string, string | stri
     porCampo,
     replanejamentos,
     porMotivo,
+    semaforo,
+    mapaCalor,
+    prioridadeAtraso,
+    riscosEquipe,
+    ritmo,
+    idadeAtraso,
+    motivosEquipe,
   }
 }

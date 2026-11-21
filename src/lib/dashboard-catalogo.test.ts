@@ -59,7 +59,7 @@ describe('catálogo de relatórios', () => {
  * valendo depois de a página ter sido dividida em módulos.
  */
 function textoDaPagina(): string {
-  return ['page.tsx', 'secoes/prazos.tsx', 'secoes/tempo.tsx', 'secoes/qualidade.tsx', 'secoes/wins.tsx', 'secoes/auditoria.tsx']
+  return ['secoes/gestao.tsx', 'page.tsx', 'secoes/prazos.tsx', 'secoes/tempo.tsx', 'secoes/qualidade.tsx', 'secoes/wins.tsx', 'secoes/auditoria.tsx']
     .map((arquivo) => readFileSync(new URL(`../app/dashboards/${arquivo}`, import.meta.url), 'utf-8'))
     .join('\n')
 }

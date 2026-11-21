@@ -12,6 +12,7 @@
  */
 
 export const GRUPOS_RELATORIO = [
+  'GESTAO',
   'PANORAMA',
   'DISTRIBUICAO',
   'PRAZOS',
@@ -24,6 +25,7 @@ export const GRUPOS_RELATORIO = [
 export type GrupoRelatorio = (typeof GRUPOS_RELATORIO)[number]
 
 export const ROTULO_GRUPO: Record<GrupoRelatorio, string> = {
+  GESTAO: 'Gestão',
   PANORAMA: 'Panorama',
   DISTRIBUICAO: 'Distribuição',
   PRAZOS: 'Prazos',
@@ -43,6 +45,36 @@ export type Relatorio = {
 }
 
 export const RELATORIOS: readonly Relatorio[] = [
+  {
+    id: 'semaforo-equipes',
+    titulo: 'Semáforo por equipe',
+    pergunta: 'Em quais equipes está o problema? Cruza atraso, aderência ao prazo, riscos de impacto alto e replanejamentos.',
+    grupo: 'GESTAO',
+  },
+  {
+    id: 'mapa-calor-status',
+    titulo: 'Mapa de calor: equipe × status',
+    pergunta: 'Como os projetos de cada equipe se distribuem entre concluído, em andamento, não iniciado e atrasado?',
+    grupo: 'GESTAO',
+  },
+  {
+    id: 'prioridade-x-atraso',
+    titulo: 'Prioridade × atraso',
+    pergunta: 'Os projetos de maior benefício são os que estão em dia, ou os que estão atrasados?',
+    grupo: 'GESTAO',
+  },
+  {
+    id: 'riscos-por-equipe',
+    titulo: 'Riscos e bloqueios por equipe',
+    pergunta: 'Onde estão os riscos e bloqueios abertos, com qual impacto, e quais já passaram do prazo para tratar?',
+    grupo: 'GESTAO',
+  },
+  {
+    id: 'ritmo-de-entrega',
+    titulo: 'Ritmo de entrega',
+    pergunta: 'A equipe conclui mais ações por semana do que cria? A carteira está encolhendo ou crescendo?',
+    grupo: 'GESTAO',
+  },
   {
     id: 'panorama',
     titulo: 'Panorama geral',
@@ -98,6 +130,12 @@ export const RELATORIOS: readonly Relatorio[] = [
     grupo: 'PRAZOS',
   },
   {
+    id: 'idade-do-atraso',
+    titulo: 'Idade do atraso por equipe',
+    pergunta: 'O atraso é recente ou é antigo? Quantas ações atrasadas há até 7, 30, 90 dias ou mais?',
+    grupo: 'PRAZOS',
+  },
+  {
     id: 'proximos-vencimentos',
     titulo: 'Próximos vencimentos',
     pergunta: 'O que vence nos próximos 7, 15 e 30 dias?',
@@ -144,6 +182,12 @@ export const RELATORIOS: readonly Relatorio[] = [
     id: 'replanejamentos-por-motivo',
     titulo: 'Replanejamentos por motivo',
     pergunta: 'Por que as datas previstas mudam: escopo, dependência externa, falta de gente, prioridade ou estimativa?',
+    grupo: 'AUDITORIA',
+  },
+  {
+    id: 'motivos-por-equipe',
+    titulo: 'Replanejamentos: motivo × equipe',
+    pergunta: 'Cada equipe replaneja por qual motivo? Escopo, dependência externa, falta de gente, prioridade ou estimativa?',
     grupo: 'AUDITORIA',
   },
   {

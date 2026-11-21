@@ -13,6 +13,7 @@ import { GRUPOS_RELATORIO, relatoriosDoGrupo, type GrupoRelatorio } from './dash
 export type AbaDashboard = GrupoRelatorio | 'TODAS'
 
 const SLUG: Record<AbaDashboard, string> = {
+  GESTAO: 'gestao',
   PANORAMA: 'panorama',
   DISTRIBUICAO: 'distribuicao',
   PRAZOS: 'prazos',
@@ -23,9 +24,9 @@ const SLUG: Record<AbaDashboard, string> = {
   TODAS: 'todas',
 }
 
-export const ABA_PADRAO: AbaDashboard = 'PANORAMA'
+export const ABA_PADRAO: AbaDashboard = 'GESTAO'
 
-/** Aba desconhecida ou ausente cai no panorama: a query string vem do usuário. */
+/** Aba desconhecida ou ausente cai na aba padrão (Gestão): a query string vem do usuário. */
 export function lerAba(bruto: string | string[] | undefined): AbaDashboard {
   const valor = Array.isArray(bruto) ? bruto[0] : bruto
   const achada = (Object.keys(SLUG) as AbaDashboard[]).find((aba) => SLUG[aba] === valor)

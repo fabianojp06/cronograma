@@ -785,6 +785,46 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
   navegador); passo sem alvo visível aparece centralizado.
 
+## Relatórios de gestão dos Dashboards (aba Gestão)
+
+A aba **Gestão** é a primeira e a que abre por padrão (`ABA_PADRAO`): cruzamentos
+para diretoria e gerência. Regra pura em `dashboard-gestao.ts` (com teste), gráficos
+em SVG/CSS sem biblioteca, componentes em `semaforo-equipes`, `mapa-de-calor`,
+`barras-empilhadas`, `bolhas-prioridade` e `ritmo-de-entrega`. Dados em `dados.ts`.
+
+- **Semáforo por equipe** (`semaforoPorEquipe`): cruza ações, riscos e
+  replanejamentos. **Os limites moram em UM lugar**: `LIMITE_VERMELHO` (20%) e
+  `LIMITE_AMARELO` (5%). Vermelho = mais de 20% das ações ABERTAS atrasadas OU risco
+  de impacto alto com prazo vencido; amarelo = 5% a 20% OU risco de impacto alto
+  aberto; verde = abaixo; "sem ações abertas" se não há o que medir. O atraso é
+  medido sobre as ABERTAS (concluir não dilui o problema). A cor SEMPRE vem com a
+  palavra e o motivo escrito: a identidade nunca fica só na cor.
+- **Token `atencao`** (`--atencao`, amarelo): existe só para o estado "atenção" do
+  semáforo; nunca use para dado comum. As outras cores do semáforo são as
+  reservadas: atraso (`warn`) e realizado (verde).
+- **Mapa de calor** (equipe × status, e motivo × equipe): a intensidade é a
+  MAGNITUDE, numa cor só (a de atraso na coluna "Atrasado"); o número sempre
+  aparece. Tinta máxima de 45%: acima disso o número perde contraste nos dois temas.
+- **Barras empilhadas** (idade do atraso, riscos por impacto): todas na mesma
+  escala, rampa de UMA cor (atraso), com legenda e número em cada fatia.
+- **Prioridade × atraso**: a matriz Benefício × Esforço (mesmas tintas de
+  quadrante e `calcularAvaliacao` com os pesos vigentes) com o atraso por cima:
+  área da bolha ∝ ações atrasadas, contorno grosso = alto benefício atrasado.
+  Só entram projetos avaliados.
+- **Ritmo de entrega**: 12 semanas (domingo a sábado, a semana da CTCEA) de ações
+  concluídas (pelo término REALIZADO) contra ações criadas (`createdAt`), com média
+  móvel de 4 semanas. Mostra se a carteira encolhe ou cresce.
+- **Idade do atraso** (aba Prazos) em dias CORRIDOS: até 7, 8 a 30, 31 a 90, mais
+  de 90. **Motivos por equipe** (aba Auditoria) conta EVENTOS, como o relatório por
+  motivo.
+- Os relatórios de gestão seguem os filtros da carteira; o histórico (replanejamentos
+  e motivos) segue o período, como toda a auditoria. A previsão de conclusão
+  ("no ritmo atual, acabam em N semanas") ficou DE FORA de propósito: é projeção, e
+  com pouco histórico engana.
+- **Ao criar relatório de gestão novo**: declare-o no catálogo com o grupo, escreva
+  a regra no módulo puro com teste, e confira no celular (a regra de não rolar a
+  página de lado vale; gráfico largo rola com aviso).
+
 ## Celular e tablet (Dashboards e cabeçalho)
 
 Regra de ouro: **nenhuma tela pode rolar a página de lado**. O cabeçalho tinha
