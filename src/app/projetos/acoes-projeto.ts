@@ -11,7 +11,8 @@ import { prisma } from '@/lib/prisma'
 import { MENSAGEM_SOMENTE_LEITURA } from '@/lib/administracao'
 import {
   confirmacaoValida,
-  DADOS_EXCLUSAO_LOGICA,
+  dadosDaExclusao,
+  dadosDaRestauracao,
   PALAVRA_CONFIRMACAO,
 } from '@/lib/projeto-exclusao'
 import { CAMPOS_PROJETO, camposAlterados, lerIdProjeto } from '@/lib/projeto-edicao'
@@ -191,7 +192,7 @@ export async function excluirProjeto(
     // banco, é simplesmente nenhuma linha afetada.
     const { count } = await prisma.projeto.updateMany({
       where: { id, ativo: true },
-      data: DADOS_EXCLUSAO_LOGICA,
+      data: dadosDaExclusao(userId),
     })
     if (count === 0) {
       return { erroGeral: 'Projeto não encontrado ou já excluído.' }
@@ -204,4 +205,36 @@ export async function excluirProjeto(
   revalidatePath('/projetos')
   revalidatePath(`/projetos/${id}`)
   redirect('/projetos')
+}
+
+/**
+ * Restaura um projeto da lixeira (só administrador). `updateMany` com
+ * `ativo: false` no filtro: restaurar de novo, ou um projeto que já voltou, não
+ * é erro — é nenhuma linha afetada. As ações, o histórico, os comentários e os
+ * riscos nunca saíram do banco, então voltam como estavam.
+ */
+export async function restaurarProjeto(formData: FormData): Promise<void> {
+  const { userId } = await auth()
+  if (!userId) return
+  if (!(await contaPodeAdministrar(userId))) return
+
+  const id = lerIdProjeto(formData)
+  if (!id) return
+
+  let restaurado = false
+  try {
+    const { count } = await prisma.projeto.updateMany({
+      where: { id, ativo: false },
+      data: dadosDaRestauracao(userId),
+    })
+    restaurado = count > 0
+  } catch (erro) {
+    await registrarFalha('Falha ao restaurar projeto', erro)
+    return
+  }
+
+  revalidatePath('/administracao/lixeira')
+  revalidatePath('/projetos')
+  revalidatePath('/')
+  redirect(`/administracao/lixeira?${restaurado ? 'restaurado' : 'nada'}=${id}`)
 }

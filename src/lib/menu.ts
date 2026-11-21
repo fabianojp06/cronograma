@@ -41,6 +41,11 @@ export const MENU_ADMIN = [
     descricao: 'Os pesos dos critérios da matriz Benefício x Esforço.',
   },
   {
+    href: '/administracao/lixeira',
+    rotulo: 'Lixeira',
+    descricao: 'Projetos excluídos, com a opção de restaurar.',
+  },
+  {
     href: '/administracao/sistema',
     rotulo: 'Painel do sistema',
     descricao: 'Banco, erros por origem, aviso semanal e volume de dados.',

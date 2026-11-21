@@ -785,6 +785,25 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
   navegador); passo sem alvo visível aparece centralizado.
 
+## Lixeira (`/administracao/lixeira`)
+
+Restaura projetos excluídos. A exclusão sempre foi lógica (`ativo = false`);
+agora também grava `excluidoEm`/`excluidoPor` (`dadosDaExclusao`), e a
+restauração grava `restauradoEm`/`restauradoPor` (`dadosDaRestauracao`).
+
+- **Só administrador** exclui e restaura (a mesma regra). Fica em
+  `MENU_ADMIN`; o menu de trabalho não tem lixeira.
+- **Restaurar devolve tudo como estava**: ações, comentários, riscos, histórico
+  e dependências nunca saíram do banco. `restaurarProjeto` é um `updateMany`
+  com `ativo: false` no filtro: restaurar de novo (ou um projeto que já voltou)
+  não é erro, só nenhuma linha afetada, e a tela avisa.
+- **NÃO há exclusão definitiva**: a trilha de auditoria é requisito central.
+  Se um dia for preciso apagar de verdade, é uma operação pontual no banco.
+- **Excluir de novo um projeto restaurado** vale como a última exclusão
+  (`restauradoEm/Por` voltam a nulo). Projetos excluídos antes das colunas
+  existirem têm `excluidoEm` nulo e aparecem por último, como "data não
+  registrada". Não há registro de QUANTAS vezes foi excluído/restaurado.
+
 ## Motivo do replanejamento
 
 Mudar a data PREVISTA (início ou término) de uma ação que já tinha data pede o

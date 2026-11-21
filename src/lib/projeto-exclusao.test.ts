@@ -42,3 +42,21 @@ describe('DADOS_EXCLUSAO_LOGICA', () => {
     expect(Object.keys(DADOS_EXCLUSAO_LOGICA)).toEqual(['ativo'])
   })
 })
+
+import { dadosDaExclusao, dadosDaRestauracao } from './projeto-exclusao'
+
+describe('dados da exclusão e da restauração (lixeira)', () => {
+  const agora = new Date('2026-11-21T12:00:00Z')
+  it('excluir marca inativo, quando e quem, e apaga a restauração anterior', () => {
+    expect(dadosDaExclusao('user_a', agora)).toEqual({
+      ativo: false,
+      excluidoEm: agora,
+      excluidoPor: 'user_a',
+      restauradoEm: null,
+      restauradoPor: null,
+    })
+  })
+  it('restaurar volta a ativo e registra quando e quem, sem tocar na exclusão', () => {
+    expect(dadosDaRestauracao('user_b', agora)).toEqual({ ativo: true, restauradoEm: agora, restauradoPor: 'user_b' })
+  })
+})

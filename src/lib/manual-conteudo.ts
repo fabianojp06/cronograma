@@ -137,7 +137,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     passos: [
       'Em "Projetos", clique em "Novo projeto" e preencha nome, equipe, natureza, categoria, responsável e demais campos.',
       'Para alterar, abra o projeto e clique em "Editar".',
-      'Só um administrador exclui, em "Excluir projeto" na tela do projeto. A exclusão é lógica: o projeto sai das telas, mas os dados são mantidos.',
+      'Só um administrador exclui, em "Excluir projeto" na tela do projeto. A exclusão é lógica: o projeto sai das telas, mas os dados são mantidos, e um administrador pode restaurá-lo em Administração > Lixeira.',
     ],
     dicas: [
       '"Responsável (líder do projeto)" é uma lista dos colaboradores ativos: escolha o nome, sem digitar. É por ele que o sistema reconhece o líder, que decide as liberações de início, e monta "Meus projetos".',
@@ -474,7 +474,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     rotas: ['/administracao'],
     passos: [
       'Clique em "Administração", no fim do menu. O item só aparece para administradores.',
-      'A página lista as ferramentas: Colaboradores, Pesos da priorização, Resumo semanal, Painel do sistema e Registro de erros. Dentro de cada uma, a barra no topo leva às outras.',
+      'A página lista as ferramentas: Colaboradores, Pesos da priorização, Resumo semanal, Lixeira, Painel do sistema e Registro de erros. Dentro de cada uma, a barra no topo leva às outras.',
       'Os demais perfis não veem o item; se abrirem o endereço direto, a tela diz que o acesso é de administradores.',
     ],
     dicas: [
@@ -506,6 +506,27 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     ],
     desde: '2026-11-21',
     palavras: ['resumo', 'semanal', 'gestor', 'atrasadas', 'vencem', 'concluídas', 'equipe', 'popup'],
+  },
+  {
+    id: 'lixeira',
+    grupo: 'Administração',
+    titulo: 'Lixeira de projetos',
+    resumo: 'Restaurar um projeto que foi excluído.',
+    perfil: 'administrador',
+    rotas: ['/administracao/lixeira'],
+    passos: [
+      'Abra Administração > Lixeira. A lista mostra cada projeto excluído, com equipe, responsável, quantas ações tem e quando e por quem foi excluído.',
+      'Clique em "Restaurar" e confirme. O projeto volta para a lista de Projetos, com todas as ações, comentários, riscos e o histórico.',
+      'Um aviso no alto da tela confirma a restauração e leva ao projeto.',
+    ],
+    dicas: [
+      'Excluir um projeto nunca apaga dados: ele só some das telas. Por isso restaurar devolve tudo como estava.',
+      'Não há exclusão definitiva, para a trilha de auditoria nunca se perder.',
+      'Projetos excluídos antes desta tela existir aparecem como "data não registrada".',
+      'Só administradores excluem e restauram projetos. O sistema registra quando e por quem foi restaurado.',
+    ],
+    desde: '2026-11-21',
+    palavras: ['lixeira', 'restaurar', 'excluído', 'recuperar', 'desfazer', 'apagar'],
   },
   {
     id: 'administracao-sistema',
