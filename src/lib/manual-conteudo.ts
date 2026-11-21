@@ -422,6 +422,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     ],
     dicas: [
       'Cada relatório responde a uma pergunta de negócio, escrita no próprio título.',
+      'Embaixo do título de cada relatório há "Como ler este relatório": o que mostra, como ler, de onde vem o número e quando olhar com cuidado. O mesmo texto está no Guia dos relatórios, no fim deste manual, que se pode buscar.',
       'A Auditoria mostra quantas vezes cada prazo foi empurrado (replanejamento) e, em "Replanejamentos por motivo", por que as datas mudam. Cada mudança conta uma vez, mesmo que início e término tenham mudado juntos.',
     ],
     desde: '2026-09-18',

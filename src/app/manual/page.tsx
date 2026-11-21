@@ -3,6 +3,10 @@ import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
 
 import { contaPodeAdministrar } from '@/lib/administracao-servidor'
+import { GRUPOS_RELATORIO, RELATORIOS, ROTULO_GRUPO } from '@/lib/dashboard-catalogo'
+import { hrefDaAba, type AbaDashboard } from '@/lib/dashboard-abas'
+import { GUIA_RELATORIOS } from '@/lib/guia-relatorios'
+import { correspondeABusca } from '@/lib/paginacao'
 import { MENU, MENU_ADMIN } from '@/lib/menu'
 import {
   ROTULO_PERFIL,
@@ -34,6 +38,26 @@ export default async function ManualPage({
   const encontradas = buscarNoManual(secoes, busca)
   const grupos = agruparPorGrupo(encontradas)
   const recentes = busca ? [] : novidades(secoes)
+
+  // Guia dos relatórios: um por relatório do catálogo, agrupado como as abas.
+  // Com busca, só os que combinam com o texto.
+  const guias = GRUPOS_RELATORIO.map((grupo) => ({
+    grupo,
+    relatorios: RELATORIOS.filter(
+      (r) =>
+        r.grupo === grupo &&
+        GUIA_RELATORIOS[r.id] &&
+        correspondeABusca(busca, [
+          r.titulo,
+          r.pergunta,
+          GUIA_RELATORIOS[r.id].mostra,
+          ...GUIA_RELATORIOS[r.id].comoLer,
+          GUIA_RELATORIOS[r.id].deOndeVem,
+          GUIA_RELATORIOS[r.id].alerta,
+        ]),
+    ),
+  })).filter((g) => g.relatorios.length > 0)
+  const totalGuias = guias.reduce((s, g) => s + g.relatorios.length, 0)
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
@@ -71,9 +95,9 @@ export default async function ManualPage({
 
       {busca ? (
         <p className="mt-4 text-sm text-textMuted" role="status">
-          {encontradas.length === 0
+          {encontradas.length + totalGuias === 0
             ? `Nada encontrado para "${busca}". Tente outra palavra.`
-            : `${encontradas.length} ${encontradas.length === 1 ? 'seção encontrada' : 'seções encontradas'} para "${busca}".`}
+            : `${encontradas.length} ${encontradas.length === 1 ? 'seção encontrada' : 'seções encontradas'} e ${totalGuias} ${totalGuias === 1 ? 'relatório' : 'relatórios'} no guia, para "${busca}".`}
         </p>
       ) : null}
 
@@ -112,6 +136,14 @@ export default async function ManualPage({
             </div>
           ))}
         </nav>
+      ) : null}
+
+      {totalGuias > 0 ? (
+        <p className="mt-6 text-sm print:hidden">
+          <a className="font-medium text-accent hover:underline" href="#guia-relatorios">
+            Guia dos relatórios dos Dashboards ({totalGuias})
+          </a>
+        </p>
       ) : null}
 
       <div className="mt-12 space-y-12">
@@ -161,6 +193,52 @@ export default async function ManualPage({
           )
         })}
       </div>
+
+      {totalGuias > 0 ? (
+        <section aria-labelledby="titulo-guia" className="mt-16 scroll-mt-6" id="guia-relatorios">
+          <h2 className="font-display text-lg font-extrabold" id="titulo-guia">
+            Guia dos relatórios dos Dashboards
+          </h2>
+          <p className="mt-1 max-w-3xl text-sm text-textMuted">
+            Para cada relatório: o que mostra, como ler, de onde vem o número e quando olhar com cuidado. O mesmo
+            texto aparece em &quot;Como ler este relatório&quot;, embaixo do título de cada um nos Dashboards.
+          </p>
+          <div className="mt-8 space-y-10">
+            {guias.map(({ grupo, relatorios }) => (
+              <div key={grupo}>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-textMuted">Aba {ROTULO_GRUPO[grupo]}</h3>
+                <div className="mt-3 space-y-6">
+                  {relatorios.map((r) => {
+                    const g = GUIA_RELATORIOS[r.id]
+                    return (
+                      <article className="scroll-mt-6 border-l-2 border-accent pl-4" id={`guia-${r.id}`} key={r.id}>
+                        <h4 className="font-display text-base font-bold">{r.titulo}</h4>
+                        <p className="text-sm italic text-textMuted">{r.pergunta}</p>
+                        <p className="mt-2 text-sm">{g.mostra}</p>
+                        <h5 className="mt-3 text-xs font-bold uppercase tracking-wide text-textMuted">Como ler</h5>
+                        <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-textMuted">
+                          {g.comoLer.map((linha) => (
+                            <li key={linha}>{linha}</li>
+                          ))}
+                        </ul>
+                        <h5 className="mt-3 text-xs font-bold uppercase tracking-wide text-textMuted">De onde vem</h5>
+                        <p className="text-sm text-textMuted">{g.deOndeVem}</p>
+                        <h5 className="mt-3 text-xs font-bold uppercase tracking-wide text-textMuted">Quando olhar com cuidado</h5>
+                        <p className="text-sm text-textMuted">{g.alerta}</p>
+                        <p className="mt-2 text-xs print:hidden">
+                          <Link className="text-accent hover:underline" href={hrefDaAba(grupo as AbaDashboard, {}, r.id)}>
+                            Abrir este relatório
+                          </Link>
+                        </p>
+                      </article>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {!busca ? (
         <section aria-labelledby="titulo-glossario" className="mt-16 scroll-mt-6" id="glossario">

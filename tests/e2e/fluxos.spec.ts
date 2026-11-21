@@ -1544,3 +1544,36 @@ test.describe('dashboards: relatórios de gestão', () => {
     await expect(secao.getByRole('columnheader', { name: 'STI' })).toBeVisible()
   })
 })
+
+test.describe('guia dos relatórios', () => {
+  test('o manual traz o guia de cada relatório e a busca o encontra', async ({ page }) => {
+    await page.goto('/manual')
+    await expect(page.getByRole('link', { name: /Guia dos relatórios dos Dashboards \(\d+\)/ })).toBeVisible()
+    const guia = page.locator('#guia-relatorios')
+    await expect(guia.getByRole('heading', { name: 'Semáforo por equipe', level: 4 })).toBeVisible()
+    await expect(guia.getByRole('heading', { name: 'Maiores atrasos', level: 4 })).toBeVisible()
+    await expect(guia.getByRole('heading', { name: 'Alterações recentes', level: 4 })).toBeVisible()
+    await expect(guia.getByRole('heading', { name: 'Como ler', level: 5 }).first()).toBeVisible()
+    await expect(guia.getByRole('link', { name: 'Abrir este relatório' }).first()).toBeVisible()
+
+    // A busca acha pela regra escrita no guia.
+    await page.getByLabel('Buscar no manual').fill('hachurado')
+    await page.getByRole('button', { name: 'Buscar' }).click()
+    await expect(page.locator('#guia-wins-conclusao')).toBeVisible()
+    await expect(page.locator('#guia-semaforo-equipes')).toHaveCount(0)
+  })
+
+  test('cada relatório tem o "Como ler" recolhido na tela, com o link para o guia', async ({ page }) => {
+    await page.goto('/dashboards?aba=prazos')
+    const secao = page.locator('#ranking-atrasos')
+    const resumo = secao.getByText('Como ler este relatório')
+    await expect(resumo).toBeVisible()
+    await expect(secao.getByText('De onde vem:')).toBeHidden()
+    await resumo.click()
+    await expect(secao.getByText('De onde vem:')).toBeVisible()
+    await expect(secao.getByText(/dias úteis, sem fins de semana/)).toBeVisible()
+    await secao.getByRole('link', { name: 'Ver no Guia dos relatórios do manual' }).click()
+    await expect(page).toHaveURL(/\/manual#guia-ranking-atrasos$/)
+    await expect(page.locator('#guia-ranking-atrasos')).toBeVisible()
+  })
+})

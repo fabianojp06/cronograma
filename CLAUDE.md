@@ -785,6 +785,21 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
   navegador); passo sem alvo visível aparece centralizado.
 
+## Guia dos relatórios dos Dashboards
+
+Cada relatório do catálogo tem uma entrada em `src/lib/guia-relatorios.ts`: **o que
+mostra, como ler, de onde vem o número e quando olhar com cuidado**. É a fonte
+ÚNICA de dois lugares: o "Guia dos relatórios dos Dashboards" do manual
+(`/manual#guia-relatorios`, agrupado pelas abas e com busca) e o "Como ler este
+relatório" recolhido embaixo do título de cada relatório (`DashboardSecao`).
+
+- **Relatório novo no catálogo exige entrada no guia, no mesmo PR**:
+  `guia-relatorios.test.ts` falha se faltar (ou sobrar) uma entrada, ou se algum dos
+  quatro campos estiver vazio. Ao mudar a regra de um relatório, mude o texto.
+- Escreva a REGRA real (não o que parece): confira no código o que entra e o que
+  fica de fora, e como o grupo "sem valor" se chama (`Não informado` nas
+  distribuições; `Sem equipe` nos relatórios de gestão).
+
 ## Relatórios de gestão dos Dashboards (aba Gestão)
 
 A aba **Gestão** é a primeira e a que abre por padrão (`ABA_PADRAO`): cruzamentos
