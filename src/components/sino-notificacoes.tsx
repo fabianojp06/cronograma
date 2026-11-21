@@ -21,7 +21,7 @@ export async function SinoNotificacoes() {
         <path d="M10 19a2 2 0 0 0 4 0" strokeLinecap="round" />
       </svg>
       {naoLidas > 0 ? (
-        <span className="absolute -right-2 -top-2 min-w-4 rounded-full bg-warn px-1 text-center text-[10px] font-bold leading-4 text-onAccent tabular-nums">
+        <span className="absolute -right-2 -top-2 min-w-4 rounded-full bg-warn px-1 text-center text-xs font-bold leading-4 text-onAccent tabular-nums">
           {naoLidas > 99 ? '99+' : naoLidas}
         </span>
       ) : null}

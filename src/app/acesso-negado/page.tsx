@@ -10,7 +10,7 @@ export default async function AcessoNegadoPage({ searchParams }: { searchParams:
 
   return (
     <main className="mx-auto w-full max-w-xl px-6 py-16">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Cronograma CTCEA</p>
+      <p className="text-sm font-medium text-accent">Cronograma CTCEA</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Acesso restrito</h1>
 
       {falhaDeVerificacao ? (

@@ -115,7 +115,7 @@ export function FormularioLote({
           </p>
           <div className="mt-3 max-h-96 overflow-auto border border-border">
             <table className="w-full border-collapse text-sm">
-              <thead className="sticky top-0 bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
+              <thead className="sticky top-0 bg-tableHeadBg text-left text-xs font-semibold text-textMuted">
                 <tr>
                   <th className="w-10 px-3 py-2" scope="col"><span className="sr-only">Marcar</span></th>
                   <th className="px-3 py-2 font-semibold" scope="col">Ação</th>

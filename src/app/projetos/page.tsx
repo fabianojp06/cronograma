@@ -56,7 +56,7 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-accent">
+          <p className="text-sm font-medium text-accent">
             Plano de ação
           </p>
           <h1 className="mt-2 font-display text-2xl font-extrabold">Projetos</h1>

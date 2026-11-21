@@ -74,7 +74,7 @@ export default async function PainelSistemaPage() {
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
       <NavegacaoAdministracao atual="/administracao/sistema" />
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Administração</p>
+      <p className="text-sm font-medium text-accent">Administração</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Painel do sistema</h1>
       <p className="mt-2 max-w-3xl text-sm text-textMuted">
         Saúde, erros, agendador e volume em um lugar. A verificação de disponibilidade
@@ -105,7 +105,7 @@ export default async function PainelSistemaPage() {
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-xl border-collapse text-sm">
               <thead>
-                <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
+                <tr className="bg-tableHeadBg text-left text-xs font-semibold text-textMuted">
                   <th className="px-3 py-2 font-semibold">Origem</th>
                   <th className="px-3 py-2 text-right font-semibold">24 h</th>
                   <th className="px-3 py-2 text-right font-semibold">7 dias</th>
@@ -185,7 +185,7 @@ export default async function PainelSistemaPage() {
             ['Comentários', comentarios],
           ].map(([rotulo, valor]) => (
             <div key={rotulo} className="border-l-2 border-accent bg-surface py-2 pl-4">
-              <dt className="text-xs font-medium uppercase tracking-wide text-textMuted">{rotulo}</dt>
+              <dt className="text-xs font-medium text-textMuted">{rotulo}</dt>
               <dd className="mt-1 font-display text-2xl font-extrabold tabular-nums">{valor}</dd>
             </div>
           ))}

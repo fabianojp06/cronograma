@@ -21,7 +21,7 @@ function Indicador({
 }) {
   const conteudo = (
     <>
-      <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+      <p className="text-xs font-medium text-textMuted">
         {rotulo}
       </p>
       <p className={`mt-1 font-display text-2xl font-extrabold tabular-nums ${corValor}`}>

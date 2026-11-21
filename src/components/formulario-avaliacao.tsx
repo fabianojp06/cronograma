@@ -54,7 +54,7 @@ function GrupoCriterios({
 }) {
   return (
     <fieldset className="border-l-2 border-accent pl-4">
-      <legend className="text-xs font-semibold uppercase tracking-wide text-textMuted">
+      <legend className="text-xs font-semibold text-textMuted">
         {ROTULO_GRUPO[grupo]}
       </legend>
       <div className="mt-3 space-y-4">
@@ -107,7 +107,7 @@ export function FormularioAvaliacao({
       </div>
 
       <fieldset className="border-l-2 border-warn pl-4">
-        <legend className="text-xs font-semibold uppercase tracking-wide text-textMuted">
+        <legend className="text-xs font-semibold text-textMuted">
           GUT — Gravidade, Urgência e Tendência
         </legend>
         <p className="mt-1 text-xs text-textFaint">

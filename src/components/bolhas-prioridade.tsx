@@ -58,15 +58,15 @@ export function BolhasPrioridade({ pontos }: { pontos: PontoPrioridadeAtraso[] }
               ['DESCARTAR', LARGURA - MARGEM.direita - 8, ALTURA - MARGEM.base - 8],
             ] as const
           ).map(([q, tx, ty]) => (
-            <text className="fill-textFaint text-[11px] font-medium uppercase tracking-wide" key={q} textAnchor={tx < LARGURA / 2 ? 'start' : 'end'} x={tx} y={ty}>
+            <text className="fill-textFaint text-xs font-medium" key={q} textAnchor={tx < LARGURA / 2 ? 'start' : 'end'} x={tx} y={ty}>
               {DESCRICAO_QUADRANTE[q].rotulo}
             </text>
           ))}
 
           {[0, 3, 6, 9].map((v) => (
             <g key={v}>
-              <text className="fill-textFaint text-[11px] tabular-nums" textAnchor="middle" x={x(v)} y={ALTURA - MARGEM.base + 16}>{v}</text>
-              <text className="fill-textFaint text-[11px] tabular-nums" textAnchor="end" x={MARGEM.esquerda - 8} y={y(v) + 4}>{v}</text>
+              <text className="fill-textFaint text-xs tabular-nums" textAnchor="middle" x={x(v)} y={ALTURA - MARGEM.base + 16}>{v}</text>
+              <text className="fill-textFaint text-xs tabular-nums" textAnchor="end" x={MARGEM.esquerda - 8} y={y(v) + 4}>{v}</text>
             </g>
           ))}
           <text className="fill-textMuted text-xs" textAnchor="middle" x={MARGEM.esquerda + AREA_X / 2} y={ALTURA - 6}>Esforço →</text>
@@ -83,7 +83,7 @@ export function BolhasPrioridade({ pontos }: { pontos: PontoPrioridadeAtraso[] }
                 r={raio(p.atrasadas, maximo)}
                 strokeWidth={p.critico ? 3 : 1.5}
               />
-              <text className="fill-text text-[11px] font-bold tabular-nums" dy="0.35em" textAnchor="middle" x={x(p.esforco)} y={y(p.beneficio)}>
+              <text className="fill-text text-xs font-bold tabular-nums" dy="0.35em" textAnchor="middle" x={x(p.esforco)} y={y(p.beneficio)}>
                 {i + 1}
               </text>
             </g>
@@ -101,7 +101,7 @@ export function BolhasPrioridade({ pontos }: { pontos: PontoPrioridadeAtraso[] }
       <TabelaEmpilhavel className="mt-4">
         <table className="w-full min-w-[32rem] border-collapse text-sm">
           <thead>
-            <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
+            <tr className="bg-tableHeadBg text-left text-xs font-semibold text-textMuted">
               <th className="px-3 py-2 font-semibold">#</th>
               <th className="px-3 py-2 font-semibold">Projeto</th>
               <th className="px-3 py-2 font-semibold">Equipe</th>
@@ -117,7 +117,7 @@ export function BolhasPrioridade({ pontos }: { pontos: PontoPrioridadeAtraso[] }
                 <td className="px-3 py-2 tabular-nums text-textFaint">{i + 1}</td>
                 <td className="px-3 py-2">
                   <Link className="font-medium hover:text-accent" href={`/priorizacao?projeto=${p.projetoId}`}>{p.nome}</Link>
-                  {p.critico ? <span className="ml-2 rounded border border-warn px-1.5 py-0.5 text-[11px] font-semibold text-warn">alto benefício atrasado</span> : null}
+                  {p.critico ? <span className="ml-2 rounded border border-warn px-1.5 py-0.5 text-xs font-semibold text-warn">alto benefício atrasado</span> : null}
                 </td>
                 <td className="px-3 py-2 text-textMuted">{p.equipe}</td>
                 <td className="px-3 py-2 text-textMuted">{DESCRICAO_QUADRANTE[p.quadrante].rotulo}</td>

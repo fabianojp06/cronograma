@@ -108,7 +108,7 @@ export default async function ResumoSemanalPage({
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
       <NavegacaoAdministracao atual="/resumo-semanal" />
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Administração</p>
+      <p className="text-sm font-medium text-accent">Administração</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Resumo semanal</h1>
 
       {!registro || !conteudo ? (

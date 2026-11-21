@@ -25,7 +25,7 @@ function Faixa({
 }) {
   return (
     <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+      <p className="text-xs font-medium text-textMuted">
         {titulo}
       </p>
       <div className="mt-2 flex items-end gap-1">
@@ -35,7 +35,7 @@ function Faixa({
             className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
             title={`${meses[i]}: ${valor} ação(ões)`}
           >
-            <span className="text-[10px] tabular-nums text-textFaint">
+            <span className="text-xs tabular-nums text-textFaint">
               {valor > 0 ? valor : ''}
             </span>
             {/* Altura em pixels, não em %: a barra é filha de uma coluna de
@@ -77,7 +77,7 @@ export function DashboardCarga({ pontos }: { pontos: PontoCarga[] }) {
           {meses.map((mes) => (
             <span
               key={mes}
-              className="min-w-0 flex-1 text-center text-[10px] text-textFaint"
+              className="min-w-0 flex-1 text-center text-xs text-textFaint"
             >
               {mes}
             </span>

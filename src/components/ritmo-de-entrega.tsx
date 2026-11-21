@@ -40,7 +40,7 @@ export function RitmoDeEntrega({ semanas }: { semanas: SemanaDoRitmo[] }) {
           {[0, 0.5, 1].map((f) => (
             <g key={f}>
               <line className="stroke-borderSoft" strokeWidth={1} vectorEffect="non-scaling-stroke" x1={MARGEM.esquerda} x2={LARGURA - MARGEM.direita} y1={y(maximo * f)} y2={y(maximo * f)} />
-              <text className="fill-textFaint text-[11px] tabular-nums" textAnchor="end" x={MARGEM.esquerda - 6} y={y(maximo * f) + 4}>{Math.round(maximo * f)}</text>
+              <text className="fill-textFaint text-xs tabular-nums" textAnchor="end" x={MARGEM.esquerda - 6} y={y(maximo * f) + 4}>{Math.round(maximo * f)}</text>
             </g>
           ))}
           {semanas.map((s, i) => (
@@ -48,9 +48,9 @@ export function RitmoDeEntrega({ semanas }: { semanas: SemanaDoRitmo[] }) {
               <title>{`Semana de ${dm(s.inicio)}: ${s.concluidas} concluídas, ${s.criadas} criadas`}</title>
               <rect className="fill-realizado" height={Math.max(0, MARGEM.topo + AREA_Y - y(s.concluidas))} width={largura} x={cx(i) - largura / 2} y={y(s.concluidas)} />
               {s.concluidas > 0 ? (
-                <text className="fill-text text-[11px] font-semibold tabular-nums" textAnchor="middle" x={cx(i)} y={y(s.concluidas) - 4}>{s.concluidas}</text>
+                <text className="fill-text text-xs font-semibold tabular-nums" textAnchor="middle" x={cx(i)} y={y(s.concluidas) - 4}>{s.concluidas}</text>
               ) : null}
-              <text className="fill-textFaint text-[10px] tabular-nums" textAnchor="middle" x={cx(i)} y={ALTURA - 12}>{dm(s.inicio)}</text>
+              <text className="fill-textFaint text-xs tabular-nums" textAnchor="middle" x={cx(i)} y={ALTURA - 12}>{dm(s.inicio)}</text>
             </g>
           ))}
           <path className="stroke-textMuted" d={linha((s) => s.mediaMovel)} fill="none" strokeDasharray="5 4" strokeWidth={2} />

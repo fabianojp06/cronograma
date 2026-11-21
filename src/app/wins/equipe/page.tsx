@@ -95,7 +95,7 @@ export default async function EquipePage({ searchParams }: PageProps<'/wins/equi
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Equipe</p>
+      <p className="text-sm font-medium text-accent">Equipe</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">
         Card WIN — {rotuloSemana(semana)}
       </h1>

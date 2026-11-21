@@ -38,7 +38,7 @@ export default async function RegistroErrosPage() {
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
       <NavegacaoAdministracao atual="/administracao/erros" />
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Administração</p>
+      <p className="text-sm font-medium text-accent">Administração</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Registro de erros</h1>
       <p className="mt-2 max-w-3xl text-sm text-textMuted">
         Falhas do sistema em produção, guardadas por {DIAS_DE_RETENCAO} dias — o log da

@@ -61,7 +61,7 @@ export default async function ManualPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Cronograma CTCEA</p>
+      <p className="text-sm font-medium text-accent">Cronograma CTCEA</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Manual do usuário</h1>
       <p className="mt-2 max-w-2xl text-sm text-textMuted">
         Passo a passo de cada tela. Prefere ver na prática? Clique em <strong>Tour</strong> no topo
@@ -123,7 +123,7 @@ export default async function ManualPage({
         <nav aria-label="Índice do manual" className="mt-8 grid gap-6 sm:grid-cols-2 print:hidden">
           {grupos.map(({ grupo, secoes }) => (
             <div key={grupo}>
-              <h2 className="text-sm font-bold uppercase tracking-wide text-textMuted">{grupo}</h2>
+              <h2 className="text-sm font-bold text-textMuted">{grupo}</h2>
               <ul className="mt-2 space-y-1 text-sm">
                 {secoes.map((s) => (
                   <li key={s.id}>
@@ -206,7 +206,7 @@ export default async function ManualPage({
           <div className="mt-8 space-y-10">
             {guias.map(({ grupo, relatorios }) => (
               <div key={grupo}>
-                <h3 className="text-sm font-bold uppercase tracking-wide text-textMuted">Aba {ROTULO_GRUPO[grupo]}</h3>
+                <h3 className="text-sm font-bold text-textMuted">Aba {ROTULO_GRUPO[grupo]}</h3>
                 <div className="mt-3 space-y-6">
                   {relatorios.map((r) => {
                     const g = GUIA_RELATORIOS[r.id]
@@ -215,15 +215,15 @@ export default async function ManualPage({
                         <h4 className="font-display text-base font-bold">{r.titulo}</h4>
                         <p className="text-sm italic text-textMuted">{r.pergunta}</p>
                         <p className="mt-2 text-sm">{g.mostra}</p>
-                        <h5 className="mt-3 text-xs font-bold uppercase tracking-wide text-textMuted">Como ler</h5>
+                        <h5 className="mt-3 text-xs font-bold text-textMuted">Como ler</h5>
                         <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-textMuted">
                           {g.comoLer.map((linha) => (
                             <li key={linha}>{linha}</li>
                           ))}
                         </ul>
-                        <h5 className="mt-3 text-xs font-bold uppercase tracking-wide text-textMuted">De onde vem</h5>
+                        <h5 className="mt-3 text-xs font-bold text-textMuted">De onde vem</h5>
                         <p className="text-sm text-textMuted">{g.deOndeVem}</p>
-                        <h5 className="mt-3 text-xs font-bold uppercase tracking-wide text-textMuted">Quando olhar com cuidado</h5>
+                        <h5 className="mt-3 text-xs font-bold text-textMuted">Quando olhar com cuidado</h5>
                         <p className="text-sm text-textMuted">{g.alerta}</p>
                         <p className="mt-2 text-xs print:hidden">
                           <Link className="text-accent hover:underline" href={hrefDaAba(grupo as AbaDashboard, {}, r.id)}>

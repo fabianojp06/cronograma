@@ -9,7 +9,7 @@ export default async function NovoModeloPage() {
   const podeEditar = await sessaoPodeEditar()
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Modelos</p>
+      <p className="text-sm font-medium text-accent">Modelos</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Novo modelo</h1>
       <p className="mt-2 max-w-2xl text-sm text-textMuted">
         Monte o esqueleto de um projeto que se repete: as ações, em ordem, com quando começam e

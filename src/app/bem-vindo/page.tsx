@@ -56,7 +56,7 @@ export default async function BemVindoPage({
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Cronograma CTCEA</p>
+      <p className="text-sm font-medium text-accent">Cronograma CTCEA</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Bem-vindo ao sistema</h1>
       <p className="mt-2 max-w-2xl text-sm text-textMuted">
         Antes de continuar, diga quem é você. Este cadastro é feito uma vez só e é o que

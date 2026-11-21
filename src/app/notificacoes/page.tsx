@@ -110,7 +110,7 @@ export default async function NotificacoesPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Cronograma CTCEA</p>
+      <p className="text-sm font-medium text-accent">Cronograma CTCEA</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Notificações</h1>
       <p className="mt-2 text-sm text-textMuted">
         Comentários em que você foi marcado ou em ações pelas quais você responde, e pedidos e decisões de liberação de início de ações com dependência.

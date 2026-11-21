@@ -27,7 +27,7 @@ function Grupo({
 }) {
   return (
     <fieldset className="border-l-2 border-accent pl-4">
-      <legend className="text-xs font-semibold uppercase tracking-wide text-textMuted">
+      <legend className="text-xs font-semibold text-textMuted">
         {ROTULO_GRUPO[grupo]}
       </legend>
       <div className="mt-3 space-y-3">

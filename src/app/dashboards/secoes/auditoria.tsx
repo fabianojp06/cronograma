@@ -35,7 +35,7 @@ export function SecoesAuditoria({
         <DashboardSecao relatorio={rel('replanejamentos')}>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="border-l-2 border-accent bg-surface py-2 pl-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+              <p className="text-xs font-medium text-textMuted">
                 Alterações registradas
               </p>
               <p className="mt-1 font-display text-2xl font-extrabold tabular-nums">
@@ -44,7 +44,7 @@ export function SecoesAuditoria({
               <p className="text-xs text-textFaint">últimas 500</p>
             </div>
             <div className="border-l-2 border-warn bg-surface py-2 pl-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+              <p className="text-xs font-medium text-textMuted">
                 Replanejamentos
               </p>
               <p className="mt-1 font-display text-2xl font-extrabold tabular-nums">
@@ -55,7 +55,7 @@ export function SecoesAuditoria({
               </p>
             </div>
             <div className="border-l-2 border-borderSoft bg-surface py-2 pl-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+              <p className="text-xs font-medium text-textMuted">
                 Autores distintos
               </p>
               <p className="mt-1 font-display text-2xl font-extrabold tabular-nums">
@@ -73,7 +73,7 @@ export function SecoesAuditoria({
             <TabelaEmpilhavel className="mt-4">
               <table className="w-full min-w-2xl border-collapse text-sm">
                 <thead>
-                  <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
+                  <tr className="bg-tableHeadBg text-left text-xs font-semibold text-textMuted">
                     <th className="px-3 py-2 font-semibold">Ação</th>
                     <th className="px-3 py-2 font-semibold">Projeto</th>
                     <th className="px-3 py-2 text-right font-semibold">Vezes</th>

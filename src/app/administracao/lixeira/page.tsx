@@ -63,7 +63,7 @@ export default async function LixeiraPage({
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
       <NavegacaoAdministracao atual="/administracao/lixeira" />
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Administração</p>
+      <p className="text-sm font-medium text-accent">Administração</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Lixeira</h1>
       <p className="mt-2 max-w-2xl text-sm text-textMuted">
         Projetos excluídos. Restaurar devolve o projeto à lista, com todas as ações, comentários,

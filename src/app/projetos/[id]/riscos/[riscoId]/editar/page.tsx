@@ -40,7 +40,7 @@ export default async function EditarRiscoPage({ params }: { params: Promise<{ id
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Riscos e bloqueios</p>
+      <p className="text-sm font-medium text-accent">Riscos e bloqueios</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Editar risco ou bloqueio</h1>
       <p className="mt-2 text-sm text-textMuted">
         Projeto{' '}

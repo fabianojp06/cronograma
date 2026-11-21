@@ -25,7 +25,7 @@ export function ResumoAtencao({
               }`}
               href={hrefDaAba(item.aba, parametros, item.ancora)}
             >
-              <span className="block text-xs font-medium uppercase tracking-wide text-textMuted">
+              <span className="block text-xs font-medium text-textMuted">
                 {item.rotulo}
               </span>
               <span

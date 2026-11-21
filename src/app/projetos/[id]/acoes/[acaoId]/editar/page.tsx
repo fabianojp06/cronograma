@@ -178,7 +178,7 @@ export default async function EditarAcaoPage({
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">
+      <p className="text-sm font-medium text-accent">
         {acao.projeto.referencia ?? 'Projeto'}
       </p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">
