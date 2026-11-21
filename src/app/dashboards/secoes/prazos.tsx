@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { TabelaEmpilhavel } from '@/components/tabela-empilhavel'
 
 import { DashboardSecao, SemDados } from '@/components/dashboard-secao'
 import { formatarDataBR } from '@/lib/formatacao'
@@ -71,7 +72,7 @@ export function SecoesPrazos({
           {atrasos.length === 0 ? (
             <SemDados>Nenhuma ação em atraso aberto neste recorte.</SemDados>
           ) : (
-            <div className="overflow-x-auto">
+            <TabelaEmpilhavel >
               <table className="w-full min-w-2xl border-collapse text-sm">
                 <thead>
                   <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
@@ -110,7 +111,7 @@ export function SecoesPrazos({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TabelaEmpilhavel>
           )}
         </DashboardSecao>
 

@@ -10,6 +10,7 @@ import { AbasDashboard } from '@/components/abas-dashboard'
 import { ResumoAtencao } from '@/components/resumo-atencao'
 import { DashboardSecao, SemDados } from '@/components/dashboard-secao'
 import { FiltrosProjetos } from '@/components/filtros-projetos'
+import { FiltrosRecolhiveis } from '@/components/filtros-recolhiveis'
 import { IndicadoresPainel } from '@/components/indicadores-painel'
 import {
   DIMENSOES,
@@ -105,6 +106,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
       </p>
 
       <div className="print:hidden">
+      <FiltrosRecolhiveis ativos={Object.keys(parametros).length}>
       <FiltrosProjetos
         filtros={filtros}
         equipes={opcoesDistintas(valores.map((v) => v.equipe))}
@@ -114,6 +116,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
         periodo={periodo}
         extras={aba === 'PANORAMA' ? undefined : { aba: slugDaAba(aba) }}
       />
+      </FiltrosRecolhiveis>
       </div>
       <BarraExportacao mostrarExcel={false} />
 

@@ -17,14 +17,14 @@ export function AbasDashboard({
 }) {
   return (
     <nav aria-label="Grupos de relatórios" className="mt-8 print:hidden">
-      <ul className="flex flex-wrap gap-x-1 gap-y-1 border-b border-border">
+      <ul className="flex gap-x-1 overflow-x-auto border-b border-border lg:flex-wrap">
         {listarAbas(ROTULO_GRUPO).map((item) => {
           const atual = item.aba === ativa
           return (
-            <li key={item.aba}>
+            <li className="shrink-0" key={item.aba}>
               <Link
                 aria-current={atual ? 'page' : undefined}
-                className={`-mb-px inline-flex items-baseline gap-1.5 border-b-2 px-3 py-2 text-sm ${
+                className={`-mb-px inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm ${
                   atual
                     ? 'border-accent font-semibold text-text'
                     : 'border-transparent text-textMuted hover:text-accent'

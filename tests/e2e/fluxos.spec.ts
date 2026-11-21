@@ -1402,3 +1402,65 @@ test.describe('links e anexos da ação', () => {
     await expect(page.getByRole('button', { name: 'Editar', exact: true })).toHaveCount(0)
   })
 })
+
+test.describe('dashboards no celular e no tablet', () => {
+  const ABAS = ['', 'distribuicao', 'prazos', 'tempo', 'qualidade', 'wins', 'auditoria', 'todas']
+  const TELAS = [
+    { nome: 'celular', largura: 390, altura: 844 },
+    { nome: 'tablet', largura: 768, altura: 1024 },
+  ]
+
+  for (const tela of TELAS) {
+    test(`nenhuma aba estoura a largura no ${tela.nome}`, async ({ page }) => {
+      await page.setViewportSize({ width: tela.largura, height: tela.altura })
+      for (const aba of ABAS) {
+        await page.goto(`/dashboards${aba ? `?aba=${aba}` : ''}`)
+        await expect(page.getByRole('heading', { level: 1, name: 'Dashboards' })).toBeVisible()
+        const sobra = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+        expect(sobra, `aba "${aba || 'panorama'}" no ${tela.nome} rola para o lado`).toBeLessThanOrEqual(0)
+      }
+    })
+  }
+
+  test('no celular: menu em botão, filtros recolhidos e tabela em cartões', async ({ page }) => {
+    await consultar(
+      `INSERT INTO "Acao" ("id","projetoId","numero","descricao","previstoInicio","previstoTermino","updatedAt")
+       VALUES (gen_random_uuid()::text,$1,2,'Outra atrasada','2026-02-02','2026-02-10',now())`,
+      [projetoId],
+    )
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/dashboards?aba=prazos')
+
+    // Menu: o menu em linha some e o botão abre a grade; escolher uma tela fecha.
+    await expect(page.getByRole('navigation', { name: 'Navegação principal' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Menu' }).click()
+    const menu = page.getByRole('navigation', { name: 'Navegação principal' })
+    await expect(menu.getByRole('link', { name: 'Reunião' })).toBeVisible()
+    await menu.getByRole('link', { name: 'Projetos', exact: true }).click()
+    await expect(page).toHaveURL(/\/projetos$/)
+    await expect(page.getByRole('navigation', { name: 'Navegação principal' })).toHaveCount(0)
+
+    // Filtros: recolhidos até apertar o botão.
+    await page.goto('/dashboards?aba=prazos&equipe=STI')
+    await expect(page.getByRole('button', { name: /Filtros/ })).toContainText('1 ativo')
+    await expect(page.getByLabel('Equipe', { exact: true })).toBeHidden()
+    await page.getByRole('button', { name: /Filtros/ }).click()
+    await expect(page.getByLabel('Equipe', { exact: true })).toBeVisible()
+
+    // Tabela vira cartões, cada valor com o nome da sua coluna.
+    const celula = page.getByRole('cell').filter({ hasText: 'Outra atrasada' }).first()
+    await expect(celula).toHaveAttribute('data-rotulo', 'Ação')
+    await expect(celula).toBeVisible()
+    await expect(page.locator('thead').first()).not.toBeInViewport()
+  })
+
+  test('no computador: menu em linha, filtros à vista e tabela normal', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/dashboards?aba=prazos')
+    await expect(page.getByRole('button', { name: 'Menu' })).toBeHidden()
+    await expect(page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Projetos', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Filtros/ })).toBeHidden()
+    await expect(page.getByLabel('Equipe', { exact: true })).toBeVisible()
+    await expect(page.locator('thead th', { hasText: 'Ação' }).first()).toBeVisible()
+  })
+})

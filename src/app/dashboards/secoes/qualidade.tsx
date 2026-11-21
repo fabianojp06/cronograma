@@ -1,4 +1,5 @@
 import { DashboardSecao } from '@/components/dashboard-secao'
+import { TabelaEmpilhavel } from '@/components/tabela-empilhavel'
 import { totalPendencias, type apurarPendencias } from '@/lib/dashboard-qualidade'
 import { rel } from './rel'
 
@@ -13,7 +14,7 @@ export function SecaoQualidade({
           <p className="mb-4 text-sm text-textMuted">
             {totalPendencias(pendencias)} ocorrência(s) no recorte atual.
           </p>
-          <div className="overflow-x-auto">
+          <TabelaEmpilhavel >
             <table className="w-full min-w-2xl border-collapse text-sm">
               <thead>
                 <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
@@ -47,7 +48,7 @@ export function SecaoQualidade({
                 ))}
               </tbody>
             </table>
-          </div>
+          </TabelaEmpilhavel>
         </DashboardSecao>
     </>
   )

@@ -46,9 +46,12 @@ export function DashboardEvolucao({ pontos }: { pontos: PontoEvolucao[] }) {
 
   return (
     <figure className="m-0">
+      {/* No celular o gráfico ganha largura mínima e rola de lado: espremido na
+          largura da tela, os rótulos ficariam ilegíveis. */}
+      <div className="overflow-x-auto">
       <svg
         viewBox={`0 0 ${LARGURA} ${ALTURA}`}
-        className="h-auto w-full"
+        className="h-auto w-full min-w-[34rem]"
         role="img"
         aria-label="Ações acumuladas previstas e realizadas, mês a mês"
       >
@@ -155,6 +158,8 @@ export function DashboardEvolucao({ pontos }: { pontos: PontoEvolucao[] }) {
           </>
         ) : null}
       </svg>
+      </div>
+      <p className="mt-1 text-xs text-textFaint md:hidden">Arraste o gráfico para o lado para ver o período inteiro.</p>
 
       <figcaption className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-textMuted">
         <span className="flex items-center gap-2">
