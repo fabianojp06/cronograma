@@ -4,10 +4,12 @@ import { auth } from "@clerk/nextjs/server";
 
 import { AlternadorTema } from "@/components/alternador-tema";
 import { SinoNotificacoes } from "@/components/sino-notificacoes";
+import { MenuAjuda } from "@/components/menu-ajuda";
 import { MenuCelular } from "@/components/menu-celular";
-import { BotaoTour, TourGuiado } from "@/components/tour-guiado";
+import { NavegacaoPrincipal } from "@/components/navegacao-principal";
+import { TourGuiado } from "@/components/tour-guiado";
 import { contaPodeAdministrar } from "@/lib/administracao-servidor";
-import { alvoDoMenu, MENU, ROTA_ADMINISTRACAO } from "@/lib/menu";
+import { GRUPO_ADMINISTRACAO, GRUPOS_DO_MENU } from "@/lib/menu";
 
 /**
  * O item "Administração" só aparece para quem administra. Se a consulta falhar,
@@ -26,61 +28,31 @@ async function sessaoAdministra(): Promise<boolean> {
 /** Barra superior fixa: identidade do sistema, menu e sessão do usuário. */
 export async function Cabecalho() {
   const administrador = await sessaoAdministra();
+  // Os grupos do menu; a Administração só entra para quem administra.
+  const grupos = administrador ? [...GRUPOS_DO_MENU, GRUPO_ADMINISTRACAO] : GRUPOS_DO_MENU;
   return (
-    <header className="relative print:hidden flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-surface px-4 py-3 sm:px-6 lg:gap-x-8">
+    <header className="relative print:hidden flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-surface px-4 py-2 sm:px-6 lg:gap-x-6">
       <Link href="/" className="font-display text-sm font-extrabold tracking-tight">
         CTCEA <span className="text-accent">Cronograma</span>
       </Link>
 
       {/* O menu só faz sentido com sessão — as telas de domínio são fechadas. */}
       <Show when="signed-in">
-        <MenuCelular
-          administracao={administrador ? { href: ROTA_ADMINISTRACAO, rotulo: "Administração" } : null}
-          itens={MENU}
-        />
-        <nav aria-label="Navegação principal" className="hidden items-center gap-6 lg:flex">
-          {MENU.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              data-tour={alvoDoMenu(item.href)}
-              className="text-sm text-textMuted hover:text-accent"
-            >
-              {item.rotulo}
-            </Link>
-          ))}
-          {administrador ? (
-            <Link
-              href={ROTA_ADMINISTRACAO}
-              data-tour="administracao"
-              className="rounded-md border border-border px-2 py-0.5 text-sm text-textMuted hover:border-accent hover:text-accent"
-            >
-              Administração
-            </Link>
-          ) : null}
-        </nav>
+        <MenuCelular grupos={grupos} />
+        <NavegacaoPrincipal grupos={grupos} />
       </Show>
 
-      <div className="ml-auto flex items-center gap-4">
-        {/* Fora do <Show>: a escolha de tema vale também na tela de login. */}
-        <span data-tour="tema" className="inline-flex">
-          <AlternadorTema />
-        </span>
+      <div className="ml-auto flex items-center gap-2">
         <Show when="signed-in">
-          <Link
-            href="/manual"
-            data-tour="manual"
-            className="text-sm text-textMuted hover:text-accent"
-          >
-            Manual
-          </Link>
-          <BotaoTour administrador={administrador} />
           <span data-tour="sino" className="inline-flex">
             <SinoNotificacoes />
           </span>
+          <MenuAjuda administrador={administrador} />
           <UserButton />
         </Show>
         <Show when="signed-out">
+          {/* Fora da sessão o tema continua à mão (a tela de login também o respeita). */}
+          <AlternadorTema />
           <SignInButton mode="modal">
             <button className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-onAccent">
               Entrar

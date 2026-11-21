@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest'
 
-import { MENU, MENU_ADMIN, alvoDoMenu } from './menu'
+import { GRUPO_ADMINISTRACAO, GRUPOS_DO_MENU, alvoDoGrupo, alvoDoMenu } from './menu'
 import { PASSOS_TOUR, passosDoTour, posicionarBalao } from './tour'
 
 describe('passos do tour', () => {
-  it('cada item do menu tem o seu passo', () => {
+  it('o Painel e cada grupo do menu têm o seu passo, e a Administração só para o administrador', () => {
     const alvos = new Set(PASSOS_TOUR.map((p) => p.alvo))
-    for (const item of MENU) expect(alvos, `falta passo do menu ${item.href}`).toContain(alvoDoMenu(item.href))
+    expect(alvos).toContain(alvoDoMenu('/'))
+    for (const g of GRUPOS_DO_MENU) expect(alvos, `falta passo do grupo ${g.id}`).toContain(alvoDoGrupo(g.id))
+    const admin = PASSOS_TOUR.find((p) => p.alvo === alvoDoGrupo(GRUPO_ADMINISTRACAO.id))
+    expect(admin?.somenteAdmin).toBe(true)
+  })
+
+  it('o menu de ajuda e o sino também têm passo', () => {
+    const alvos = PASSOS_TOUR.map((p) => p.alvo)
+    expect(alvos).toContain('ajuda')
+    expect(alvos).toContain('sino')
   })
 
   it('alvos são únicos, e todo passo tem título e texto', () => {
@@ -18,10 +27,7 @@ describe('passos do tour', () => {
     }
   })
 
-  it('o passo da administração existe e só aparece para administrador', () => {
-    expect(MENU_ADMIN.length).toBeGreaterThan(0)
-    const admin = passosDoTour(true).find((p) => p.alvo === 'administracao')
-    expect(admin?.somenteAdmin).toBe(true)
+  it('quem não administra não vê o passo de administração', () => {
     expect(passosDoTour(false).some((p) => p.somenteAdmin)).toBe(false)
     expect(passosDoTour(true).length).toBe(passosDoTour(false).length + 1)
   })

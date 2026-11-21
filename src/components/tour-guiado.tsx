@@ -91,17 +91,9 @@ function ir(novo: number) {
 
 const instantaneoEstado = () => estado
 
-/** Botão "Tour" do cabeçalho. */
-export function BotaoTour({ administrador }: { administrador: boolean }) {
-  return (
-    <button
-      className="text-sm text-textMuted hover:text-accent"
-      onClick={() => abrir(passosDoTour(administrador))}
-      type="button"
-    >
-      Tour
-    </button>
-  )
+/** Começa o tour com os passos do perfil (chamado pelo menu "Ajuda e preferências"). */
+export function iniciarTour(administrador: boolean) {
+  abrir(passosDoTour(administrador))
 }
 
 /**
