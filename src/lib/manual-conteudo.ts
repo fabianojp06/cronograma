@@ -117,7 +117,8 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     rotas: ['/projetos/[id]'],
     passos: [
       'No cabeçalho, veja o percentual concluído e o status do projeto (calculados sobre todas as ações).',
-      'No Gantt, a barra de contorno é o Previsto, a barra cheia é o Realizado, e a linha vertical marca "hoje". A grade é semanal e se navega por Mês ou Trimestre, pelos controles do gráfico.',
+      'No Gantt, a barra de contorno é o Previsto e a barra cheia, mais fina, é o Realizado desenhado POR CIMA dele: dá para ver de relance se o realizado saiu do previsto. A linha vertical com a etiqueta "Hoje" marca o dia de hoje. As barras são posicionadas pelo dia, não só pela semana. A grade se navega por Mês ou Trimestre, pelos controles do gráfico.',
+      'As setas ligam as dependências: saem do fim da ação que precisa terminar e chegam ao início da que depende dela (em laranja quando a dependente está bloqueada). O losango marca o prazo de um risco ou bloqueio ABERTO ligado à ação (cheio e laranja quando o prazo venceu; maior quando o impacto é alto); passe o mouse para ler o título. Setas e losangos só aparecem quando as duas pontas estão na janela e nas ações mostradas.',
       'Clique na descrição de uma ação para editá-la. Use "Buscar" para achar por descrição, responsável ou número; são 40 ações por página.',
       '"Foto em uma data" mostra o projeto como estava no fim de um dia passado, reconstruído do histórico. Escolha a data no seletor; é somente leitura.',
       'Ações com dependência mostram o selo "bloqueada por #N" enquanto a predecessora não termina.',

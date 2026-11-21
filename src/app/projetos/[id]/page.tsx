@@ -12,6 +12,7 @@ import { corteDaFoto, fotoDoProjeto, lerDataDaFoto } from '@/lib/foto-em-data'
 import { formatarDataBR } from '@/lib/formatacao'
 import { contaPodeAdministrar, sessaoPodeEditar } from '@/lib/administracao-servidor'
 import { SecaoRiscos } from '@/components/secao-riscos'
+import { riscoAberto } from '@/lib/risco-projeto'
 import {
   correspondeABusca,
   lerPagina,
@@ -39,7 +40,7 @@ export default async function ProjetoPage({
   const riscosDoProjeto = await prisma.riscoProjeto.findMany({
     where: { projetoId: id },
     select: {
-      id: true, tipo: true, titulo: true, descricao: true, impacto: true, status: true, prazo: true,
+      id: true, acaoId: true, tipo: true, titulo: true, descricao: true, impacto: true, status: true, prazo: true,
       plano: true, criadoPor: true, criadoEm: true,
       responsavel: { select: { nome: true } },
       acao: { select: { numero: true } },
@@ -164,6 +165,18 @@ export default async function ProjetoPage({
     }),
     // Na foto não há link de edição: a ação editada é a de hoje, não a da foto.
     href: em === null ? `/projetos/${projeto.id}/acoes/${acao.id}/editar` : undefined,
+    // Os riscos abertos que afetam a ação viram losangos no prazo deles. Na foto não: o risco é de hoje.
+    riscos:
+      em === null
+        ? riscosDoProjeto
+            .filter((r) => r.acaoId === acao.id && riscoAberto(r.status) && r.prazo !== null)
+            .map((r) => ({ id: r.id, titulo: r.titulo, tipo: r.tipo as 'RISCO' | 'BLOQUEIO', impacto: r.impacto as 'BAIXO' | 'MEDIO' | 'ALTO', prazo: r.prazo }))
+        : [],
+  }))
+  const dependenciasDoGantt = vinculos.map((v) => ({
+    de: v.predecessora.id,
+    para: v.acaoId,
+    bloqueada: acoes.find((a) => a.id === v.acaoId)?.dependencia?.bloqueada ?? false,
   }))
   const ontem = new Date(agora.getTime() - 86_400_000).toISOString().slice(0, 10)
 
@@ -266,7 +279,7 @@ export default async function ProjetoPage({
           Nenhuma ação corresponde a “{busca}”.
         </p>
       ) : (
-        <GanttProjeto acoes={acoes} hoje={hoje} />
+        <GanttProjeto acoes={acoes} hoje={hoje} dependencias={dependenciasDoGantt} />
       )}
       <Paginacao
         nome="ações"
