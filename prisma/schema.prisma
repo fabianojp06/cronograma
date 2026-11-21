@@ -88,6 +88,7 @@ model Acao {
   predecessoraDe DependenciaAcao[] @relation("Predecessora")
   liberacoes  LiberacaoAcao[]
   riscos      RiscoProjeto[]
+  links       LinkAcao[]
 
   @@unique([projetoId, numero])
   @@index([projetoId])
@@ -549,4 +550,22 @@ model RiscoHistorico {
   alteradoPor String?
 
   @@index([riscoId, alteradoEm])
+}
+
+/// Link de apoio de uma ação (ata, contrato, planilha...). Só o ENDEREÇO: o
+/// arquivo mora onde a CTCEA já guarda, e quem pode abri-lo é decidido lá.
+/// `tipo`: ATA|CONTRATO|PLANILHA|DOCUMENTO|OUTRO (ver `link-acao.ts`).
+model LinkAcao {
+  id           String   @id @default(cuid())
+  acaoId       String
+  acao         Acao     @relation(fields: [acaoId], references: [id], onDelete: Cascade)
+  titulo       String
+  url          String
+  tipo         String
+  /// `userId` do Clerk de quem acrescentou.
+  criadoPor    String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([acaoId])
 }
