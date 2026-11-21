@@ -36,6 +36,13 @@ model Projeto {
   comentario     String?
   prioridade     Int?
   ativo          Boolean  @default(true) // exclusão lógica — nunca DELETE físico
+  /// Quando e por quem foi excluído por último (`userId` do Clerk); nulo nos projetos
+  /// excluídos antes desta coluna existir.
+  excluidoEm     DateTime?
+  excluidoPor    String?
+  /// Quando e por quem foi restaurado da lixeira pela última vez.
+  restauradoEm   DateTime?
+  restauradoPor  String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

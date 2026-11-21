@@ -14,6 +14,26 @@ export const PALAVRA_CONFIRMACAO = 'EXCLUIR'
 /** Dados gravados no Projeto ao excluir — a única mutação permitida aqui. */
 export const DADOS_EXCLUSAO_LOGICA = { ativo: false } as const
 
+/**
+ * O que a exclusão grava: o `ativo = false` e QUANDO e POR QUEM, para a lixeira
+ * poder dizer. Excluir de novo um projeto já restaurado vale como a última
+ * exclusão (a restauração anterior é apagada do registro).
+ */
+export function dadosDaExclusao(usuario: string, agora: Date = new Date()) {
+  return {
+    ...DADOS_EXCLUSAO_LOGICA,
+    excluidoEm: agora,
+    excluidoPor: usuario,
+    restauradoEm: null,
+    restauradoPor: null,
+  }
+}
+
+/** O que a restauração grava: volta a `ativo` e registra quando e por quem. */
+export function dadosDaRestauracao(usuario: string, agora: Date = new Date()) {
+  return { ativo: true, restauradoEm: agora, restauradoPor: usuario }
+}
+
 /** Fonte aceita: `FormData` ou um objeto simples (útil em teste). */
 export type EntradaExclusao =
   | FormData

@@ -905,7 +905,7 @@ test.describe('menu por perfil', () => {
     await expect(page).toHaveURL(/\/administracao$/)
 
     const lista = page.getByRole('main')
-    for (const nome of ['Colaboradores', 'Pesos da priorização', 'Resumo semanal', 'Painel do sistema', 'Registro de erros']) {
+    for (const nome of ['Colaboradores', 'Pesos da priorização', 'Resumo semanal', 'Lixeira', 'Painel do sistema', 'Registro de erros']) {
       await expect(lista.getByRole('link', { name: nome, exact: true }).first()).toBeVisible()
     }
 
@@ -1274,5 +1274,69 @@ test.describe('motivo do replanejamento', () => {
       [acaoId],
     )
     expect(motivo).toBe('PRIORIDADE')
+  })
+})
+
+test.describe('lixeira de projetos', () => {
+  const tornarAdministradora = () =>
+    consultar(`UPDATE "Colaborador" SET "administrador" = true WHERE "clerkUserId" = 'user_e2e'`)
+
+  test('o administrador vê o excluído, restaura com confirmação e o projeto volta à lista', async ({ page }) => {
+    await tornarAdministradora()
+    await consultar(
+      `UPDATE "Projeto" SET "ativo" = false, "excluidoEm" = now(), "excluidoPor" = 'user_e2e' WHERE "id" = $1`,
+      [projetoId],
+    )
+    // Sem o resumo semanal no caminho: dispensa o popup do administrador.
+    await page.goto('/')
+    await page.getByRole('dialog', { name: 'Resumo da semana' }).getByRole('button', { name: 'Fechar' }).click()
+    await expect(page.getByRole('link', { name: 'Projeto E2E' })).toHaveCount(0)
+
+    await page.goto('/administracao/lixeira')
+    await expect(page.getByRole('heading', { name: 'Lixeira' })).toBeVisible()
+    await expect(page.getByText('Projeto E2E')).toBeVisible()
+    await expect(page.getByText(/Excluído em .* por Ana Souza/)).toBeVisible()
+    await expect(page.getByText('1 ação')).toBeVisible()
+
+    // Cancelar não restaura.
+    page.once('dialog', (d) => d.dismiss())
+    await page.getByRole('button', { name: 'Restaurar o projeto Projeto E2E' }).click()
+    await expect(page.getByText('Projeto E2E')).toBeVisible()
+
+    page.once('dialog', (d) => d.accept())
+    await page.getByRole('button', { name: 'Restaurar o projeto Projeto E2E' }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'restaurado.' })).toBeVisible()
+    await expect(page.getByText('A lixeira está vazia.')).toBeVisible()
+
+    await page.goto('/projetos')
+    await expect(page.getByRole('link', { name: 'Projeto E2E' }).first()).toBeVisible()
+    const [{ ativo, restauradoPor }] = await consultar<{ ativo: boolean; restauradoPor: string | null }>(
+      `SELECT "ativo","restauradoPor" FROM "Projeto" WHERE "id" = $1`,
+      [projetoId],
+    )
+    expect(ativo).toBe(true)
+    expect(restauradoPor).toBe('user_e2e')
+  })
+
+  test('projeto excluído antes do registro aparece como "data não registrada"; lixeira vazia avisa', async ({ page }) => {
+    await tornarAdministradora()
+    await page.goto('/administracao/lixeira')
+    await page.getByRole('dialog', { name: 'Resumo da semana' }).getByRole('button', { name: 'Fechar' }).click()
+    await expect(page.getByText('A lixeira está vazia.')).toBeVisible()
+
+    await consultar(`UPDATE "Projeto" SET "ativo" = false WHERE "id" = $1`, [projetoId])
+    await page.goto('/administracao/lixeira')
+    await expect(page.getByText(/data não registrada/)).toBeVisible()
+  })
+
+  test('quem não é administrador não acessa a lixeira', async ({ page }) => {
+    await consultar(
+      `INSERT INTO "Colaborador" ("id","nome","clerkUserId","administrador","updatedAt")
+       VALUES (gen_random_uuid()::text,'Chefe','user_chefe',true,now())`,
+    )
+    await consultar(`UPDATE "Projeto" SET "ativo" = false WHERE "id" = $1`, [projetoId])
+    await page.goto('/administracao/lixeira')
+    await expect(page.getByText('Só administradores acessam a lixeira.')).toBeVisible()
+    await expect(page.getByText('Projeto E2E')).toHaveCount(0)
   })
 })
