@@ -785,6 +785,26 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
   navegador); passo sem alvo visível aparece centralizado.
 
+## Links e anexos por ação (`LinkAcao`)
+
+Só o ENDEREÇO de ata, contrato ou planilha de apoio: o arquivo fica onde a CTCEA
+já o guarda (SharePoint, Drive...) e **quem consegue abri-lo é decidido lá**, não
+aqui (o manual diz isso). Regra pura em `link-acao.ts`, Server Actions em
+`projetos/acoes-link.ts`, tela em `LinksAcao` (edição da ação).
+
+- **Só `http` e `https`** (`urlValida`, pelo parser de `URL`, sem espaço nem
+  caractere de controle, até 2000 caracteres). `javascript:`, `data:`, `file:`,
+  `blob:` e endereço sem esquema são recusados, porque o link vira `<a href>`.
+  O endereço é guardado COMO FOI DIGITADO (não normalizado).
+- Todo link abre em outra aba com `rel="noopener noreferrer"`; a tela mostra o
+  site de origem (`origemDoLink`) antes do clique.
+- **Campos**: título (até 200), endereço e tipo (ATA, CONTRATO, PLANILHA,
+  DOCUMENTO, OUTRO). Adicionar, editar (só se algo mudou) e remover entram em
+  `HistoricoAlteracao` com `campo = 'link'` (texto livre "Ata: Título (site)").
+- Qualquer Colaborador mexe; o Leitor só vê e abre. Por AÇÃO, não por projeto.
+- A lista de ações do projeto mostra "· N links" (`groupBy` em uma consulta).
+- Não há upload, e não há como saber se o link continua válido.
+
 ## Lixeira (`/administracao/lixeira`)
 
 Restaura projetos excluídos. A exclusão sempre foi lógica (`ativo = false`);

@@ -804,7 +804,7 @@ test.describe('dependência entre ações', () => {
     await page.goto(`/projetos/${projetoId}/acoes/${acaoB}/editar`)
 
     await page.locator('#dependencia-predecessora').selectOption({ index: 1 })
-    await page.getByRole('button', { name: 'Adicionar' }).click()
+    await page.getByRole('button', { name: 'Adicionar', exact: true }).click()
     await expect(page.getByRole('link', { name: 'ação 1', exact: true })).toBeVisible()
     await expect(page.getByRole('status').filter({ hasText: 'Bloqueada.' })).toBeVisible()
 
@@ -1338,5 +1338,67 @@ test.describe('lixeira de projetos', () => {
     await page.goto('/administracao/lixeira')
     await expect(page.getByText('Só administradores acessam a lixeira.')).toBeVisible()
     await expect(page.getByText('Projeto E2E')).toHaveCount(0)
+  })
+})
+
+test.describe('links e anexos da ação', () => {
+  test('adiciona, abre em outra aba, edita, remove e mostra o indicador no projeto', async ({ page }) => {
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await expect(page.getByText('Nenhum link nesta ação.')).toBeVisible()
+
+    // Endereço perigoso é recusado, e o que foi digitado não se perde.
+    await page.getByLabel('Título *', { exact: true }).first().fill('Ata do kickoff')
+    await page.getByLabel('Endereço (link) *').fill('javascript:alert(1)')
+    await page.getByRole('button', { name: 'Adicionar link' }).click()
+    await expect(page.getByText(/começando com https/)).toBeVisible()
+    await expect(page.getByLabel('Título *', { exact: true }).first()).toHaveValue('Ata do kickoff')
+
+    await page.getByLabel('Endereço (link) *').fill('https://ctcea.sharepoint.com/sites/x/ata.pdf')
+    await page.locator('#link-novo-tipo').selectOption('ATA')
+    await page.getByRole('button', { name: 'Adicionar link' }).click()
+
+    const link = page.getByRole('link', { name: /Ata do kickoff/ })
+    await expect(link).toBeVisible()
+    await expect(link).toHaveAttribute('href', 'https://ctcea.sharepoint.com/sites/x/ata.pdf')
+    await expect(link).toHaveAttribute('target', '_blank')
+    await expect(link).toHaveAttribute('rel', /noopener/)
+    await expect(page.getByText('ctcea.sharepoint.com', { exact: true })).toBeVisible()
+    // O formulário recomeçou vazio.
+    await expect(page.locator('#link-novo-titulo')).toHaveValue('')
+
+    // O histórico registra.
+    await expect(page.getByText('Ata: Ata do kickoff (ctcea.sharepoint.com)')).toBeVisible()
+
+    // O projeto mostra o indicador.
+    await page.goto(`/projetos/${projetoId}`)
+    await expect(page.getByText('· 1 link')).toBeVisible()
+
+    // Editar.
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await page.getByRole('button', { name: 'Editar', exact: true }).click()
+    await page.locator('input[name="titulo"]').first().fill('Contrato assinado')
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+    await expect(page.getByRole('link', { name: /Contrato assinado/ })).toBeVisible()
+
+    // Remover: cancelar não remove, confirmar remove.
+    page.once('dialog', (d) => d.dismiss())
+    await page.getByRole('button', { name: /Remover o link Contrato assinado/ }).click()
+    await expect(page.getByRole('link', { name: /Contrato assinado/ })).toBeVisible()
+    page.once('dialog', (d) => d.accept())
+    await page.getByRole('button', { name: /Remover o link Contrato assinado/ }).click()
+    await expect(page.getByText('Nenhum link nesta ação.')).toBeVisible()
+  })
+
+  test('o Leitor vê e abre os links, mas não tem como mexer', async ({ page }) => {
+    await consultar(
+      `INSERT INTO "LinkAcao" ("id","acaoId","titulo","url","tipo","criadoPor","atualizadoEm")
+       VALUES (gen_random_uuid()::text,$1,'Planilha de apoio','https://x.com/p','PLANILHA','user_outro',now())`,
+      [acaoId],
+    )
+    await consultar(`UPDATE "Colaborador" SET "somenteLeitura" = true WHERE "clerkUserId" = 'user_e2e'`)
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await expect(page.getByRole('link', { name: /Planilha de apoio/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Adicionar link' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Editar', exact: true })).toHaveCount(0)
   })
 })

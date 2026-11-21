@@ -23,6 +23,7 @@ export const ROTULO_CAMPO_AUDITADO: Record<CampoAuditado, string> = {
 const ROTULO_CAMPO_DA_DEPENDENCIA: Record<string, string> = {
   dependencia: 'Dependência',
   liberacao: 'Liberação de início',
+  link: 'Link',
 }
 
 /** Campos cuja alteração caracteriza replanejamento (mexer no plano, não no fato). */

@@ -30,6 +30,8 @@ export type LinhaGantt = AcaoNaGrade & {
   responsavel?: string | null
   /** Selo de dependência ("bloqueada por #3"); `bloqueada` pinta de atraso. */
   dependencia?: { texto: string; bloqueada: boolean } | null
+  /** Quantos links de apoio a ação tem. */
+  links?: number
   /** Tela de edição da ação; sem ele, a descrição não é link. */
   href?: string
 }
@@ -304,6 +306,7 @@ function Grade({ acoes, hoje }: { acoes: LinhaGantt[]; hoje: Date }) {
                   <span className="truncate text-textMuted">
                     {ROTULOS_STATUS[acao.status]}
                     {acao.responsavel ? ` · ${acao.responsavel}` : null}
+                    {acao.links ? ` · ${acao.links} ${acao.links === 1 ? 'link' : 'links'}` : null}
                     {acao.dependencia ? (
                       <span className={acao.dependencia.bloqueada ? 'text-warn' : undefined}>
                         {' · '}
