@@ -411,10 +411,13 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     perfil: 'todos',
     rotas: ['/dashboards'],
     passos: [
+      'A tela abre na aba Gestão, feita para diretoria e gerência: o Semáforo por equipe (verde, amarelo ou vermelho, cruzando atraso, aderência ao prazo, riscos de impacto alto e replanejamentos), o Mapa de calor de equipe por status, a Prioridade × atraso (a matriz Benefício × Esforço com o atraso por cima, e os projetos de alto benefício atrasados em destaque), os Riscos e bloqueios por equipe e o Ritmo de entrega (ações concluídas contra ações criadas, semana a semana).',
       'No topo, o resumo lista o que pede atenção (atrasadas, vencendo em 7 dias, projetos sem ações, WINs a promover, replanejamentos). Cada número leva ao detalhe.',
-      'Escolha a aba: Panorama, Distribuição, Prazos, Evolução no tempo, Qualidade, Card WIN, Auditoria, ou Todas.',
+      'Escolha a aba: Gestão (a que abre), Panorama, Distribuição, Prazos, Evolução no tempo, Qualidade, Card WIN, Auditoria, ou Todas.',
       'Os filtros e o período valem para as abas (menos Card WIN e Auditoria, que olham o sistema inteiro) e acompanham a troca de aba.',
       'Para PDF, abra a aba e imprima; para a tela inteira, abra "Todas" antes.',
+      'O semáforo é vermelho ("Crítica") quando mais de 20% das ações abertas da equipe estão atrasadas ou há risco de impacto alto com prazo vencido; amarelo ("Atenção") de 5% a 20% de atraso ou com risco de impacto alto aberto; verde ("Em dia") abaixo disso. A cor vem sempre com a palavra e com o motivo escrito no cartão.',
+      'A aba Prazos ganhou a Idade do atraso por equipe (até 7 dias, 8 a 30, 31 a 90 e mais de 90 dias), e a aba Auditoria, o mapa de calor de Replanejamentos: motivo × equipe.',
       'No celular e no tablet, os Dashboards se adaptam: as abas viram uma faixa que rola de lado, os filtros ficam atrás do botão "Filtros" (que mostra quantos estão ativos), as tabelas viram cartões, com o nome de cada coluna, e os gráficos largos rolam de lado.',
     ],
     dicas: [

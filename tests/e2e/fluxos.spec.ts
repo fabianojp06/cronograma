@@ -597,7 +597,7 @@ test.describe('meus projetos', () => {
 })
 
 test.describe('dashboards em abas', () => {
-  test('abre no panorama, mostra o resumo do que pede atenção e só as seções da aba', async ({ page }) => {
+  test('abre em Gestão, mostra o resumo do que pede atenção e só as seções da aba', async ({ page }) => {
     await page.goto('/dashboards')
 
     const resumo = page.getByRole('region', { name: 'O que pede atenção' })
@@ -606,10 +606,17 @@ test.describe('dashboards em abas', () => {
     // A ação semeada tem prazo em março: está atrasada.
     await expect(resumo.getByRole('link', { name: /Ações atrasadas/ })).toContainText('1')
 
-    await expect(page.getByRole('link', { name: /^Panorama/ })).toHaveAttribute('aria-current', 'page')
-    await expect(page.getByRole('heading', { name: 'Panorama geral' })).toBeVisible()
+    await expect(page.getByRole('link', { name: /^Gestão/ })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('heading', { name: 'Semáforo por equipe' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Panorama geral' })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Maiores atrasos' })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Alterações recentes' })).toHaveCount(0)
+
+    // O panorama continua numa aba própria.
+    await page.getByRole('link', { name: /^Panorama/ }).click()
+    await expect(page).toHaveURL(/aba=panorama/)
+    await expect(page.getByRole('heading', { name: 'Panorama geral' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Semáforo por equipe' })).toHaveCount(0)
   })
 
   test('cada aba mostra os relatórios do seu grupo e o filtro de período a acompanha', async ({ page }) => {
@@ -631,14 +638,15 @@ test.describe('dashboards em abas', () => {
     await expect(page.getByRole('heading', { name: 'Maiores atrasos' })).toBeVisible()
   })
 
-  test('"Todas" junta tudo numa página (para imprimir) e aba inválida cai no panorama', async ({ page }) => {
+  test('"Todas" junta tudo numa página (para imprimir) e aba inválida cai em Gestão', async ({ page }) => {
     await page.goto('/dashboards?aba=todas')
+    await expect(page.getByRole('heading', { name: 'Semáforo por equipe' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Panorama geral' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Maiores atrasos' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Alterações recentes' })).toBeVisible()
 
     await page.goto('/dashboards?aba=nao-existe')
-    await expect(page.getByRole('heading', { name: 'Panorama geral' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Semáforo por equipe' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Maiores atrasos' })).toHaveCount(0)
   })
 
@@ -1404,7 +1412,7 @@ test.describe('links e anexos da ação', () => {
 })
 
 test.describe('dashboards no celular e no tablet', () => {
-  const ABAS = ['', 'distribuicao', 'prazos', 'tempo', 'qualidade', 'wins', 'auditoria', 'todas']
+  const ABAS = ['', 'gestao', 'panorama', 'distribuicao', 'prazos', 'tempo', 'qualidade', 'wins', 'auditoria', 'todas']
   const TELAS = [
     { nome: 'celular', largura: 390, altura: 844 },
     { nome: 'tablet', largura: 768, altura: 1024 },
@@ -1462,5 +1470,77 @@ test.describe('dashboards no celular e no tablet', () => {
     await expect(page.getByRole('button', { name: /Filtros/ })).toBeHidden()
     await expect(page.getByLabel('Equipe', { exact: true })).toBeVisible()
     await expect(page.locator('thead th', { hasText: 'Ação' }).first()).toBeVisible()
+  })
+})
+
+test.describe('dashboards: relatórios de gestão', () => {
+  test('o semáforo cruza atraso e risco; o mapa, a idade do atraso, os riscos e o ritmo aparecem', async ({ page }) => {
+    // A ação semeada (STI, previsto em março) está atrasada: a equipe é crítica.
+    // Um risco de impacto alto aberto e vencido reforça; e uma conclusão recente alimenta o ritmo.
+    await consultar(
+      `INSERT INTO "RiscoProjeto" ("id","projetoId","tipo","titulo","impacto","status","prazo","criadoPor","atualizadoEm")
+       VALUES (gen_random_uuid()::text,$1,'BLOQUEIO','Servidor sem rede','ALTO','ABERTO','2026-01-10','x',now())`,
+      [projetoId],
+    )
+    await consultar(
+      `INSERT INTO "Acao" ("id","projetoId","numero","descricao","status","previstoTermino","realizadoInicio","realizadoTermino","updatedAt")
+       VALUES (gen_random_uuid()::text,$1,2,'Entregue agora','CONCLUIDO',now(),now() - interval '3 days',now(),now())`,
+      [projetoId],
+    )
+    await page.goto('/dashboards')
+
+    // Semáforo: a palavra aparece junto da cor, e a razão da cor é dita.
+    const semaforo = page.locator('#semaforo-equipes')
+    await expect(semaforo.getByRole('heading', { name: 'STI' })).toBeVisible()
+    await expect(semaforo.getByText('Crítica', { exact: true }).first()).toBeVisible()
+    await expect(semaforo.locator('li').getByText(/risco de impacto alto com prazo vencido/)).toBeVisible()
+    await expect(semaforo.locator('li').getByText(/das ações abertas estão atrasadas/)).toBeVisible()
+
+    // Mapa de calor: a equipe STI tem 1 projeto atrasado.
+    const mapa = page.locator('#mapa-calor-status')
+    await expect(mapa.getByRole('row', { name: /STI/ })).toBeVisible()
+    await expect(mapa.getByRole('columnheader', { name: 'Atrasado' })).toBeVisible()
+
+    // Riscos por equipe: 1 bloqueio de impacto alto, prazo vencido.
+    const riscos = page.locator('#riscos-por-equipe')
+    await expect(riscos.getByText(/1 bloqueio/)).toBeVisible()
+    await expect(riscos.getByText(/1 com prazo vencido/)).toBeVisible()
+
+    // Ritmo: a conclusão desta semana entra no texto de resumo.
+    await expect(page.locator('#ritmo-de-entrega').getByRole('status')).toContainText('1 ações concluídas')
+
+    // Prioridade × atraso: sem avaliação na matriz, o relatório diz como preencher.
+    await expect(page.locator('#prioridade-x-atraso').getByText(/Nenhum projeto avaliado/)).toBeVisible()
+
+    // Idade do atraso (aba Prazos): a ação de março está na faixa "Mais de 90 dias".
+    await page.getByRole('link', { name: /^Prazos/ }).click()
+    const idade = page.locator('#idade-do-atraso')
+    await expect(idade.getByText('Mais de 90 dias').first()).toBeVisible()
+    await expect(idade.getByText('STI')).toBeVisible()
+  })
+
+  test('com a avaliação na matriz, o projeto de alto benefício atrasado aparece como crítico', async ({ page }) => {
+    await consultar(
+      `INSERT INTO "AvaliacaoProjeto" ("id","projetoId","beneficioCompromissos","beneficioValorTecnologico","beneficioClima","beneficioGovernanca","beneficioEficiencia","esforcoOrcamento","esforcoDuracao","esforcoCapacidadeEquipe","esforcoResistencia","esforcoComplexidade","gravidade","urgencia","tendencia","updatedAt")
+       VALUES (gen_random_uuid()::text,$1,9,9,9,9,9,0,0,0,0,0,3,3,3,now())`,
+      [projetoId],
+    )
+    await page.goto('/dashboards')
+    const secao = page.locator('#prioridade-x-atraso')
+    await expect(secao.getByRole('img', { name: /Projetos por benefício e esforço/ })).toBeVisible()
+    await expect(secao.getByText('alto benefício atrasado')).toBeVisible()
+    await expect(secao.getByRole('link', { name: 'Projeto E2E' })).toBeVisible()
+  })
+
+  test('replanejamentos por motivo e equipe aparecem na aba Auditoria', async ({ page }) => {
+    await consultar(
+      `INSERT INTO "HistoricoAlteracao" ("id","acaoId","campo","valorAntigo","valorNovo","alteradoEm","alteradoPor","motivo")
+       VALUES (gen_random_uuid()::text,$1,'previstoTermino','2026-03-10','2026-03-20',now(),'user_e2e','RECURSOS')`,
+      [acaoId],
+    )
+    await page.goto('/dashboards?aba=auditoria')
+    const secao = page.locator('#motivos-por-equipe')
+    await expect(secao.getByRole('row', { name: /Falta de pessoas ou de recursos/ })).toBeVisible()
+    await expect(secao.getByRole('columnheader', { name: 'STI' })).toBeVisible()
   })
 })

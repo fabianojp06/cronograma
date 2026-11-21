@@ -19,13 +19,14 @@ import {
   maiorVolume,
   type Dimensao,
 } from '@/lib/dashboard-dimensoes'
-import { abaMostra, lerAba, resumoDeAtencao, slugDaAba } from '@/lib/dashboard-abas'
+import { ABA_PADRAO, abaMostra, lerAba, resumoDeAtencao, slugDaAba } from '@/lib/dashboard-abas'
 import { periodoAtivo } from '@/lib/filtro-periodo'
 import { filtrosComoParametros } from '@/lib/projeto-filtros'
 import { opcoesDistintas } from '@/lib/projetos-listagem'
 
 import { carregarDashboard } from './dados'
 import { SecoesAuditoria } from './secoes/auditoria'
+import { SecoesGestao } from './secoes/gestao'
 import { SecoesPrazos } from './secoes/prazos'
 import { SecaoQualidade } from './secoes/qualidade'
 import { rel } from './secoes/rel'
@@ -75,6 +76,13 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
     porCampo,
     replanejamentos,
     porMotivo,
+    semaforo,
+    mapaCalor,
+    prioridadeAtraso,
+    riscosEquipe,
+    ritmo,
+    idadeAtraso,
+    motivosEquipe,
   } = dados
 
   // O que a pessoa já escolheu (filtros e período) acompanha cada link de aba.
@@ -114,7 +122,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
         responsaveis={opcoesDistintas(valores.map((v) => v.responsavel))}
         acao="/dashboards"
         periodo={periodo}
-        extras={aba === 'PANORAMA' ? undefined : { aba: slugDaAba(aba) }}
+        extras={aba === ABA_PADRAO ? undefined : { aba: slugDaAba(aba) }}
       />
       </FiltrosRecolhiveis>
       </div>
@@ -135,6 +143,16 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
       <AbasDashboard ativa={aba} parametros={parametros} />
 
       <div className="mt-8 space-y-10">
+        {abaMostra(aba, 'GESTAO') ? (
+          <SecoesGestao
+            mapaCalor={mapaCalor}
+            prioridadeAtraso={prioridadeAtraso}
+            ritmo={ritmo}
+            riscosEquipe={riscosEquipe}
+            semaforo={semaforo}
+          />
+        ) : null}
+
         {abaMostra(aba, 'PANORAMA') ? (
           <>
             <DashboardSecao
@@ -179,7 +197,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
           : null}
 
         {abaMostra(aba, 'PRAZOS') ? (
-          <SecoesPrazos aderencia={aderencia} atrasos={atrasos} janelas={janelas} />
+          <SecoesPrazos aderencia={aderencia} atrasos={atrasos} idadeAtraso={idadeAtraso} janelas={janelas} />
         ) : null}
 
         {abaMostra(aba, 'TEMPO') ? <SecoesTempo evolucao={evolucao} carga={carga} /> : null}
@@ -201,6 +219,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
             registros={registros}
             porCampo={porCampo}
             porMotivo={porMotivo}
+            motivosEquipe={motivosEquipe}
           />
         ) : null}
       </div>

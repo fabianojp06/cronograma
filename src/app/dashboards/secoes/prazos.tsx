@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { TabelaEmpilhavel } from '@/components/tabela-empilhavel'
 
 import { DashboardSecao, SemDados } from '@/components/dashboard-secao'
+import { BarrasEmpilhadas } from '@/components/barras-empilhadas'
+import { FAIXAS_DE_ATRASO, type LinhaIdadeDoAtraso } from '@/lib/dashboard-gestao'
 import { formatarDataBR } from '@/lib/formatacao'
 import type { proximosVencimentos, rankingAtrasos, resumirAderencia } from '@/lib/dashboard-prazos'
 import { rel } from './rel'
@@ -10,10 +12,12 @@ export function SecoesPrazos({
   aderencia,
   atrasos,
   janelas,
+  idadeAtraso,
 }: {
   aderencia: ReturnType<typeof resumirAderencia>
   atrasos: ReturnType<typeof rankingAtrasos>
   janelas: ReturnType<typeof proximosVencimentos>
+  idadeAtraso: LinhaIdadeDoAtraso[]
 }) {
   const ultimaJanela = janelas[janelas.length - 1]
   return (
@@ -112,6 +116,18 @@ export function SecoesPrazos({
                 </tbody>
               </table>
             </TabelaEmpilhavel>
+          )}
+        </DashboardSecao>
+
+        <DashboardSecao relatorio={rel('idade-do-atraso')}>
+          {idadeAtraso.length === 0 ? (
+            <SemDados>Nenhuma ação atrasada no recorte atual.</SemDados>
+          ) : (
+            <BarrasEmpilhadas
+              linhas={idadeAtraso.map((l) => ({ rotulo: l.equipe, total: l.total, valores: l.faixas }))}
+              series={FAIXAS_DE_ATRASO.map((f, i) => ({ id: f.id, rotulo: f.rotulo, tinta: [15, 25, 35, 45][i] }))}
+              unidade="atrasadas"
+            />
           )}
         </DashboardSecao>
 
