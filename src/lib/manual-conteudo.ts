@@ -159,12 +159,14 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'Para editar, clique na ação no Gantt. Altere status, datas ou responsável e salve.',
       'Para apontar o andamento, preencha as datas Realizado. O término realizado conclui a ação; só o início a tira de "não iniciado".',
       'O painel "Histórico de alterações", ao lado, mostra cada mudança de status, datas e responsável, com quem fez e quando.',
+      'Se você mudar o início ou o término PREVISTO de uma ação que já tinha data, aparece "Por que a data prevista mudou?": escolha o motivo (escopo, dependência externa, falta de pessoas ou recursos, prioridade, estimativa errada ou outro) e, se quiser, acrescente um detalhe. Sem o motivo, não salva. Em "Outro", o detalhe é obrigatório.',
     ],
     dicas: [
       'Se outra pessoa salvar a ação antes de você, o sistema avisa o conflito em vez de sobrescrever; recarregue e refaça.',
       'A data realizada não pode estar no futuro, e o término não pode ser anterior ao início.',
       'Quando uma ação tem responsável com e-mail, ele recebe um aviso ao ser designado (só em produção).',
       'Ação de projeto excluído não pode ser editada.',
+      'Preencher uma data que estava vazia não é replanejamento e não pede motivo. O motivo fica no histórico da ação, na tela Reunião e no relatório "Replanejamentos por motivo" dos Dashboards; mudanças de antes dessa regra aparecem como "Sem motivo registrado".',
     ],
     desde: '2026-09-17',
     palavras: ['status', 'realizado', 'previsto', 'histórico', 'responsável', 'conflito'],
@@ -262,6 +264,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'No projeto, clique em "Editar em lote".',
       'Marque as ações (até 100). Informe quantos dias úteis adiar ou adiantar e/ou o novo responsável e clique em "Ver prévia".',
       'A prévia mostra, ação por ação, o de/para e as observações, e não grava nada.',
+      'Se alguma data prevista vai mudar, a confirmação pede o motivo: é um só, e vale para todas as ações do lote.',
       'Confira e confirme. O sistema grava exatamente o que foi mostrado, com uma linha de histórico por ação e por campo.',
     ],
     dicas: [
@@ -391,7 +394,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     ],
     dicas: [
       'Cada relatório responde a uma pergunta de negócio, escrita no próprio título.',
-      'A Auditoria mostra, por exemplo, quantas vezes cada prazo foi empurrado (replanejamento).',
+      'A Auditoria mostra quantas vezes cada prazo foi empurrado (replanejamento) e, em "Replanejamentos por motivo", por que as datas mudam. Cada mudança conta uma vez, mesmo que início e término tenham mudado juntos.',
     ],
     desde: '2026-09-18',
     palavras: ['relatórios', 'gráficos', 'indicadores', 'auditoria', 'replanejamento', 'abas'],
@@ -412,7 +415,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     dicas: [
       'Os dados são os de agora, não uma foto: se alguém registrar algo durante a reunião, recarregue a página. Para o retrato da segunda-feira, use o Resumo semanal (administradores).',
       'Lista longa vira várias telas ("2/3"), para ninguém rolar a página durante a reunião.',
-      'Replanejadas são as mudanças de data prevista dos últimos 7 dias, com a data de antes e a de depois, quantas mudanças a ação teve e quem fez a última. A ação que voltou à data original não aparece.',
+      'Replanejadas são as mudanças de data prevista dos últimos 7 dias, com a data de antes e a de depois, quantas mudanças a ação teve, quem fez a última e o motivo informado. A ação que voltou à data original não aparece.',
       'Atrasada segue a regra do painel (término previsto já passou e a ação não foi concluída).',
       'É só consulta: todos os perfis, inclusive o Leitor, usam.',
     ],

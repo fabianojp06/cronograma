@@ -785,6 +785,35 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
   navegador); passo sem alvo visível aparece centralizado.
 
+## Motivo do replanejamento
+
+Mudar a data PREVISTA (início ou término) de uma ação que já tinha data pede o
+"por quê?". Regra pura em `motivo-replanejamento.ts`; colunas `motivo` e
+`motivoDetalhe` em `HistoricoAlteracao` (só nas linhas de data prevista).
+
+- **Quando pede** (`replanejaDataExistente`): campo presente que MUDA ou LIMPA
+  uma data que existia. Preencher uma data vazia não é replanejamento. Campo
+  ausente não conta (como no resto da edição). `registrarRealizado`, duplicar e
+  criar nunca pedem: não mexem no previsto.
+- **Obrigatório**: lista fechada de 6 motivos (`ESCOPO`, `DEPENDENCIA_EXTERNA`,
+  `RECURSOS`, `PRIORIDADE`, `ESTIMATIVA`, `OUTRO`) + detalhe de até 500
+  caracteres; `OUTRO` exige o detalhe. Mudar a lista exige tratar o código velho
+  no histórico (`descreverMotivo` devolve o próprio código se desconhecido).
+- **Edição da ação**: o formulário controla as duas datas e mostra o bloco do
+  motivo quando mudam em relação ao que está GRAVADO (depois de salvar, a base é
+  o que acabou de ser salvo: `salva.previstoInicio/Termino`). Em `criar` o campo
+  fica não controlado (o React reinicia o formulário pela `key`).
+- **Edição em lote**: UM motivo para o lote inteiro, pedido na CONFIRMAÇÃO
+  (`precisaMotivo` na prévia, só se alguma data prevista vai mudar; lote só de
+  responsável não pede). Vale para todas as linhas de data do lote; a linha de
+  responsável não leva motivo.
+- **Onde aparece**: histórico da ação ("Motivo: …", ou "Sem motivo registrado"
+  nas mudanças antigas), tela Reunião (replanejadas: o motivo da última mudança)
+  e o relatório `replanejamentos-por-motivo` dos Dashboards (aba Auditoria),
+  que conta EVENTOS — início e término no mesmo instante (mesma transação)
+  valem um — e não mostra pessoas, só categorias.
+- Histórico anterior à regra fica com `motivo` nulo: nada é inventado.
+
 ## Riscos e bloqueios (`RiscoProjeto`)
 
 O campo estruturado do que o Card WIN chama de "alerta de riscos". Regra pura em

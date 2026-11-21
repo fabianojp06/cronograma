@@ -41,7 +41,7 @@ export type DadosAcao = {
   status: StatusAcao
 } & { [C in CampoData]: Date | null }
 
-export type ErrosAcao = Partial<Record<keyof DadosAcao | 'responsavelId', string>>
+export type ErrosAcao = Partial<Record<keyof DadosAcao | 'responsavelId' | 'motivo', string>>
 
 export type ResultadoValidacaoAcao =
   | { ok: true; dados: DadosAcao }

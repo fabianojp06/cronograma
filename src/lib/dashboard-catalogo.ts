@@ -141,6 +141,12 @@ export const RELATORIOS: readonly Relatorio[] = [
     grupo: 'AUDITORIA',
   },
   {
+    id: 'replanejamentos-por-motivo',
+    titulo: 'Replanejamentos por motivo',
+    pergunta: 'Por que as datas previstas mudam: escopo, dependência externa, falta de gente, prioridade ou estimativa?',
+    grupo: 'AUDITORIA',
+  },
+  {
     id: 'alteracoes-recentes',
     titulo: 'Alterações recentes',
     pergunta: 'O que mudou por último, em que campo e por quem?',

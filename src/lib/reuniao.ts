@@ -33,6 +33,8 @@ export type RegistroDeData = {
   alteradoEm: Date
   /** Nome de quem alterou (já resolvido), ou `null`. */
   alteradoPor: string | null
+  motivo?: string | null
+  motivoDetalhe?: string | null
 }
 
 export type Replanejada = {
@@ -51,6 +53,9 @@ export type Replanejada = {
   mudancas: number
   por: string | null
   quando: string
+  /** Código do motivo da ÚLTIMA mudança, se informado, e o detalhe. */
+  motivo: string | null
+  motivoDetalhe: string | null
 }
 
 /**
@@ -88,6 +93,8 @@ export function agruparReplanejadas(registros: readonly RegistroDeData[]): Repla
       mudancas: lista.length,
       por: ultima.alteradoPor,
       quando: ultima.alteradoEm.toISOString(),
+      motivo: ultima.motivo ?? null,
+      motivoDetalhe: ultima.motivoDetalhe ?? null,
     })
   }
   return linhas.sort((a, b) => b.mudancas - a.mudancas || b.quando.localeCompare(a.quando))

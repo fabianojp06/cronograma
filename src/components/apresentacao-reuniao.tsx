@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
+import { descreverMotivo } from '@/lib/motivo-replanejamento'
 import { descreverMudanca, type Panorama, type Tela } from '@/lib/reuniao'
 import { ROTULO_IMPACTO, ROTULO_STATUS_RISCO, ROTULO_TIPO, type ImpactoRisco, type StatusRisco, type TipoRisco } from '@/lib/risco-projeto'
 import type { ItemResumo } from '@/lib/resumo-semanal'
@@ -89,7 +90,7 @@ function TelaDeLista({ tela }: { tela: Exclude<Tela, { tipo: 'panorama' }> }) {
               <LinhaDeAcao
                 detalhe={`${r.campo === 'previstoTermino' ? 'término' : 'início'}: ${descreverMudanca(r)}${
                   r.mudancas > 1 ? ` (${r.mudancas} mudanças)` : ''
-                }${r.por ? ` · por ${r.por}` : ''}`}
+                }${r.por ? ` · por ${r.por}` : ''} · ${descreverMotivo(r.motivo, r.motivoDetalhe)}`}
                 i={{ acaoId: r.acaoId, projetoId: r.projetoId, projetoNome: r.projetoNome, numero: r.numero, descricao: r.descricao, responsavel: r.responsavel, data: '' }}
               />
             </li>

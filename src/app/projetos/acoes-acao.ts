@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
 import { registrarFalha } from '@/lib/registrar-erro'
+import { serializarValor } from '@/lib/acao-historico'
 import { bloqueioParaGravar } from '@/lib/dependencia-servidor'
 import { prisma } from '@/lib/prisma'
 import { contaPodeEditar } from '@/lib/administracao-servidor'
@@ -19,6 +20,7 @@ import {
   type ErrosAcao,
   type StatusAcao,
 } from '@/lib/acao-validacao'
+import { lerMotivoReplanejamento, replanejaDataExistente } from '@/lib/motivo-replanejamento'
 import { validarRealizado, type ErrosRealizado } from '@/lib/acao-realizado'
 import {
   avisarResponsavel,
@@ -38,7 +40,15 @@ export type EstadoFormularioAcao = {
   /** Preenchido só no sucesso — a UI confirma sem sair da tela. */
   criada?: { id: string; numero: number; descricao: string }
   /** Preenchido só no sucesso da edição. */
-  salva?: { id: string; numero: number; descricao: string; versao?: string }
+  salva?: {
+    id: string
+    numero: number
+    descricao: string
+    versao?: string
+    /** As datas previstas como ficaram gravadas (a base para a próxima pergunta de motivo). */
+    previstoInicio?: string | null
+    previstoTermino?: string | null
+  }
   erros?: ErrosAcao
   /** Erro que não pertence a um campo específico (falha de banco, sessão). */
   erroGeral?: string
@@ -186,6 +196,14 @@ export async function atualizarAcao(
     const responsavel = await conferirResponsavel(responsavelId, atual.responsavelId)
     if (!responsavel.ok) return { erros: { responsavelId: MENSAGEM_RESPONSAVEL_INVALIDO } }
 
+    // Mudou uma data prevista que já existia? Então pergunta o motivo.
+    let motivo: { motivo: string; detalhe: string | null } | undefined
+    if (replanejaDataExistente(atual, validacao.dados)) {
+      const lido = lerMotivoReplanejamento(formData)
+      if (!lido.ok) return { erros: { motivo: lido.erro } }
+      motivo = lido.motivo
+    }
+
     // Ausente (`undefined`) fica fora dos dois objetos: o Prisma pula a coluna
     // e o histórico não compara o campo — não mexer não é apagar.
     const gravacao = await gravarAcaoComHistorico(prisma, {
@@ -198,6 +216,7 @@ export async function atualizarAcao(
           ? validacao.dados
           : { ...validacao.dados, responsavel: responsavel.nome },
       alteradoPor: userId,
+      motivo,
     })
 
     revalidatePath('/projetos')
@@ -222,6 +241,8 @@ export async function atualizarAcao(
         numero: atual.numero,
         descricao: validacao.dados.descricao,
         ...(gravacao.versao ? { versao: gravacao.versao.toISOString() } : {}),
+        previstoInicio: serializarValor('previstoInicio' in validacao.dados ? validacao.dados.previstoInicio : atual.previstoInicio),
+        previstoTermino: serializarValor('previstoTermino' in validacao.dados ? validacao.dados.previstoTermino : atual.previstoTermino),
       },
       ...(aviso ? { aviso } : {}),
     }

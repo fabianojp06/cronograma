@@ -490,6 +490,8 @@ test.describe('edição em lote', () => {
     // A prévia não gravou nada.
     expect((await consultar('SELECT 1 FROM "HistoricoAlteracao"')).length).toBe(0)
 
+    // As datas mudam: a confirmação pede um motivo só, para o lote todo.
+    await page.getByLabel('Motivo *').selectOption('ESCOPO')
     await page.getByRole('button', { name: 'Confirmar e gravar 2 ação(ões)' }).click()
     await expect(page.getByText('ações alteradas')).toBeVisible()
 
@@ -1199,5 +1201,78 @@ test.describe('riscos e bloqueios', () => {
     await expect(page.getByRole('link', { name: 'Registrar risco ou bloqueio' })).toHaveCount(0)
     await page.goto(`/projetos/${projetoId}/riscos/novo`)
     await expect(page.getByText('Seu perfil é somente leitura.')).toBeVisible()
+  })
+})
+
+test.describe('motivo do replanejamento', () => {
+  test('mudar a data prevista pede o motivo, grava e aparece no histórico e na reunião', async ({ page }) => {
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    // Sem mudar a data, o motivo não aparece.
+    await expect(page.getByText('Por que a data prevista mudou?')).toHaveCount(0)
+
+    await page.locator('#previstoTermino').fill('2026-04-10')
+    await expect(page.getByText('Por que a data prevista mudou?')).toBeVisible()
+
+    // Sem motivo, não salva.
+    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await expect(page.getByText('Informe o motivo da mudança de data.')).toBeVisible()
+    const termino = async () =>
+      (await consultar<{ t: string }>(`SELECT to_char("previstoTermino",'YYYY-MM-DD') AS t FROM "Acao" WHERE "id" = $1`, [acaoId]))[0].t
+    expect(await termino()).toBe('2026-03-20')
+
+    // "Outro" exige o detalhe; com um motivo da lista, salva.
+    await page.getByLabel('Motivo *').selectOption('OUTRO')
+    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await expect(page.getByText('Em "Outro", explique o motivo no detalhe.')).toBeVisible()
+    await page.getByLabel('Motivo *').selectOption('DEPENDENCIA_EXTERNA')
+    await page.getByLabel(/Detalhe/).fill('Fornecedor atrasou o material')
+    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'Alterações salvas.' })).toBeVisible()
+    expect(await termino()).toBe('2026-04-10')
+
+    // Depois de salvar, a base é a nova data: o bloco some até mexer de novo.
+    await expect(page.getByText('Por que a data prevista mudou?')).toHaveCount(0)
+
+    // O histórico mostra o motivo, e a reunião também.
+    await expect(page.getByText('Motivo: Dependência externa — Fornecedor atrasou o material')).toBeVisible()
+    await page.goto('/reuniao')
+    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
+    await expect(page.getByRole('heading', { name: /Replanejadas na semana/ })).toBeVisible()
+    await expect(page.getByText(/Dependência externa — Fornecedor atrasou o material/)).toBeVisible()
+  })
+
+  test('criar a primeira data de uma ação não pede motivo', async ({ page }) => {
+    const [{ id: semData }] = await consultar<{ id: string }>(
+      `INSERT INTO "Acao" ("id","projetoId","numero","descricao","updatedAt")
+       VALUES (gen_random_uuid()::text,$1,2,'Sem datas',now()) RETURNING "id"`,
+      [projetoId],
+    )
+    await page.goto(`/projetos/${projetoId}/acoes/${semData}/editar`)
+    await page.locator('#previstoInicio').fill('2026-05-04')
+    await page.locator('#previstoTermino').fill('2026-05-08')
+    await expect(page.getByText('Por que a data prevista mudou?')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'Alterações salvas.' })).toBeVisible()
+  })
+
+  test('o lote que remarca datas pede um motivo só, na confirmação', async ({ page }) => {
+    await page.goto(`/projetos/${projetoId}/lote`)
+    await page.getByRole('button', { name: 'Marcar todas' }).click()
+    await page.getByLabel('Dias úteis').fill('2')
+    await page.getByRole('button', { name: 'Ver prévia' }).click()
+    await expect(page.getByText(/Por que as datas previstas mudam\?/)).toBeVisible()
+
+    await page.getByRole('button', { name: /Confirmar e gravar/ }).click()
+    await expect(page.getByRole('alert').filter({ hasText: 'Informe o motivo da mudança de data.' })).toBeVisible()
+    expect((await consultar('SELECT 1 FROM "HistoricoAlteracao"')).length).toBe(0)
+
+    await page.getByLabel('Motivo *').selectOption('PRIORIDADE')
+    await page.getByRole('button', { name: /Confirmar e gravar/ }).click()
+    await expect(page.getByText(/ação alterada|ações alteradas/)).toBeVisible()
+    const [{ motivo }] = await consultar<{ motivo: string | null }>(
+      `SELECT "motivo" FROM "HistoricoAlteracao" WHERE "acaoId" = $1 AND "campo" = 'previstoTermino'`,
+      [acaoId],
+    )
+    expect(motivo).toBe('PRIORIDADE')
   })
 })
