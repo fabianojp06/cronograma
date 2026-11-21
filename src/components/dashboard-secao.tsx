@@ -1,4 +1,7 @@
+import Link from 'next/link'
+
 import type { Relatorio } from '@/lib/dashboard-catalogo'
+import { GUIA_RELATORIOS } from '@/lib/guia-relatorios'
 
 /**
  * Moldura de um relatório: âncora, título e a pergunta de negócio que ele
@@ -21,6 +24,7 @@ export function DashboardSecao({
         {acao}
       </div>
       <p className="mt-1 text-sm text-textMuted">{relatorio.pergunta}</p>
+      <ComoLer id={relatorio.id} />
       <div className="mt-4">{children}</div>
     </section>
   )
@@ -32,5 +36,43 @@ export function SemDados({ children }: { children: React.ReactNode }) {
     <p className="border-l-2 border-borderSoft bg-surface py-3 pl-4 text-sm text-textMuted">
       {children}
     </p>
+  )
+}
+
+/**
+ * "Como ler este relatório": recolhido embaixo do título, com o mesmo texto do
+ * Guia dos relatórios do manual (`guia-relatorios.ts`, a fonte única). Não
+ * entra na impressão.
+ */
+function ComoLer({ id }: { id: string }) {
+  const guia = GUIA_RELATORIOS[id]
+  if (!guia) return null
+  return (
+    <details className="group mt-2 text-sm print:hidden">
+      <summary className="inline-flex min-h-8 cursor-pointer items-center text-textMuted hover:text-accent">
+        Como ler este relatório
+      </summary>
+      <div className="mt-2 max-w-3xl space-y-3 border-l-2 border-borderSoft bg-surface py-3 pl-4 pr-3">
+        <p className="text-text">{guia.mostra}</p>
+        <ul className="list-disc space-y-1 pl-5 text-textMuted">
+          {guia.comoLer.map((linha) => (
+            <li key={linha}>{linha}</li>
+          ))}
+        </ul>
+        <p>
+          <strong className="font-medium">De onde vem: </strong>
+          <span className="text-textMuted">{guia.deOndeVem}</span>
+        </p>
+        <p>
+          <strong className="font-medium">Quando olhar com cuidado: </strong>
+          <span className="text-textMuted">{guia.alerta}</span>
+        </p>
+        <p className="text-xs">
+          <Link className="text-accent hover:underline" href={`/manual#guia-${id}`}>
+            Ver no Guia dos relatórios do manual
+          </Link>
+        </p>
+      </div>
+    </details>
   )
 }
