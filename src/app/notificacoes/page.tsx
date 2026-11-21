@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 
 import { marcarLida, marcarTodasLidas } from '@/app/notificacoes/acoes-notificacao'
 import { rotularAutor } from '@/lib/historico-exibicao'
+import { frasePrincipal, lerConteudo, rotuloDaSemana } from '@/lib/resumo-semanal'
 import {
   ehMotivoLiberacao,
   ROTULO_LIBERACAO_AVISO,
@@ -71,6 +72,7 @@ export default async function NotificacoesPage() {
             },
           },
         },
+        resumo: { select: { semana: true, conteudo: true } },
         liberacao: {
           select: {
             motivo: true,
@@ -136,6 +138,35 @@ export default async function NotificacoesPage() {
       ) : (
         <ul className="mt-6 space-y-2">
           {itens.map((n) => {
+            if (n.resumo) {
+              const c = lerConteudo(n.resumo.conteudo)
+              return (
+                <li
+                  className={`border-l-2 bg-surface px-4 py-3 ${n.lida ? 'border-borderSoft' : 'border-accent'}`}
+                  key={n.id}
+                >
+                  <p className="text-sm">
+                    <strong className={n.lida ? 'font-medium' : 'font-bold'}>Resumo semanal</strong>{' '}
+                    <Link className="text-text underline hover:text-accent" href={`/resumo-semanal?semana=${n.resumo.semana}`}>
+                      {rotuloDaSemana(n.resumo.semana)}
+                    </Link>
+                    {!n.lida ? <span className="sr-only"> (não lida)</span> : null}
+                  </p>
+                  {c ? <p className="mt-1 text-sm text-textMuted">{frasePrincipal(c)}</p> : null}
+                  <div className="mt-1 flex items-center gap-3 text-xs text-textFaint">
+                    <span className="tabular-nums">{momento.format(n.criadoEm)}</span>
+                    {!n.lida ? (
+                      <form action={marcarLida}>
+                        <input name="notificacaoId" type="hidden" value={n.id} />
+                        <button className="text-textMuted hover:text-accent" type="submit">
+                          Marcar como lida
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                </li>
+              )
+            }
             const acao = (n.comentario ?? n.liberacao)?.acao
             if (!acao) return null
             const conta = autorDe(n)

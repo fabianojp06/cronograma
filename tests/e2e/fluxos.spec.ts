@@ -223,6 +223,8 @@ test('administrador define o perfil de um colaborador pela tela', async ({ page 
   )
 
   await page.goto('/colaboradores')
+  // O administrador recebe o resumo semanal ao entrar: dispensa o popup.
+  await page.getByRole('dialog', { name: 'Resumo da semana' }).getByRole('button', { name: 'Fechar' }).click()
   const linhaBruno = page.getByRole('listitem').filter({ hasText: 'Bruno Lima' })
   await linhaBruno.getByRole('button', { name: 'Tornar leitor' }).click()
 
@@ -895,11 +897,13 @@ test.describe('menu por perfil', () => {
   test('o administrador vê a área, o menu dela e o passo extra do tour', async ({ page }) => {
     await tornarAdministradora('user_e2e')
     await page.goto('/')
+    // O administrador recebe o resumo semanal ao entrar: dispensa o popup.
+    await page.getByRole('dialog').getByRole('button', { name: 'Fechar' }).click()
     await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Administração' }).click()
     await expect(page).toHaveURL(/\/administracao$/)
 
     const lista = page.getByRole('main')
-    for (const nome of ['Colaboradores', 'Pesos da priorização', 'Painel do sistema', 'Registro de erros']) {
+    for (const nome of ['Colaboradores', 'Pesos da priorização', 'Resumo semanal', 'Painel do sistema', 'Registro de erros']) {
       await expect(lista.getByRole('link', { name: nome, exact: true }).first()).toBeVisible()
     }
 
@@ -1008,5 +1012,75 @@ test.describe('editor de modelos', () => {
     await expect(page.getByLabel('Nome do modelo *')).toHaveValue('Com erro')
     await expect(page.getByLabel('Descrição da ação 1')).toHaveValue('Ação sem duração')
     expect((await consultar(`SELECT 1 FROM "ModeloProjeto"`)).length).toBe(0)
+  })
+})
+
+test.describe('resumo semanal', () => {
+  const tornarAdministradora = () =>
+    consultar(`UPDATE "Colaborador" SET "administrador" = true WHERE "clerkUserId" = 'user_e2e'`)
+
+  test('o administrador vê o popup ao entrar, dispensa, e o resumo completo e o sino têm o aviso', async ({ page }) => {
+    await tornarAdministradora()
+    await page.goto('/')
+
+    const popup = page.getByRole('dialog', { name: 'Resumo da semana' })
+    await expect(popup).toBeVisible()
+    // A ação semeada (previsto em março) está atrasada, na equipe STI.
+    await expect(popup.getByRole('row', { name: /STI/ })).toBeVisible()
+    await popup.getByRole('button', { name: 'Fechar' }).click()
+    await expect(popup).toHaveCount(0)
+
+    // Dispensado: não volta em outra entrada.
+    await page.goto('/projetos')
+    await expect(page.getByRole('dialog', { name: 'Resumo da semana' })).toHaveCount(0)
+
+    // A tela completa lista a ação atrasada, com link para ela.
+    await page.goto('/resumo-semanal')
+    await expect(page.getByRole('heading', { name: 'Resumo semanal' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Atrasadas \(1\)/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /Projeto E2E · ação 1/ })).toBeVisible()
+
+    // O aviso fica nas notificações, já lido.
+    await page.goto('/notificacoes')
+    await expect(page.getByText('Resumo semanal', { exact: true }).first()).toBeVisible()
+  })
+
+  test('"Ver o resumo completo" abre a tela e some o popup; Esc também dispensa', async ({ page }) => {
+    await tornarAdministradora()
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Ver o resumo completo' }).click()
+    await expect(page).toHaveURL(/\/resumo-semanal\?semana=/)
+    await expect(page.getByRole('dialog', { name: 'Resumo da semana' })).toHaveCount(0)
+
+    // Já lido ao abrir a tela: na entrada seguinte não há popup.
+    await page.goto('/')
+    await expect(page.getByRole('dialog', { name: 'Resumo da semana' })).toHaveCount(0)
+  })
+
+  test('colaborador não vê o popup nem a tela, e sem administrador ninguém recebe', async ({ page }) => {
+    // Sem nenhum administrador (estado inicial): ninguém recebe popup.
+    await page.goto('/')
+    await expect(page.getByRole('dialog', { name: 'Resumo da semana' })).toHaveCount(0)
+
+    // Com outro administrador, a conta de teste é só Colaboradora.
+    await consultar(
+      `INSERT INTO "Colaborador" ("id","nome","clerkUserId","administrador","updatedAt")
+       VALUES (gen_random_uuid()::text,'Chefe','user_chefe',true,now())`,
+    )
+    await page.goto('/')
+    await expect(page.getByRole('dialog', { name: 'Resumo da semana' })).toHaveCount(0)
+    await page.goto('/resumo-semanal')
+    await expect(page.getByText('Só administradores acessam o resumo semanal.')).toBeVisible()
+  })
+
+  test('Esc dispensa o popup', async ({ page }) => {
+    await tornarAdministradora()
+    await page.goto('/')
+    const popup = page.getByRole('dialog', { name: 'Resumo da semana' })
+    await expect(popup).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(popup).toHaveCount(0)
+    await page.goto('/projetos')
+    await expect(page.getByRole('dialog', { name: 'Resumo da semana' })).toHaveCount(0)
   })
 })

@@ -785,6 +785,43 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
   navegador); passo sem alvo visível aparece centralizado.
 
+## Resumo semanal para os administradores (`/resumo-semanal`)
+
+Uma FOTO por semana (`ResumoSemanal`, `semana` = a segunda-feira, `aaaa-mm-dd`,
+única) do que foi concluído nos últimos 7 dias, do que está atrasado e do que
+vence nos próximos 7, por equipe. Regra pura em `resumo-semanal.ts`; leitura e
+gravação em `resumo-servidor.ts`. **Sem e-mail por enquanto**: vira aviso no
+sistema (`Notificacao.resumoId`, motivo `RESUMO_SEMANAL`) e popup na entrada.
+
+- **A semana começa na segunda, 8h de Brasília** (UTC-3, sem horário de verão;
+  `semanaDisponivel`). Antes disso, a semana disponível é a anterior. O mesmo
+  `vercel.json` (segunda, 11h UTC) já dispara `/api/cron/atrasos`, que também
+  chama `garantirResumoDaSemana` num bloco à parte (um não derruba o outro) e
+  grava a execução `resumo-semanal` em `ExecucaoCron`.
+- **Rede de segurança**: o administrador que entra depois do horário também
+  provoca a foto (`resumoPendenteDe`, chamado pelo popup no layout). Um cron
+  perdido não deixa a semana sem resumo. A semana é única: corrida entre duas
+  chamadas termina com UM resumo.
+- **Quem recebe**: administradores ATIVOS (`Colaborador.administrador`),
+  administrador de verdade — no estado "ainda não há administrador" ninguém
+  recebe (um popup em toda página para todos seria ruído). Quem vira
+  administrador depois da foto recebe o aviso da semana corrente na entrada.
+- **Concluída** = término realizado nos 7 dias até hoje (ou, sem data
+  realizada, o dia da última mudança de status para Concluído no histórico).
+  **Atrasada** = `acaoEstaAtrasada`, a regra do painel. **Vence** = término
+  previsto de hoje a hoje+7. Cada bloco guarda o TOTAL e só as 10 ações mais
+  relevantes (concluídas: as mais recentes; atrasadas: as mais antigas; vencem:
+  as mais próximas). Equipe sem nada não entra; sem equipe = "Sem equipe".
+- **O popup** (`ResumoSemanalPopup` no layout + `PopupResumoSemanal`) mostra os
+  totais por equipe; "Fechar" ou Esc dispensa (`dispensarResumo` marca como
+  lidos os avisos de resumo de quem clicou); abrir `/resumo-semanal` também
+  marca o da semana. Não aparece em `/resumo-semanal` nem nas telas de cadastro.
+  `resumoPendenteDe` nunca lança: o popup é conveniência.
+- **Quando houver e-mail**: o domínio da CTCEA no Resend ainda não foi
+  verificado. O resumo já está montado de forma que enviar é só renderizar o
+  `ConteudoResumo` em texto (como `email-atrasos.ts`) para os mesmos
+  destinatários; ficou de fora de propósito, por decisão do negócio.
+
 ## Dependência entre ações e liberação pelo líder
 
 "B só começa quando A terminar." Regra pura em `dependencia-acao.ts`, vínculos
