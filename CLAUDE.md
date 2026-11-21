@@ -1118,6 +1118,23 @@ usam a mesma conta, em `gantt-geometria.ts` (puro, com teste).
   (fica na seção de riscos). Na foto em uma data não há losangos (risco é de hoje).
 - `faixaDaBarra`/`colunaDeHoje` (em semanas) seguem em `gantt.ts` mas o Gantt não os usa mais.
 
+## Tela da ação em duas colunas (`AbasAcao`)
+
+`/projetos/[id]/acoes/[acaoId]/editar`: formulário (e "Duplicar") à esquerda, contexto
+em ABAS à direita (`abas-acao.tsx`, cliente): **Histórico** (aba de partida),
+**Comentários**, **Links**, **Dependências** e **Riscos** (só se a ação tem risco aberto),
+cada uma com a contagem. Abaixo de `lg` empilha.
+
+- **Os painéis são renderizados no servidor e TODOS ficam no DOM**; o inativo só tem
+  `hidden`. É de propósito: o rascunho de um comentário ou de um link não se perde ao
+  trocar de aba. Padrão WAI-ARIA de abas (`tablist`/`tab`/`tabpanel`, setas, Home, End).
+- **`?aba=historico|comentarios|links|dependencias|riscos`** abre já na aba (aba
+  desconhecida = Histórico). Os testes de navegador usam isso para ir direto ao
+  comentário, link, dependência ou risco; o histórico é a aba padrão.
+- Seção nova de contexto da ação entra como aba nova em `page.tsx`, não solta abaixo
+  do formulário. A coluna de grade precisa de `grid-cols-[minmax(0,1fr)]` na base: sem
+  isso as abas estouram a largura no celular.
+
 ## Comentários por ação
 
 A coluna de comentário da planilha, com autor e momento: `ComentarioAcao`

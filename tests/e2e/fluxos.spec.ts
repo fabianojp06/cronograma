@@ -328,7 +328,7 @@ test.describe('busca e paginação', () => {
 test('comenta uma ação, o comentário aparece com o autor e o autor pode apagá-lo', async ({
   page,
 }) => {
-  await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+  await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar?aba=comentarios`)
   await expect(page.getByText('Nenhum comentário nesta ação.')).toBeVisible()
 
   await page.getByLabel('Novo comentário').fill('Aguardando retorno do fornecedor')
@@ -407,7 +407,7 @@ test.describe('notificações de comentário', () => {
     )
 
     // Ana (a conta de teste) comenta e marca o Bruno.
-    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar?aba=comentarios`)
     await page.getByText('Marcar outras pessoas').click()
     await page.getByLabel('Bruno Lima').check()
     await page.getByLabel('Novo comentário').fill('Bruno, preciso do relatório até sexta')
@@ -444,7 +444,7 @@ test.describe('notificações de comentário', () => {
     )
     await consultar(`UPDATE "Acao" SET "responsavelId" = $1 WHERE "id" = $2`, [bruno, acaoId])
 
-    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar?aba=comentarios`)
     await expect(page.getByText('Bruno Lima, que responde pela ação, é avisado(a) sempre.')).toBeVisible()
     await page.getByLabel('Novo comentário').fill('Atualizei o prazo')
     await page.getByRole('button', { name: 'Comentar' }).click()
@@ -810,7 +810,7 @@ test.describe('dependência entre ações', () => {
        VALUES (gen_random_uuid()::text,$1,2,'Ação dependente',now()) RETURNING "id"`,
       [projetoId],
     )
-    await page.goto(`/projetos/${projetoId}/acoes/${acaoB}/editar`)
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoB}/editar?aba=dependencias`)
 
     await page.locator('#dependencia-predecessora').selectOption({ index: 1 })
     await page.getByRole('button', { name: 'Adicionar', exact: true }).click()
@@ -1179,7 +1179,7 @@ test.describe('riscos e bloqueios', () => {
     await expect(secao.getByText('Plano: Abrir chamado com a infraestrutura')).toBeVisible()
 
     // A ação afetada mostra o registro na sua tela.
-    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar?aba=riscos`)
     await expect(page.getByRole('link', { name: /Bloqueio: Servidor sem acesso à rede/ })).toBeVisible()
 
     // Reunião: tela de riscos, e o Panorama conta 1.
@@ -1362,7 +1362,7 @@ test.describe('lixeira de projetos', () => {
 
 test.describe('links e anexos da ação', () => {
   test('adiciona, abre em outra aba, edita, remove e mostra o indicador no projeto', async ({ page }) => {
-    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar?aba=links`)
     await expect(page.getByText('Nenhum link nesta ação.')).toBeVisible()
 
     // Endereço perigoso é recusado, e o que foi digitado não se perde.
@@ -1385,7 +1385,8 @@ test.describe('links e anexos da ação', () => {
     // O formulário recomeçou vazio.
     await expect(page.locator('#link-novo-titulo')).toHaveValue('')
 
-    // O histórico registra.
+    // O histórico registra (está noutra aba do contexto da ação).
+    await page.getByRole('tab', { name: /Histórico/ }).click()
     await expect(page.getByText('Ata: Ata do kickoff (ctcea.sharepoint.com)')).toBeVisible()
 
     // O projeto mostra o indicador.
@@ -1393,7 +1394,7 @@ test.describe('links e anexos da ação', () => {
     await expect(page.getByText('· 1 link')).toBeVisible()
 
     // Editar.
-    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar?aba=links`)
     await page.getByRole('button', { name: 'Editar', exact: true }).click()
     await page.locator('input[name="titulo"]').first().fill('Contrato assinado')
     await page.getByRole('button', { name: 'Salvar', exact: true }).click()
@@ -1415,7 +1416,7 @@ test.describe('links e anexos da ação', () => {
       [acaoId],
     )
     await consultar(`UPDATE "Colaborador" SET "somenteLeitura" = true WHERE "clerkUserId" = 'user_e2e'`)
-    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar?aba=links`)
     await expect(page.getByRole('link', { name: /Planilha de apoio/ })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Adicionar link' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Editar', exact: true })).toHaveCount(0)
@@ -1688,5 +1689,44 @@ test.describe('Gantt: setas, risco e hoje', () => {
     expect(realizado.y).toBeGreaterThan(previsto.y)
     expect(realizado.y + realizado.height).toBeLessThan(previsto.y + previsto.height)
     expect(realizado.x).toBeGreaterThanOrEqual(previsto.x)
+  })
+})
+
+test.describe('tela da ação em duas colunas', () => {
+  test('formulário à esquerda, contexto em abas à direita, com teclado e contagens', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar`)
+    const abas = page.getByRole('tablist', { name: 'Contexto da ação' })
+    for (const nome of ['Histórico', 'Comentários', 'Links', 'Dependências']) await expect(abas.getByRole('tab', { name: new RegExp(nome) })).toBeVisible()
+    // Lado a lado: o painel do contexto começa à direita do formulário.
+    const form = (await page.locator('form').first().boundingBox())!
+    const painel = (await abas.boundingBox())!
+    expect(painel.x).toBeGreaterThan(form.x + form.width - 1)
+
+    // Histórico é a aba de partida; as setas trocam de aba e só um painel fica visível.
+    await expect(abas.getByRole('tab', { name: /Histórico/ })).toHaveAttribute('aria-selected', 'true')
+    await abas.getByRole('tab', { name: /Histórico/ }).focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(abas.getByRole('tab', { name: /Comentários/ })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tabpanel')).toHaveCount(await page.getByRole('tabpanel', { includeHidden: false }).count())
+    await expect(page.getByRole('heading', { name: /^Comentários/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Histórico de alterações' })).toBeHidden()
+
+    // O rascunho de um comentário sobrevive à troca de aba.
+    await page.locator('textarea').first().fill('rascunho que não pode sumir')
+    await page.keyboard.press('End')
+    await abas.getByRole('tab', { name: /Dependências/ }).click()
+    await abas.getByRole('tab', { name: /Comentários/ }).click()
+    await expect(page.locator('textarea').first()).toHaveValue('rascunho que não pode sumir')
+
+    // `?aba=` abre direto na aba pedida; aba desconhecida cai no histórico.
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar?aba=links`)
+    await expect(abas.getByRole('tab', { name: /Links/ })).toHaveAttribute('aria-selected', 'true')
+    await page.goto(`/projetos/${projetoId}/acoes/${acaoId}/editar?aba=xyz`)
+    await expect(abas.getByRole('tab', { name: /Histórico/ })).toHaveAttribute('aria-selected', 'true')
+
+    // No celular empilha, sem rolagem lateral.
+    await page.setViewportSize({ width: 390, height: 844 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
   })
 })
