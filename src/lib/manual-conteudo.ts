@@ -161,7 +161,8 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'No projeto, clique em "Nova ação". Informe descrição, datas previstas e, se quiser, o responsável.',
       'Para editar, clique na ação no Gantt. Altere status, datas ou responsável e salve.',
       'Para apontar o andamento, preencha as datas Realizado. O término realizado conclui a ação; só o início a tira de "não iniciado".',
-      'O painel "Histórico de alterações", ao lado, mostra cada mudança de status, datas e responsável, com quem fez e quando.',
+      'Em tela larga, a tela da ação tem duas colunas: o formulário à esquerda e, à direita, o contexto em abas: Histórico, Comentários, Links, Dependências (e Riscos, quando a ação tem algum aberto). O número ao lado do nome da aba diz quantos itens ela tem. No celular, o contexto vem abaixo do formulário. Use as setas do teclado para trocar de aba; o que você começou a escrever numa aba não se perde ao mudar de aba.',
+      'A aba "Histórico" mostra cada mudança de status, datas e responsável, com quem fez e quando.',
       'Se você mudar o início ou o término PREVISTO de uma ação que já tinha data, aparece "Por que a data prevista mudou?": escolha o motivo (escopo, dependência externa, falta de pessoas ou recursos, prioridade, estimativa errada ou outro) e, se quiser, acrescente um detalhe. Sem o motivo, não salva. Em "Outro", o detalhe é obrigatório.',
     ],
     dicas: [

@@ -16,6 +16,7 @@ import { podeApagarComentario } from '@/lib/comentario-validacao'
 import { contaELiderDoProjeto } from '@/lib/dependencia-servidor'
 import { SecaoDependencias } from '@/components/secao-dependencias'
 import { LinksAcao } from '@/components/links-acao'
+import { AbasAcao } from '@/components/abas-acao'
 import { prisma } from '@/lib/prisma'
 import { descreverMotivo } from '@/lib/motivo-replanejamento'
 
@@ -29,8 +30,12 @@ const formatoMomento = new Intl.DateTimeFormat('pt-BR', {
 
 export default async function EditarAcaoPage({
   params,
+  searchParams,
 }: PageProps<'/projetos/[id]/acoes/[acaoId]/editar'>) {
   const { id, acaoId } = await params
+  // `?aba=comentarios` abre o contexto já nessa aba (link de aviso, por exemplo).
+  const brutaAba = (await searchParams).aba
+  const abaInicial = typeof brutaAba === 'string' ? brutaAba : undefined
 
   // Mesma regra de `atualizarAcao`: ação de projeto excluído não é editável. O
   // `projetoId` no filtro impede abrir a ação de um projeto pela URL de outro.
@@ -187,7 +192,7 @@ export default async function EditarAcaoPage({
         . Toda mudança de status, datas ou responsável fica registrada no histórico.
       </p>
 
-      <div className="grid gap-x-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="mt-6 grid items-start gap-x-10 gap-y-8 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_28rem]">
         {podeEditar ? (
           <div>
             <FormularioAcao projetoId={acao.projeto.id} responsaveis={responsaveis} acao={valores} />
@@ -230,44 +235,59 @@ export default async function EditarAcaoPage({
           </div>
         )}
 
-        <div className="lg:col-start-1">
-          <SecaoDependencias
-            acao={acao}
-            ehLider={ehLider}
-            hoje={new Date()}
-            nomePorConta={nomePorConta}
-            opcoes={opcoesDependencia}
-            pedidos={acao.liberacoes}
-            podeEditar={podeEditar}
-            projetoId={acao.projeto.id}
-            vinculos={acao.dependeDe}
-          />
-        </div>
-
-        <div className="lg:col-start-1">
-          <LinksAcao acaoId={acao.id} links={acao.links} podeEditar={podeEditar} />
-        </div>
-
-        {acao.riscos.length > 0 ? (
-          <section aria-labelledby="titulo-riscos-acao" className="mt-8 lg:col-start-1">
-            <h2 className="font-display text-base font-bold" id="titulo-riscos-acao">
-              Riscos e bloqueios desta ação{' '}
-              <span className="text-sm font-normal text-textFaint">({acao.riscos.length})</span>
-            </h2>
-            <ul className="mt-3 space-y-2 text-sm">
-              {acao.riscos.map((r) => (
-                <li className="border-l-2 border-warn bg-surface py-2 pl-3" key={r.id}>
-                  <Link className="font-medium text-text underline hover:text-accent" href={`/projetos/${acao.projeto.id}/riscos/${r.id}/editar`}>
-                    {r.tipo === 'BLOQUEIO' ? 'Bloqueio' : 'Risco'}: {r.titulo}
-                  </Link>{' '}
-                  <span className="text-xs text-textFaint">impacto {r.impacto === 'ALTO' ? 'alto' : r.impacto === 'MEDIO' ? 'médio' : 'baixo'}</span>
+        <AbasAcao
+          inicial={abaInicial}
+          abas={[
+            {
+              id: 'historico',
+              rotulo: 'Histórico',
+              contagem: acao.historico.length,
+              conteudo: (
+        <section aria-labelledby="titulo-historico">
+          <h2 className="font-display text-base font-bold" id="titulo-historico">
+            Histórico de alterações
+          </h2>
+          {acao.historico.length === 0 ? (
+            <p className="mt-3 text-sm text-textMuted">
+              Nenhuma alteração desde a criação da ação.
+            </p>
+          ) : (
+            <ol className="mt-3 space-y-3">
+              {acao.historico.map((linha) => (
+                <li className="border-l-2 border-borderSoft pl-3 text-sm" key={linha.id}>
+                  <p className="font-medium text-text">{rotularCampo(linha.campo)}</p>
+                  <p className="text-textMuted">
+                    {formatarValorHistorico(linha.campo, linha.valorAntigo)}
+                    <span aria-hidden="true"> → </span>
+                    <span className="sr-only"> para </span>
+                    <span className="text-text">
+                      {formatarValorHistorico(linha.campo, linha.valorNovo)}
+                    </span>
+                  </p>
+                  {linha.campo === 'previstoInicio' || linha.campo === 'previstoTermino' ? (
+                    linha.motivo ? (
+                      <p className="mt-0.5 text-xs text-text">Motivo: {descreverMotivo(linha.motivo, linha.motivoDetalhe)}</p>
+                    ) : linha.valorAntigo !== null ? (
+                      <p className="mt-0.5 text-xs text-textFaint">{descreverMotivo(null, null)}</p>
+                    ) : null
+                  ) : null}
+                  <p className="mt-0.5 text-xs text-textFaint">
+                    {formatoMomento.format(linha.alteradoEm)} ·{' '}
+                    {rotularAutor(linha.alteradoPor, nomePorConta)}
+                  </p>
                 </li>
               ))}
-            </ul>
-          </section>
-        ) : null}
-
-        <section aria-labelledby="titulo-comentarios" className="mt-8 lg:col-start-1">
+            </ol>
+          )}
+        </section>
+              ),
+            },
+            {
+              id: 'comentarios',
+              rotulo: 'Comentários',
+              contagem: acao.comentarios.length,
+              conteudo: (
+        <section aria-labelledby="titulo-comentarios">
           <h2 className="font-display text-base font-bold" id="titulo-comentarios">
             Comentários{' '}
             <span className="text-sm font-normal text-textFaint">({acao.comentarios.length})</span>
@@ -311,43 +331,70 @@ export default async function EditarAcaoPage({
           )}
         </section>
 
-        <aside aria-labelledby="titulo-historico" className="mt-8 lg:col-start-2 lg:row-start-1 lg:row-span-2">
-          <h2 className="font-display text-base font-bold" id="titulo-historico">
-            Histórico de alterações
-          </h2>
-          {acao.historico.length === 0 ? (
-            <p className="mt-3 text-sm text-textMuted">
-              Nenhuma alteração desde a criação da ação.
-            </p>
-          ) : (
-            <ol className="mt-3 space-y-3">
-              {acao.historico.map((linha) => (
-                <li className="border-l-2 border-borderSoft pl-3 text-sm" key={linha.id}>
-                  <p className="font-medium text-text">{rotularCampo(linha.campo)}</p>
-                  <p className="text-textMuted">
-                    {formatarValorHistorico(linha.campo, linha.valorAntigo)}
-                    <span aria-hidden="true"> → </span>
-                    <span className="sr-only"> para </span>
-                    <span className="text-text">
-                      {formatarValorHistorico(linha.campo, linha.valorNovo)}
-                    </span>
-                  </p>
-                  {linha.campo === 'previstoInicio' || linha.campo === 'previstoTermino' ? (
-                    linha.motivo ? (
-                      <p className="mt-0.5 text-xs text-text">Motivo: {descreverMotivo(linha.motivo, linha.motivoDetalhe)}</p>
-                    ) : linha.valorAntigo !== null ? (
-                      <p className="mt-0.5 text-xs text-textFaint">{descreverMotivo(null, null)}</p>
-                    ) : null
-                  ) : null}
-                  <p className="mt-0.5 text-xs text-textFaint">
-                    {formatoMomento.format(linha.alteradoEm)} ·{' '}
-                    {rotularAutor(linha.alteradoPor, nomePorConta)}
-                  </p>
+              ),
+            },
+            {
+              id: 'links',
+              rotulo: 'Links',
+              contagem: acao.links.length,
+              conteudo: (
+        <>
+          <LinksAcao acaoId={acao.id} links={acao.links} podeEditar={podeEditar} />
+        </>
+
+              ),
+            },
+            {
+              id: 'dependencias',
+              rotulo: 'Dependências',
+              contagem: acao.dependeDe.length,
+              conteudo: (
+        <>
+          <SecaoDependencias
+            acao={acao}
+            ehLider={ehLider}
+            hoje={new Date()}
+            nomePorConta={nomePorConta}
+            opcoes={opcoesDependencia}
+            pedidos={acao.liberacoes}
+            podeEditar={podeEditar}
+            projetoId={acao.projeto.id}
+            vinculos={acao.dependeDe}
+          />
+        </>
+
+              ),
+            },
+            ...(acao.riscos.length > 0
+              ? [
+                  {
+                    id: 'riscos',
+                    rotulo: 'Riscos',
+                    contagem: acao.riscos.length,
+                    conteudo: (
+          <section aria-labelledby="titulo-riscos-acao">
+            <h2 className="font-display text-base font-bold" id="titulo-riscos-acao">
+              Riscos e bloqueios desta ação{' '}
+              <span className="text-sm font-normal text-textFaint">({acao.riscos.length})</span>
+            </h2>
+            <ul className="mt-3 space-y-2 text-sm">
+              {acao.riscos.map((r) => (
+                <li className="border-l-2 border-warn bg-surface py-2 pl-3" key={r.id}>
+                  <Link className="font-medium text-text underline hover:text-accent" href={`/projetos/${acao.projeto.id}/riscos/${r.id}/editar`}>
+                    {r.tipo === 'BLOQUEIO' ? 'Bloqueio' : 'Risco'}: {r.titulo}
+                  </Link>{' '}
+                  <span className="text-xs text-textFaint">impacto {r.impacto === 'ALTO' ? 'alto' : r.impacto === 'MEDIO' ? 'médio' : 'baixo'}</span>
                 </li>
               ))}
-            </ol>
-          )}
-        </aside>
+            </ul>
+          </section>
+
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
       </div>
     </main>
   )
