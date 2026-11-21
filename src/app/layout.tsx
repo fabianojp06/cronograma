@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ptBR } from "@clerk/localizations";
 import "./globals.css";
 import { Cabecalho } from "@/components/cabecalho";
+import { ResumoSemanalPopup } from "@/components/resumo-semanal-popup";
 import { SCRIPT_TEMA } from "@/lib/tema";
 
 const manrope = Manrope({
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <body className="min-h-full flex flex-col bg-bg text-text">
           <Cabecalho />
           {children}
+          <ResumoSemanalPopup />
         </body>
       </html>
     </ClerkProvider>

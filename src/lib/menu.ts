@@ -30,6 +30,11 @@ export const MENU_ADMIN = [
     descricao: 'Perfis, área, e-mail e situação de cada pessoa.',
   },
   {
+    href: '/resumo-semanal',
+    rotulo: 'Resumo semanal',
+    descricao: 'O que foi concluído, o que atrasou e o que vence nos próximos 7 dias, por equipe.',
+  },
+  {
     href: '/priorizacao/pesos',
     rotulo: 'Pesos da priorização',
     descricao: 'Os pesos dos critérios da matriz Benefício x Esforço.',

@@ -379,6 +379,9 @@ model Notificacao {
   /// Aviso de liberação de início (pedido ou decisão): preenchido; senão, nulo.
   liberacaoId   String?
   liberacao     LiberacaoAcao? @relation(fields: [liberacaoId], references: [id], onDelete: Cascade)
+  /// Aviso do resumo semanal (motivo RESUMO_SEMANAL): preenchido; senão, nulo.
+  resumoId      String?
+  resumo        ResumoSemanal? @relation(fields: [resumoId], references: [id], onDelete: Cascade)
   /// MARCADO (a pessoa foi escolhida em "Avisar") ou RESPONSAVEL (responde pela ação);
   /// LIBERACAO_PEDIDA, LIBERACAO_APROVADA ou LIBERACAO_RECUSADA nos avisos de liberação.
   motivo        String
@@ -386,8 +389,24 @@ model Notificacao {
   criadoEm      DateTime       @default(now())
 
   @@unique([destinatarioId, comentarioId])
+  @@unique([destinatarioId, resumoId])
   @@index([destinatarioId, lida, criadoEm])
   @@index([liberacaoId])
+  @@index([resumoId])
+}
+
+/// Resumo semanal para quem administra: uma FOTO do que concluiu, atrasou e
+/// vence nos próximos 7 dias, por equipe, tirada na segunda-feira (8h de
+/// Brasília). `semana` é a data da segunda-feira, `aaaa-mm-dd`, e é única: o
+/// resumo de uma semana nasce uma vez só, não importa quem o provoque.
+model ResumoSemanal {
+  id       String   @id @default(cuid())
+  semana   String   @unique
+  geradoEm DateTime @default(now())
+  /// O conteúdo exato (ver `resumo-semanal.ts`): o que o gestor viu não muda depois.
+  conteudo Json
+
+  notificacoes Notificacao[]
 }
 
 /// "B só começa quando A terminar": `acaoId` (B) depende de `predecessoraId` (A),

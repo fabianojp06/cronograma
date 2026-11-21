@@ -424,7 +424,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     rotas: ['/administracao'],
     passos: [
       'Clique em "Administração", no fim do menu. O item só aparece para administradores.',
-      'A página lista as quatro ferramentas: Colaboradores, Pesos da priorização, Painel do sistema e Registro de erros. Dentro de cada uma, a barra no topo leva às outras.',
+      'A página lista as ferramentas: Colaboradores, Pesos da priorização, Resumo semanal, Painel do sistema e Registro de erros. Dentro de cada uma, a barra no topo leva às outras.',
       'Os demais perfis não veem o item; se abrirem o endereço direto, a tela diz que o acesso é de administradores.',
     ],
     dicas: [
@@ -433,6 +433,29 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     ],
     desde: '2026-11-20',
     palavras: ['administração', 'admin', 'menu', 'configuração'],
+  },
+  {
+    id: 'resumo-semanal',
+    grupo: 'Administração',
+    titulo: 'Resumo semanal',
+    resumo: 'O retrato da semana, por equipe: o que foi concluído, o que atrasou e o que vence nos próximos 7 dias.',
+    perfil: 'administrador',
+    rotas: ['/resumo-semanal'],
+    passos: [
+      'Toda segunda-feira, a partir das 8h (horário de Brasília), o sistema tira o resumo da semana. Na primeira vez que um administrador entra depois disso, aparece um popup com os totais por equipe.',
+      'No popup, clique em "Ver o resumo completo" para abrir a tela, ou em "Fechar" (ou Esc) para dispensar. O aviso também fica no sino, em "Notificações".',
+      'Em Administração > Resumo semanal, cada equipe mostra três blocos: Atrasadas, Vencem em 7 dias e Concluídas. Cada bloco traz o total e as 10 ações mais relevantes, com projeto, responsável e data; clique numa ação para abri-la.',
+      'Para ver semanas anteriores, use "Outras semanas" no alto da tela.',
+    ],
+    dicas: [
+      'Só administradores ativos recebem o popup e o aviso. Quem for promovido a administrador no meio da semana também recebe o resumo da semana corrente.',
+      'É uma foto: o que você viu no dia não muda depois, mesmo que as ações mudem. Para o estado de agora, use os Dashboards.',
+      'Atrasada segue a regra do painel (término previsto já passou e a ação não foi concluída). Concluída é a de término realizado nos últimos 7 dias.',
+      'Equipe sem nada para dizer não aparece. Projetos sem equipe preenchida ficam em "Sem equipe".',
+      'Por enquanto o resumo não vai por e-mail, só dentro do sistema.',
+    ],
+    desde: '2026-11-21',
+    palavras: ['resumo', 'semanal', 'gestor', 'atrasadas', 'vencem', 'concluídas', 'equipe', 'popup'],
   },
   {
     id: 'administracao-sistema',

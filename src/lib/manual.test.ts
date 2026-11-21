@@ -104,7 +104,7 @@ describe('regras do manual', () => {
 
   it('novidades vêm da mais recente para a mais antiga', () => {
     const n = novidades(SECOES_MANUAL, 3)
-    expect(n[0].desde).toBe('2026-11-20')
+    expect(n[0].desde).toBe([...SECOES_MANUAL.map((x) => x.desde)].sort().reverse()[0])
     expect(n.map((s) => s.desde)).toEqual([...n.map((s) => s.desde)].sort().reverse())
   })
 
