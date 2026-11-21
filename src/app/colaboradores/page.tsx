@@ -90,7 +90,7 @@ export default async function ColaboradoresPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
       {podeEditar ? <NavegacaoAdministracao atual="/colaboradores" /> : null}
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Equipe</p>
+      <p className="text-sm font-medium text-accent">Equipe</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Colaboradores</h1>
       <p className="mt-2 max-w-2xl text-sm text-textMuted">
         {ativos} ativo(s) de {lista.length}. Desativar não apaga nada: os cards e os

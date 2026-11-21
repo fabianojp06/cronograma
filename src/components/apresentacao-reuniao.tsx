@@ -194,7 +194,7 @@ export function ApresentacaoReuniao({
       </header>
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-8 py-10">
-        <p className="text-lg font-medium uppercase tracking-wide text-accent md:text-xl">
+        <p className="text-lg font-medium text-accent md:text-xl">
           {equipeAtual ?? 'Todas as equipes'}
         </p>
         <h1 className="mt-2 font-display text-4xl font-extrabold md:text-6xl">

@@ -52,7 +52,7 @@ export default async function EditarProjetoPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">
+      <p className="text-sm font-medium text-accent">
         Plano de ação
       </p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">{projeto.nome}</h1>

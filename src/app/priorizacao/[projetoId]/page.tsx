@@ -79,7 +79,7 @@ export default async function AvaliarProjetoPage({
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">
+      <p className="text-sm font-medium text-accent">
         {projeto.referencia ?? 'Matriz de Priorização'}
       </p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">{projeto.nome}</h1>
@@ -95,7 +95,7 @@ export default async function AvaliarProjetoPage({
       {resultado !== null && avaliacao !== null ? (
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="border-l-2 border-realizado bg-surface py-2 pl-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+            <p className="text-xs font-medium text-textMuted">
               Benefício
             </p>
             <p className="mt-1 font-display text-2xl font-extrabold tabular-nums">
@@ -103,7 +103,7 @@ export default async function AvaliarProjetoPage({
             </p>
           </div>
           <div className="border-l-2 border-warn bg-surface py-2 pl-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+            <p className="text-xs font-medium text-textMuted">
               Esforço
             </p>
             <p className="mt-1 font-display text-2xl font-extrabold tabular-nums">
@@ -111,7 +111,7 @@ export default async function AvaliarProjetoPage({
             </p>
           </div>
           <div className="border-l-2 border-previsto bg-surface py-2 pl-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+            <p className="text-xs font-medium text-textMuted">
               GUT
             </p>
             <p className="mt-1 font-display text-2xl font-extrabold tabular-nums">
@@ -119,7 +119,7 @@ export default async function AvaliarProjetoPage({
             </p>
           </div>
           <div className="border-l-2 border-accent bg-surface py-2 pl-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+            <p className="text-xs font-medium text-textMuted">
               Prioridade
             </p>
             <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-accent">
@@ -127,7 +127,7 @@ export default async function AvaliarProjetoPage({
             </p>
           </div>
           <div className="border-l-2 border-borderSoft bg-surface py-2 pl-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+            <p className="text-xs font-medium text-textMuted">
               Quadrante
             </p>
             <p className="mt-1 font-display text-base font-extrabold">

@@ -17,7 +17,7 @@ export function SecaoQualidade({
           <TabelaEmpilhavel >
             <table className="w-full min-w-2xl border-collapse text-sm">
               <thead>
-                <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
+                <tr className="bg-tableHeadBg text-left text-xs font-semibold text-textMuted">
                   <th className="px-3 py-2 font-semibold">Pendência</th>
                   <th className="px-3 py-2 font-semibold">Efeito nos números</th>
                   <th className="px-3 py-2 text-right font-semibold">Ocorrências</th>

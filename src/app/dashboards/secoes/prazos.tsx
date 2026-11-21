@@ -31,7 +31,7 @@ export function SecoesPrazos({
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="border-l-2 border-realizado bg-surface py-2 pl-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+                <p className="text-xs font-medium text-textMuted">
                   Entregues no prazo
                 </p>
                 <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-realizado">
@@ -42,7 +42,7 @@ export function SecoesPrazos({
                 </p>
               </div>
               <div className="border-l-2 border-warn bg-surface py-2 pl-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+                <p className="text-xs font-medium text-textMuted">
                   Entregues com atraso
                 </p>
                 <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-warn">
@@ -51,7 +51,7 @@ export function SecoesPrazos({
                 <p className="text-xs text-textFaint">ações concluídas fora do prazo</p>
               </div>
               <div className="border-l-2 border-warn bg-surface py-2 pl-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+                <p className="text-xs font-medium text-textMuted">
                   Atraso médio
                 </p>
                 <p className="mt-1 font-display text-2xl font-extrabold tabular-nums">
@@ -60,7 +60,7 @@ export function SecoesPrazos({
                 <p className="text-xs text-textFaint">dias úteis, só entre as atrasadas</p>
               </div>
               <div className="border-l-2 border-borderSoft bg-surface py-2 pl-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+                <p className="text-xs font-medium text-textMuted">
                   Fora da base
                 </p>
                 <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-textMuted">
@@ -79,7 +79,7 @@ export function SecoesPrazos({
             <TabelaEmpilhavel >
               <table className="w-full min-w-2xl border-collapse text-sm">
                 <thead>
-                  <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
+                  <tr className="bg-tableHeadBg text-left text-xs font-semibold text-textMuted">
                     <th className="px-3 py-2 font-semibold">Ação</th>
                     <th className="px-3 py-2 font-semibold">Projeto</th>
                     <th className="px-3 py-2 font-semibold">Responsável</th>
@@ -138,7 +138,7 @@ export function SecoesPrazos({
                 key={janela.dias}
                 className="border-l-2 border-previsto bg-surface py-2 pl-4"
               >
-                <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+                <p className="text-xs font-medium text-textMuted">
                   {janela.rotulo}
                 </p>
                 <p className="mt-1 font-display text-2xl font-extrabold tabular-nums">

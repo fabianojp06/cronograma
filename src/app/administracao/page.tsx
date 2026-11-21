@@ -24,7 +24,7 @@ export default async function AdministracaoPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
       <NavegacaoAdministracao atual={ROTA_ADMINISTRACAO} />
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Cronograma CTCEA</p>
+      <p className="text-sm font-medium text-accent">Cronograma CTCEA</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Administração</h1>
       <p className="mt-2 max-w-2xl text-sm text-textMuted">
         Ferramentas de quem administra o sistema. Os demais perfis não veem esta área.

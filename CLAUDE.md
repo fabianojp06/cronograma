@@ -99,7 +99,7 @@ tema do Tailwind, não hardcoded em cada componente):
 | `borderSoft` | `#F0F3F5` | `#18232A` |
 | `text` | `#16212B` | `#EAF1F0` |
 | `textMuted` | `#5B6B76` | `#8FA3A0` |
-| `textFaint` | `#8B98A3` | `#5C716E` |
+| `textFaint` | `#626F79` | `#7A8F8C` |
 | `accent` | `#0F766E` | `#2DD4BF` |
 | `onAccent` (texto sobre `accent`) | `#FFFFFF` | `#0B1418` |
 | `warn` (atraso) | `#E76F51` | `#F3866A` |
@@ -119,6 +119,23 @@ As telas **Dashboards** (`/dashboards`) e **Matriz de Priorização**
 (`/priorizacao`) não têm artboard no protótipo — foram desenhadas depois,
 seguindo os mesmos tokens e o mesmo estilo (traço lateral, barra embutida na
 linha, sem card com sombra).
+
+## Tipografia e contraste
+
+Passada única sobre o sistema inteiro; as três regras são cobertas por
+`src/lib/tipografia.test.ts` (quebra o CI se voltarem).
+
+- **Contraste mínimo de 4,5:1 para `textFaint`** sobre `bg`, `surface` e `borderSoft`, nos
+  dois modos (antes 2,7–3,3:1, abaixo do piso de leitura). Por isso o token mudou
+  (`#8B98A3`→`#626F79`; `#5C716E`→`#7A8F8C`). `textFaint` continua mais claro que
+  `textMuted`, mas é texto legível, não decoração. Ao trocar um token, rode o teste.
+- **Piso de 13 px**: `--text-xs` do tema vale 0,8125 rem (o padrão do Tailwind é 12 px) e
+  tamanhos fixos `text-[Npx]` abaixo de 13 px não existem mais. Para texto pequeno use
+  `text-xs`, nunca um valor solto.
+- **Sem caixa-alta nem espaçamento de letras**: sobrancelhas de página, rótulos de
+  indicador, `legend` e cabeçalhos de tabela usam caixa normal (cabeçalho de tabela em
+  `font-semibold`). A hierarquia vem do peso e da cor, não de gritar. Não reintroduza
+  `uppercase`/`tracking-wide`.
 
 ## Regras de gráfico (tela Dashboards)
 

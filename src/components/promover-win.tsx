@@ -58,7 +58,7 @@ export function PromoverWin({
       </p>
 
       <fieldset className="mt-4">
-        <legend className="text-xs font-semibold uppercase tracking-wide text-textMuted">
+        <legend className="text-xs font-semibold text-textMuted">
           Promover como
         </legend>
         <div className="mt-2 space-y-2">

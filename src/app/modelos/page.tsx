@@ -43,7 +43,7 @@ export default async function ModelosPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Plano de ação</p>
+      <p className="text-sm font-medium text-accent">Plano de ação</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Modelos de projeto</h1>
       <p className="mt-2 max-w-3xl text-sm text-textMuted">
         Esqueletos para projetos parecidos (ciclos anuais, rotinas da STI, GIA e GRH): as ações

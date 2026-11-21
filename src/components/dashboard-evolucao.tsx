@@ -71,7 +71,7 @@ export function DashboardEvolucao({ pontos }: { pontos: PontoEvolucao[] }) {
               x={MARGEM.esquerda - 8}
               y={y(maximo * fracao) + 4}
               textAnchor="end"
-              className="fill-textFaint text-[11px] tabular-nums"
+              className="fill-textFaint text-xs tabular-nums"
             >
               {Math.round(maximo * fracao)}
             </text>
@@ -85,7 +85,7 @@ export function DashboardEvolucao({ pontos }: { pontos: PontoEvolucao[] }) {
               x={x(i)}
               y={ALTURA - 8}
               textAnchor="middle"
-              className="fill-textFaint text-[11px]"
+              className="fill-textFaint text-xs"
             >
               {ponto.rotulo}
             </text>
@@ -133,7 +133,7 @@ export function DashboardEvolucao({ pontos }: { pontos: PontoEvolucao[] }) {
             <text
               x={ultimoPrevisto.x + 10}
               y={ultimoPrevisto.y + 4}
-              className="fill-textMuted text-[11px]"
+              className="fill-textMuted text-xs"
             >
               Previsto {pontos[pontos.length - 1].previstoAcumulado}
             </text>
@@ -151,7 +151,7 @@ export function DashboardEvolucao({ pontos }: { pontos: PontoEvolucao[] }) {
             <text
               x={ultimoRealizado.x + 10}
               y={ultimoRealizado.y + 4}
-              className="fill-textMuted text-[11px]"
+              className="fill-textMuted text-xs"
             >
               Realizado {ultimoRealizado.realizadoAcumulado}
             </text>

@@ -10,7 +10,7 @@
   --border-soft: #F0F3F5;
   --text: #16212B;
   --text-muted: #5B6B76;
-  --text-faint: #8B98A3;
+  --text-faint: #626F79;
   --accent: #0F766E;
   --on-accent: #FFFFFF;
   --warn: #E76F51;
@@ -36,7 +36,7 @@
   --border-soft: #18232A;
   --text: #EAF1F0;
   --text-muted: #8FA3A0;
-  --text-faint: #5C716E;
+  --text-faint: #7A8F8C;
   --accent: #2DD4BF;
   --on-accent: #0B1418;
   --warn: #F3866A;
@@ -50,6 +50,10 @@
 }
 
 @theme inline {
+  /* Piso tipográfico de 13 px: o `text-xs` padrão do Tailwind (12 px) é pequeno
+     demais para tabela e rótulo. Nada abaixo disso no sistema. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.25rem;
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-border: var(--border);
@@ -120,10 +124,8 @@ h1, h2, h3, h4 {
   .tabela-empilhavel td[data-rotulo]::before {
     content: attr(data-rotulo);
     display: block;
-    font-size: 0.6875rem;
+    font-size: 0.8125rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
     color: var(--text-muted);
   }
 }

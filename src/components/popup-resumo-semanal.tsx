@@ -52,7 +52,7 @@ export function PopupResumoSemanal({ dados }: { dados: DadosPopup }) {
         className="w-full max-w-lg rounded-md border border-border bg-surface p-5 text-sm shadow-xl"
         role="dialog"
       >
-        <p className="text-xs font-medium uppercase tracking-wide text-accent">{dados.rotuloSemana}</p>
+        <p className="text-xs font-medium text-accent">{dados.rotuloSemana}</p>
         <h2 className="mt-1 font-display text-lg font-extrabold" id="popup-resumo-titulo">
           Resumo da semana
         </h2>

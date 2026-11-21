@@ -34,7 +34,7 @@ export default async function UsarModeloPage({ params }: { params: Promise<{ id:
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Modelos</p>
+      <p className="text-sm font-medium text-accent">Modelos</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Novo projeto a partir de um modelo</h1>
       <p className="mt-2 text-sm text-textMuted">
         Modelo <strong className="font-medium text-text">{modelo.nome}</strong>

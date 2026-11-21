@@ -28,7 +28,7 @@ export function SecoesWins({
               <TabelaEmpilhavel className="mt-4">
                 <table className="w-full min-w-2xl border-collapse text-sm">
                   <thead>
-                    <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
+                    <tr className="bg-tableHeadBg text-left text-xs font-semibold text-textMuted">
                       <th className="px-3 py-2 font-semibold">Semana</th>
                       <th className="px-3 py-2 text-right font-semibold">WINs</th>
                       <th className="px-3 py-2 text-right font-semibold">Concluídos</th>
@@ -80,7 +80,7 @@ export function SecoesWins({
             <TabelaEmpilhavel >
               <table className="w-full min-w-2xl border-collapse text-sm">
                 <thead>
-                  <tr className="bg-tableHeadBg text-left text-xs uppercase tracking-wide text-textMuted">
+                  <tr className="bg-tableHeadBg text-left text-xs font-semibold text-textMuted">
                     <th className="px-3 py-2 font-semibold">WIN</th>
                     <th className="px-3 py-2 font-semibold">Quem</th>
                     <th className="px-3 py-2 font-semibold">Período</th>

@@ -122,7 +122,7 @@ export function GraficoWinsSemana({ semanas }: { semanas: ConclusaoSemanal[] }) 
                 x={x + LARGURA_BARRA / 2}
                 y={MARGEM_TOPO - 8}
                 textAnchor="middle"
-                className="fill-text text-[10px] font-medium"
+                className="fill-text text-xs font-medium"
               >
                 {semana.taxa === null ? '—' : `${Math.round(semana.taxa * 100)}%`}
               </text>
@@ -131,7 +131,7 @@ export function GraficoWinsSemana({ semanas }: { semanas: ConclusaoSemanal[] }) 
                 x={x + LARGURA_BARRA / 2}
                 y={MARGEM_TOPO + ALTURA + 16}
                 textAnchor="middle"
-                className="fill-textMuted text-[10px]"
+                className="fill-textMuted text-xs"
               >
                 {`S${semana.semana.semana}`}
               </text>
@@ -140,7 +140,7 @@ export function GraficoWinsSemana({ semanas }: { semanas: ConclusaoSemanal[] }) 
                   x={x + LARGURA_BARRA / 2}
                   y={MARGEM_TOPO + ALTURA + 30}
                   textAnchor="middle"
-                  className="fill-textFaint text-[9px]"
+                  className="fill-textFaint text-xs"
                 >
                   em curso
                 </text>

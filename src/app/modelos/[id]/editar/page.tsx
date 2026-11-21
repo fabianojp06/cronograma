@@ -41,7 +41,7 @@ export default async function EditarModeloPage({ params }: { params: Promise<{ i
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">Modelos</p>
+      <p className="text-sm font-medium text-accent">Modelos</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Editar modelo</h1>
       <p className="mt-2 max-w-2xl text-sm text-textMuted">
         As alterações valem para os projetos criados a partir de agora. Os projetos já criados com

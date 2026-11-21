@@ -55,7 +55,7 @@ export function SemaforoEquipes({ cartoes }: { cartoes: CartaoSemaforo[] }) {
                 <span className="absolute inset-y-0 w-px bg-text/40" style={{ left: pos(LIMITE_AMARELO) }} />
                 <span className="absolute inset-y-0 w-px bg-text/40" style={{ left: pos(LIMITE_VERMELHO) }} />
               </div>
-              <div aria-hidden="true" className="relative mt-0.5 h-3 text-[10px] text-textFaint">
+              <div aria-hidden="true" className="relative mt-0.5 h-3 text-xs text-textFaint">
                 <span className="absolute -translate-x-1/2" style={{ left: pos(LIMITE_AMARELO) }}>5%</span>
                 <span className="absolute -translate-x-1/2" style={{ left: pos(LIMITE_VERMELHO) }}>20%</span>
               </div>
@@ -64,20 +64,20 @@ export function SemaforoEquipes({ cartoes }: { cartoes: CartaoSemaforo[] }) {
 
           <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
             <div>
-              <dt className="text-[11px] uppercase tracking-wide text-textMuted">No prazo</dt>
+              <dt className="text-xs text-textMuted">No prazo</dt>
               <dd className="font-display text-lg font-extrabold tabular-nums">
                 {c.aderenciaPercentual === null ? '—' : `${c.aderenciaPercentual}%`}
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] uppercase tracking-wide text-textMuted">Riscos</dt>
+              <dt className="text-xs text-textMuted">Riscos</dt>
               <dd className="font-display text-lg font-extrabold tabular-nums">
                 {c.riscosAbertos}
                 {c.riscosAltosAbertos > 0 ? <span className="ml-1 text-xs font-medium text-warn">({c.riscosAltosAbertos} alto)</span> : null}
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] uppercase tracking-wide text-textMuted">Replan. 30d</dt>
+              <dt className="text-xs text-textMuted">Replan. 30d</dt>
               <dd className="font-display text-lg font-extrabold tabular-nums">{c.replanejamentos}</dd>
             </div>
           </dl>

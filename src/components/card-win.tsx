@@ -78,7 +78,7 @@ function FormularioWin({
       ) : null}
 
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-textMuted">
+        <span className="text-xs font-semibold text-textMuted">
           WIN {String(linha.ordem).padStart(2, '0')}
         </span>
         {situacao ? (

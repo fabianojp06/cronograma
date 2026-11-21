@@ -92,7 +92,7 @@ export default async function MeusProjetosPage({
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">{colaborador.nome}</p>
+      <p className="text-sm font-medium text-accent">{colaborador.nome}</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Meus projetos</h1>
       <p className="mt-2 max-w-3xl text-sm text-textMuted">
         Os projetos ativos em que você é responsável pelo projeto, responsável por alguma

@@ -165,7 +165,7 @@ function Regiao({
         x={aDireita ? direita - 10 : esquerda + 10}
         y={embaixo ? base - 10 : topo + 18}
         textAnchor={aDireita ? 'end' : 'start'}
-        className="fill-textFaint text-[11px] font-semibold uppercase tracking-wide"
+        className="fill-textFaint text-xs font-semibold"
       >
         {descricao.numero}. {descricao.rotulo}
       </text>
@@ -183,7 +183,7 @@ function RotuloDestaque({ ponto }: { ponto: PontoDesenhado }) {
       x={ponto.dx + (paraEsquerda ? -(ponto.r + 8) : ponto.r + 8)}
       y={ponto.dy + 4}
       textAnchor={paraEsquerda ? 'end' : 'start'}
-      className="fill-text stroke-surface text-[12px] font-semibold"
+      className="fill-text stroke-surface text-xs font-semibold"
       strokeWidth={4}
       paintOrder="stroke"
     >
@@ -252,16 +252,16 @@ export function MatrizQuadrantes({
 
           {marcas.map((marca) => (
             <g key={marca}>
-              <text x={x(marca)} y={ALTURA - 24} textAnchor="middle" className="fill-textFaint text-[11px] tabular-nums">
+              <text x={x(marca)} y={ALTURA - 24} textAnchor="middle" className="fill-textFaint text-xs tabular-nums">
                 {marca}
               </text>
-              <text x={MARGEM.esquerda - 10} y={y(marca) + 4} textAnchor="end" className="fill-textFaint text-[11px] tabular-nums">
+              <text x={MARGEM.esquerda - 10} y={y(marca) + 4} textAnchor="end" className="fill-textFaint text-xs tabular-nums">
                 {marca}
               </text>
             </g>
           ))}
 
-          <text x={MARGEM.esquerda + AREA_X / 2} y={ALTURA - 6} textAnchor="middle" className="fill-textMuted text-[12px] font-medium">
+          <text x={MARGEM.esquerda + AREA_X / 2} y={ALTURA - 6} textAnchor="middle" className="fill-textMuted text-xs font-medium">
             Esforço →
           </text>
           <text
@@ -269,7 +269,7 @@ export function MatrizQuadrantes({
             y={14}
             transform="rotate(-90)"
             textAnchor="middle"
-            className="fill-textMuted text-[12px] font-medium"
+            className="fill-textMuted text-xs font-medium"
           >
             Benefício →
           </text>
@@ -325,7 +325,7 @@ export function MatrizQuadrantes({
                   x={ponto.dx}
                   y={ponto.dy + 4}
                   textAnchor="middle"
-                  className="pointer-events-none fill-onAccent text-[11px] font-bold tabular-nums"
+                  className="pointer-events-none fill-onAccent text-xs font-bold tabular-nums"
                 >
                   {ponto.posicao}
                 </text>
@@ -349,7 +349,7 @@ export function MatrizQuadrantes({
           const conteudo = (
             <>
               <span
-                className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums ${
+                className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums ${
                   destacado ? 'bg-accent text-onAccent' : 'bg-borderSoft text-textMuted'
                 }`}
               >

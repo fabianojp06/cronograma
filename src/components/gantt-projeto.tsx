@@ -403,7 +403,7 @@ function Grade({ acoes, hoje, dependencias }: { acoes: LinhaGantt[]; hoje: Date;
               <>
                 <div className="absolute bottom-0 w-0.5 bg-accent" style={{ left: xHoje - 1, top: 0 }} />
                 <span
-                  className="absolute rounded bg-accent px-1.5 py-0.5 text-[11px] font-semibold leading-none text-onAccent"
+                  className="absolute rounded bg-accent px-1.5 py-0.5 text-xs font-semibold leading-none text-onAccent"
                   style={{ left: xHoje, top: -ALTURA_CABECALHO_PX / 2 + 3, transform: 'translateX(-50%)' }}
                 >
                   Hoje

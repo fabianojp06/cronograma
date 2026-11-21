@@ -88,7 +88,7 @@ export default async function PriorizacaoPage({
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">
+      <p className="text-sm font-medium text-accent">
         Cronograma CTCEA
       </p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">
@@ -128,7 +128,7 @@ export default async function PriorizacaoPage({
                   key={quadrante}
                   className="border-l-2 border-accent bg-surface py-2 pl-4"
                 >
-                  <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+                  <p className="text-xs font-medium text-textMuted">
                     {descricao.numero}. {descricao.rotulo}
                   </p>
                   <p className="mt-1 font-display text-2xl font-extrabold tabular-nums">

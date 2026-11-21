@@ -25,7 +25,7 @@ export function MapaDeCalor({
     <div className="overflow-x-auto">
       <table className="w-full min-w-[32rem] border-collapse text-sm">
         <thead>
-          <tr className="text-left text-xs uppercase tracking-wide text-textMuted">
+          <tr className="text-left text-xs font-semibold text-textMuted">
             <th className="px-3 py-2 font-semibold" scope="col">{rotuloDasLinhas}</th>
             {matriz.colunas.map((c) => (
               <th className="px-2 py-2 text-center font-semibold" key={c.id} scope="col">{c.rotulo}</th>

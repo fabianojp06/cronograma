@@ -36,7 +36,7 @@ export default async function NovaAcaoPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
-      <p className="text-sm font-medium uppercase tracking-wide text-accent">
+      <p className="text-sm font-medium text-accent">
         {projeto.referencia ?? 'Projeto'}
       </p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">Nova ação</h1>
