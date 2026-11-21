@@ -73,6 +73,7 @@ export default async function NotificacoesPage() {
           },
         },
         resumo: { select: { semana: true, conteudo: true } },
+        risco: { select: { titulo: true, tipo: true, projeto: { select: { id: true, nome: true } } } },
         liberacao: {
           select: {
             motivo: true,
@@ -138,6 +139,37 @@ export default async function NotificacoesPage() {
       ) : (
         <ul className="mt-6 space-y-2">
           {itens.map((n) => {
+            if (n.risco) {
+              return (
+                <li
+                  className={`border-l-2 bg-surface px-4 py-3 ${n.lida ? 'border-borderSoft' : 'border-accent'}`}
+                  key={n.id}
+                >
+                  <p className="text-sm">
+                    <strong className={n.lida ? 'font-medium' : 'font-bold'}>
+                      {n.risco.tipo === 'BLOQUEIO' ? 'Bloqueio' : 'Risco'} para tratar
+                    </strong>{' '}
+                    em{' '}
+                    <Link className="text-text underline hover:text-accent" href={`/projetos/${n.risco.projeto.id}#riscos`}>
+                      {n.risco.projeto.nome}
+                    </Link>
+                    {!n.lida ? <span className="sr-only"> (não lida)</span> : null}
+                  </p>
+                  <p className="mt-1 text-sm text-textMuted">Você foi definido(a) como responsável: “{n.risco.titulo}”.</p>
+                  <div className="mt-1 flex items-center gap-3 text-xs text-textFaint">
+                    <span className="tabular-nums">{momento.format(n.criadoEm)}</span>
+                    {!n.lida ? (
+                      <form action={marcarLida}>
+                        <input name="notificacaoId" type="hidden" value={n.id} />
+                        <button className="text-textMuted hover:text-accent" type="submit">
+                          Marcar como lida
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                </li>
+              )
+            }
             if (n.resumo) {
               const c = lerConteudo(n.resumo.conteudo)
               return (

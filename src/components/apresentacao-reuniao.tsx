@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
 import { descreverMudanca, type Panorama, type Tela } from '@/lib/reuniao'
+import { ROTULO_IMPACTO, ROTULO_STATUS_RISCO, ROTULO_TIPO, type ImpactoRisco, type StatusRisco, type TipoRisco } from '@/lib/risco-projeto'
 import type { ItemResumo } from '@/lib/resumo-semanal'
 
 const dm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
@@ -13,6 +14,7 @@ const TRACO = {
   atrasadas: 'border-warn',
   vencendo: 'border-previsto',
   replanejadas: 'border-accent',
+  riscos: 'border-warn',
   concluidas: 'border-realizado',
 } as const
 
@@ -33,7 +35,7 @@ function TelaPanorama({ p }: { p: Panorama }) {
       <Indicador rotulo="Vencem em 7 dias" traco="border-previsto" valor={p.vencendo} />
       <Indicador rotulo="Replanejadas na semana" traco="border-accent" valor={p.replanejadas} />
       <Indicador rotulo="Concluídas na semana" traco="border-realizado" valor={p.concluidas} />
-      <Indicador rotulo="Ações acompanhadas" traco="border-borderSoft" valor={p.acoes} />
+      <Indicador rotulo="Riscos e bloqueios abertos" traco="border-warn" valor={p.riscosAbertos} />
     </div>
   )
 }
@@ -57,13 +59,31 @@ function TelaDeLista({ tela }: { tela: Exclude<Tela, { tipo: 'panorama' }> }) {
     atrasadas: 'Nenhuma ação atrasada.',
     vencendo: 'Nada vence nos próximos 7 dias.',
     replanejadas: 'Nenhuma data foi replanejada na semana.',
+    riscos: 'Nenhum risco ou bloqueio aberto.',
     concluidas: 'Nenhuma ação foi concluída na semana.',
   }
   if (tela.itens.length === 0) return <p className="text-3xl text-textMuted md:text-4xl">{vazio[tela.tipo]}</p>
 
   return (
     <ul className="space-y-6">
-      {tela.tipo === 'replanejadas'
+      {tela.tipo === 'riscos'
+        ? tela.itens.map((r) => (
+            <li className={`border-l-4 ${r.impacto === 'ALTO' ? 'border-warn' : 'border-borderSoft'} pl-5`} key={r.id}>
+              <p className="text-2xl font-semibold md:text-3xl">
+                <span className="mr-3 rounded border border-border px-2 py-0.5 text-lg font-bold md:text-xl">{ROTULO_TIPO[r.tipo as TipoRisco] ?? r.tipo}</span>
+                {r.titulo}
+              </p>
+              <p className="text-xl text-textMuted md:text-2xl">
+                {r.projetoNome}
+                {r.acaoNumero !== null ? ` · ação ${r.acaoNumero}` : ''}
+              </p>
+              <p className="mt-1 text-lg text-textFaint md:text-xl">
+                Impacto {ROTULO_IMPACTO[r.impacto as ImpactoRisco]?.toLowerCase() ?? r.impacto} · {ROTULO_STATUS_RISCO[r.status as StatusRisco] ?? r.status} · {r.responsavel ?? 'sem responsável'}
+                {r.prazo ? <span className={r.vencido ? 'font-semibold text-warn' : undefined}> · prazo {dm(r.prazo)}{r.vencido ? ' (vencido)' : ''}</span> : null}
+              </p>
+            </li>
+          ))
+        : tela.tipo === 'replanejadas'
         ? tela.itens.map((r) => (
             <li className={`border-l-4 ${TRACO.replanejadas} pl-5`} key={r.acaoId}>
               <LinhaDeAcao

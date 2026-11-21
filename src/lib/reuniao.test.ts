@@ -87,9 +87,9 @@ describe('agruparReplanejadas', () => {
 describe('montarTelas', () => {
   it('começa pelo panorama e segue a ordem atrasadas, vencem, replanejadas, concluídas', () => {
     const telas = montarTelas({ acoes: [], replanejadas: [], projetosAtivos: 3, hoje })
-    expect(telas.map((t) => t.id)).toEqual(['panorama', 'atrasadas-1', 'vencendo-1', 'replanejadas-1', 'concluidas-1'])
+    expect(telas.map((t) => t.id)).toEqual(['panorama', 'atrasadas-1', 'vencendo-1', 'replanejadas-1', 'riscos-1', 'concluidas-1'])
     const p = telas[0]
-    expect(p.tipo === 'panorama' && p.panorama).toMatchObject({ projetosAtivos: 3, acoes: 0, atrasadas: 0 })
+    expect(p.tipo === 'panorama' && p.panorama).toMatchObject({ projetosAtivos: 3, riscosAbertos: 0, atrasadas: 0 })
   })
 
   it('classifica como o resumo semanal e ordena cada lista', () => {
@@ -137,7 +137,48 @@ describe('montarTelas', () => {
       hoje,
     })
     const p = telas[0]
-    expect(p.tipo === 'panorama' && p.panorama).toEqual({ projetosAtivos: 2, acoes: 2, atrasadas: 1, vencendo: 1, concluidas: 0, replanejadas: 1 })
+    expect(p.tipo === 'panorama' && p.panorama).toEqual({ projetosAtivos: 2, riscosAbertos: 0, atrasadas: 1, vencendo: 1, concluidas: 0, replanejadas: 1 })
+  })
+})
+
+describe('riscos na reunião', () => {
+  const risco = (over: Record<string, unknown>) => ({
+    id: 'r',
+    projetoId: 'p',
+    projetoNome: 'Rede',
+    equipe: 'STI',
+    tipo: 'RISCO',
+    titulo: 'Risco',
+    impacto: 'MEDIO',
+    status: 'ABERTO',
+    responsavel: null,
+    acaoNumero: null,
+    prazo: null as Date | null,
+    criadoEm: new Date('2026-11-01T00:00:00Z'),
+    ...over,
+  })
+
+  it('entra uma tela de riscos, ordenada por atenção, com o prazo vencido marcado', () => {
+    const telas = montarTelas({
+      acoes: [],
+      replanejadas: [],
+      riscos: [
+        risco({ id: 'baixo', impacto: 'BAIXO' }),
+        risco({ id: 'alto-risco', impacto: 'ALTO' }),
+        risco({ id: 'alto-bloq', impacto: 'ALTO', tipo: 'BLOQUEIO', prazo: d('2026-11-10') }),
+      ],
+      projetosAtivos: 1,
+      hoje,
+    })
+    const t = telas.find((x) => x.id === 'riscos-1')!
+    expect(t.tipo === 'riscos' && t.itens.map((i) => i.id)).toEqual(['alto-bloq', 'alto-risco', 'baixo'])
+    expect(t.tipo === 'riscos' && t.itens[0]).toMatchObject({ prazo: '2026-11-10', vencido: true })
+    expect(telas[0].tipo === 'panorama' && telas[0].panorama.riscosAbertos).toBe(3)
+  })
+
+  it('sem riscos a tela continua na sequência, vazia', () => {
+    const t = montarTelas({ acoes: [], replanejadas: [], projetosAtivos: 0, hoje }).find((x) => x.id === 'riscos-1')!
+    expect(t.tipo === 'riscos' && t.total).toBe(0)
   })
 })
 

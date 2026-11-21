@@ -74,6 +74,11 @@ export default async function EditarAcaoPage({
           criadoEm: true,
         },
       },
+      riscos: {
+        where: { status: { in: ['ABERTO', 'EM_TRATAMENTO'] } },
+        orderBy: { criadoEm: 'asc' },
+        select: { id: true, tipo: true, titulo: true, impacto: true },
+      },
       comentarios: {
         orderBy: { criadoEm: 'desc' },
         select: { id: true, texto: true, autor: true, criadoEm: true },
@@ -230,6 +235,25 @@ export default async function EditarAcaoPage({
             vinculos={acao.dependeDe}
           />
         </div>
+
+        {acao.riscos.length > 0 ? (
+          <section aria-labelledby="titulo-riscos-acao" className="mt-8 lg:col-start-1">
+            <h2 className="font-display text-base font-bold" id="titulo-riscos-acao">
+              Riscos e bloqueios desta ação{' '}
+              <span className="text-sm font-normal text-textFaint">({acao.riscos.length})</span>
+            </h2>
+            <ul className="mt-3 space-y-2 text-sm">
+              {acao.riscos.map((r) => (
+                <li className="border-l-2 border-warn bg-surface py-2 pl-3" key={r.id}>
+                  <Link className="font-medium text-text underline hover:text-accent" href={`/projetos/${acao.projeto.id}/riscos/${r.id}/editar`}>
+                    {r.tipo === 'BLOQUEIO' ? 'Bloqueio' : 'Risco'}: {r.titulo}
+                  </Link>{' '}
+                  <span className="text-xs text-textFaint">impacto {r.impacto === 'ALTO' ? 'alto' : r.impacto === 'MEDIO' ? 'médio' : 'baixo'}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <section aria-labelledby="titulo-comentarios" className="mt-8 lg:col-start-1">
           <h2 className="font-display text-base font-bold" id="titulo-comentarios">

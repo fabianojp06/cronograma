@@ -7,6 +7,7 @@
  * das ações é a do resumo semanal (`classificarAcao`), a mesma do painel.
  */
 
+import { ordenarPorAtencao, prazoVencido } from './risco-projeto'
 import {
   DIA_MS,
   SEM_EQUIPE,
@@ -92,9 +93,40 @@ export function agruparReplanejadas(registros: readonly RegistroDeData[]): Repla
   return linhas.sort((a, b) => b.mudancas - a.mudancas || b.quando.localeCompare(a.quando))
 }
 
+/** Um risco ou bloqueio ABERTO, como o carregador entrega (com datas). */
+export type RiscoParaReuniao = {
+  id: string
+  projetoId: string
+  projetoNome: string
+  equipe: string | null
+  tipo: string
+  titulo: string
+  impacto: string
+  status: string
+  responsavel: string | null
+  acaoNumero: number | null
+  prazo: Date | null
+  criadoEm: Date
+}
+
+export type RiscoNaTela = {
+  id: string
+  projetoId: string
+  projetoNome: string
+  tipo: string
+  titulo: string
+  impacto: string
+  status: string
+  responsavel: string | null
+  acaoNumero: number | null
+  /** aaaa-mm-dd. */
+  prazo: string | null
+  vencido: boolean
+}
+
 export type Panorama = {
   projetosAtivos: number
-  acoes: number
+  riscosAbertos: number
   atrasadas: number
   vencendo: number
   concluidas: number
@@ -121,12 +153,22 @@ export type Tela =
       total: number
       itens: Replanejada[]
     }
+  | {
+      id: string
+      tipo: 'riscos'
+      titulo: string
+      pagina: number
+      paginas: number
+      total: number
+      itens: RiscoNaTela[]
+    }
 
 const TITULOS = {
   atrasadas: 'Atrasadas',
   vencendo: 'Vencem nos próximos 7 dias',
   concluidas: 'Concluídas na semana',
   replanejadas: 'Replanejadas na semana',
+  riscos: 'Riscos e bloqueios abertos',
 } as const
 
 function dividir<T>(itens: readonly T[]): T[][] {
@@ -145,10 +187,24 @@ export function filtrarPorEquipe<T extends { equipe: string | null }>(itens: rea
 export function montarTelas(entrada: {
   acoes: readonly AcaoParaResumo[]
   replanejadas: readonly Replanejada[]
+  riscos?: readonly RiscoParaReuniao[]
   projetosAtivos: number
   hoje: Date
 }): Tela[] {
   const { acoes, replanejadas, hoje } = entrada
+  const riscos: RiscoNaTela[] = ordenarPorAtencao(entrada.riscos ?? []).map((r) => ({
+    id: r.id,
+    projetoId: r.projetoId,
+    projetoNome: r.projetoNome,
+    tipo: r.tipo,
+    titulo: r.titulo,
+    impacto: r.impacto,
+    status: r.status,
+    responsavel: r.responsavel,
+    acaoNumero: r.acaoNumero,
+    prazo: r.prazo ? r.prazo.toISOString().slice(0, 10) : null,
+    vencido: prazoVencido(r, hoje),
+  }))
 
   const por = { atrasadas: [] as ItemResumo[], vencendo: [] as ItemResumo[], concluidas: [] as ItemResumo[] }
   const dia = (d: Date) => d.toISOString().slice(0, 10)
@@ -181,7 +237,7 @@ export function montarTelas(entrada: {
       titulo: 'Panorama',
       panorama: {
         projetosAtivos: entrada.projetosAtivos,
-        acoes: acoes.length,
+        riscosAbertos: riscos.length,
         atrasadas: por.atrasadas.length,
         vencendo: por.vencendo.length,
         concluidas: por.concluidas.length,
@@ -190,8 +246,8 @@ export function montarTelas(entrada: {
     },
   ]
 
-  for (const tipo of ['atrasadas', 'vencendo', 'replanejadas', 'concluidas'] as const) {
-    const todos = tipo === 'replanejadas' ? replanejadas : por[tipo]
+  for (const tipo of ['atrasadas', 'vencendo', 'replanejadas', 'riscos', 'concluidas'] as const) {
+    const todos = tipo === 'replanejadas' ? replanejadas : tipo === 'riscos' ? riscos : por[tipo]
     const partes = dividir(todos as readonly unknown[])
     partes.forEach((itens, i) => {
       telas.push({

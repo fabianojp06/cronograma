@@ -5,6 +5,7 @@ import {
   filtrarPorEquipe,
   type RegistroDeData,
   type Replanejada,
+  type RiscoParaReuniao,
 } from './reuniao'
 import { DIA_MS, SEM_EQUIPE, hojeEmBrasilia, type AcaoParaResumo } from './resumo-semanal'
 import { lerAcoesParaResumo } from './resumo-servidor'
@@ -15,6 +16,7 @@ export type DadosDaReuniao = {
   equipes: string[]
   acoes: AcaoParaResumo[]
   replanejadas: Replanejada[]
+  riscos: RiscoParaReuniao[]
   projetosAtivos: number
 }
 
@@ -30,7 +32,7 @@ export async function carregarReuniao(
   const hoje = hojeEmBrasilia(agora)
   const desde = new Date(agora.getTime() - JANELA_REPLANEJAMENTO_DIAS * DIA_MS)
 
-  const [projetos, acoes, historico] = await Promise.all([
+  const [projetos, acoes, historico, riscosAbertos] = await Promise.all([
     prisma.projeto.findMany({ where: { ativo: true }, select: { equipe: true } }),
     lerAcoesParaResumo(hoje),
     prisma.historicoAlteracao.findMany({
@@ -54,6 +56,15 @@ export async function carregarReuniao(
             projeto: { select: { id: true, nome: true, equipe: true } },
           },
         },
+      },
+    }),
+    prisma.riscoProjeto.findMany({
+      where: { status: { in: ['ABERTO', 'EM_TRATAMENTO'] }, projeto: { ativo: true } },
+      select: {
+        id: true, tipo: true, titulo: true, impacto: true, status: true, prazo: true, criadoEm: true,
+        responsavel: { select: { nome: true } },
+        acao: { select: { numero: true } },
+        projeto: { select: { id: true, nome: true, equipe: true } },
       },
     }),
   ])
@@ -92,6 +103,23 @@ export async function carregarReuniao(
     equipes,
     acoes: filtrarPorEquipe(acoes, equipe),
     replanejadas: agruparReplanejadas(filtrarPorEquipe(registros, equipe)),
+    riscos: filtrarPorEquipe(
+      riscosAbertos.map((r) => ({
+        id: r.id,
+        projetoId: r.projeto.id,
+        projetoNome: r.projeto.nome,
+        equipe: r.projeto.equipe,
+        tipo: r.tipo,
+        titulo: r.titulo,
+        impacto: r.impacto,
+        status: r.status,
+        responsavel: r.responsavel?.nome ?? null,
+        acaoNumero: r.acao?.numero ?? null,
+        prazo: r.prazo,
+        criadoEm: r.criadoEm,
+      })),
+      equipe,
+    ),
     projetosAtivos: equipe === null ? projetos.length : nomesDeEquipe.filter((n) => n === equipe).length,
   }
 }

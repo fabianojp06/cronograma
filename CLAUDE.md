@@ -785,11 +785,39 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   Convite de primeira visita e "visto" ficam no `localStorage` (conveniência por
   navegador); passo sem alvo visível aparece centralizado.
 
+## Riscos e bloqueios (`RiscoProjeto`)
+
+O campo estruturado do que o Card WIN chama de "alerta de riscos". Regra pura em
+`risco-projeto.ts`, Server Actions em `projetos/acoes-risco.ts`, telas
+`/projetos/[id]/riscos/novo` e `.../[riscoId]/editar`, lista em `SecaoRiscos` na
+tela do projeto (âncora `#riscos`).
+
+- **RISCO (pode acontecer) e BLOQUEIO (já trava) no mesmo cadastro**, por `tipo`.
+  Campos: título, descrição, impacto (BAIXO/MEDIO/ALTO), status
+  (ABERTO/EM_TRATAMENTO/RESOLVIDO/ACONTECEU), responsável (colaborador ativo),
+  prazo, plano e, opcional, a ação afetada (do MESMO projeto). Strings, não enums,
+  como `LiberacaoAcao`. **Sem "probabilidade"** de propósito: basta o impacto.
+- **Aberto** = ABERTO ou EM_TRATAMENTO (`riscoAberto`). `resolvidoEm` é gravado ao
+  sair de aberto e limpo ao reabrir. Resolver é mudar o status; **excluir apaga o
+  histórico** e é só de quem registrou ou do administrador.
+- **Ordem de atenção** (`ordenarPorAtencao`): impacto alto, bloqueio antes de
+  risco, prazo mais próximo, mais antigo. Prazo vencido (aberto + prazo < hoje)
+  vai em destaque.
+- **Histórico** (`RiscoHistorico`): tipo, impacto, status, responsável (o NOME) e
+  prazo, na mesma transação do `update`, com `alteradoPor`.
+- **Aviso no sistema** (`Notificacao.riscoId`, motivo `RISCO_RESPONSAVEL`) ao
+  escolher alguém (na criação ou ao TROCAR) que não seja quem está salvando.
+- **Aparece**: na tela do projeto; na edição da ação afetada (só os abertos); e na
+  tela Reunião ("Riscos e bloqueios abertos", por equipe, mais o indicador do
+  Panorama). Ainda NÃO aparece no painel consolidado, nos Dashboards nem no
+  resumo semanal: ficou para quando houver uso real.
+- Qualquer Colaborador registra e edita (como nas ações); o Leitor só lê.
+
 ## Reunião (`/reuniao`): apresentação para a daily
 
 Telas grandes, uma de cada vez, sobre o cabeçalho (`fixed inset-0 z-40`):
-**Panorama, Atrasadas, Vencem em 7 dias, Replanejadas na semana, Concluídas na
-semana**. Regra pura em `reuniao.ts`, dados em `reuniao-servidor.ts`, tela em
+**Panorama, Atrasadas, Vencem em 7 dias, Replanejadas na semana, Riscos e
+bloqueios abertos, Concluídas na semana**. Regra pura em `reuniao.ts`, dados em `reuniao-servidor.ts`, tela em
 `apresentacao-reuniao.tsx` (cliente). No menu de trabalho, para todos os perfis
 (só consulta).
 
