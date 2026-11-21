@@ -106,6 +106,30 @@ function item(a: AcaoParaResumo, data: Date, hoje: Date, comAtraso: boolean): It
   }
 }
 
+export type ClasseDaAcao = { tipo: 'concluidas' | 'atrasadas' | 'vencendo'; data: Date }
+
+/**
+ * Em qual bloco a ação entra, e com que data (a do término realizado, ou do
+ * previsto). Concluída: término realizado nos 7 dias até hoje (ou, sem ele, o
+ * dia da última conclusão no histórico). Atrasada: a regra do painel. Vence:
+ * término previsto de hoje a hoje+7. Fora disso, `null`. É a regra única que o
+ * resumo semanal e a apresentação para reunião compartilham.
+ */
+export function classificarAcao(a: AcaoParaResumo, hoje: Date): ClasseDaAcao | null {
+  const inicioJanela = new Date(hoje.getTime() - JANELA_DIAS * DIA_MS)
+  const fimJanela = new Date(hoje.getTime() + JANELA_DIAS * DIA_MS)
+  if (a.status === StatusAcao.CONCLUIDO || a.realizadoTermino !== null) {
+    const fim = a.realizadoTermino ?? a.concluidoEm ?? null
+    return fim && fim >= inicioJanela && fim <= hoje ? { tipo: 'concluidas', data: fim } : null
+  }
+  if (a.previstoTermino === null) return null
+  if (acaoEstaAtrasada(a, hoje)) return { tipo: 'atrasadas', data: a.previstoTermino }
+  if (a.previstoTermino >= hoje && a.previstoTermino <= fimJanela) {
+    return { tipo: 'vencendo', data: a.previstoTermino }
+  }
+  return null
+}
+
 /**
  * Monta o resumo. `hoje` é a data de referência (meia-noite UTC). Concluídas:
  * término realizado nos 7 dias até hoje. Atrasadas: a regra do painel. Vencem:
@@ -130,16 +154,8 @@ export function montarResumo(
   }
 
   for (const a of acoes) {
-    if (a.status === StatusAcao.CONCLUIDO || a.realizadoTermino !== null) {
-      const fim = a.realizadoTermino ?? a.concluidoEm ?? null
-      if (fim && fim >= inicioJanela && fim <= hoje) grupo(a).concluidas.push({ a, d: fim })
-      continue
-    }
-    if (a.previstoTermino === null) continue
-    if (acaoEstaAtrasada(a, hoje)) grupo(a).atrasadas.push({ a, d: a.previstoTermino })
-    else if (a.previstoTermino >= hoje && a.previstoTermino <= fimJanela) {
-      grupo(a).vencendo.push({ a, d: a.previstoTermino })
-    }
+    const c = classificarAcao(a, hoje)
+    if (c) grupo(a)[c.tipo].push({ a, d: c.data })
   }
 
   const topo = (

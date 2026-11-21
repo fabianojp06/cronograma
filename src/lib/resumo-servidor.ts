@@ -24,7 +24,7 @@ async function administradoresAtivos(): Promise<{ id: string }[]> {
   })
 }
 
-async function lerAcoes(hoje: Date): Promise<AcaoParaResumo[]> {
+export async function lerAcoesParaResumo(hoje: Date): Promise<AcaoParaResumo[]> {
   const inicioJanela = new Date(hoje.getTime() - JANELA_DIAS * DIA_MS)
   const fimJanela = new Date(hoje.getTime() + JANELA_DIAS * DIA_MS)
   // Só o que pode entrar no resumo: concluída na janela (pelo término realizado
@@ -87,7 +87,7 @@ export async function garantirResumoDaSemana(agora: Date = new Date()): Promise<
     return conteudo ? { id: existente.id, semana, geradoEm: existente.geradoEm, conteudo } : null
   }
 
-  const conteudo = montarResumo(await lerAcoes(hojeEmBrasilia(agora)), hojeEmBrasilia(agora), semana)
+  const conteudo = montarResumo(await lerAcoesParaResumo(hojeEmBrasilia(agora)), hojeEmBrasilia(agora), semana)
 
   let criado: { id: string; geradoEm: Date }
   try {

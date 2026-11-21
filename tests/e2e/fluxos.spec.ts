@@ -887,7 +887,7 @@ test.describe('menu por perfil', () => {
     await expect(page.getByText('Só administradores acessam esta área.')).toBeVisible()
 
     await page.getByRole('button', { name: 'Tour', exact: true }).click()
-    await expect(page.getByRole('dialog')).toContainText('Passo 1 de 13')
+    await expect(page.getByRole('dialog')).toContainText('Passo 1 de 14')
 
     // O manual também esconde o que é só do administrador.
     await page.goto('/manual?busca=Administra%C3%A7%C3%A3o')
@@ -912,7 +912,7 @@ test.describe('menu por perfil', () => {
     await expect(page.getByRole('navigation', { name: 'Administração' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Tour', exact: true }).click()
-    await expect(page.getByRole('dialog')).toContainText('Passo 1 de 14')
+    await expect(page.getByRole('dialog')).toContainText('Passo 1 de 15')
 
     await page.goto('/manual?busca=Administra%C3%A7%C3%A3o')
     await expect(page.getByRole('heading', { name: 'Área de Administração' })).toBeVisible()
@@ -1082,5 +1082,54 @@ test.describe('resumo semanal', () => {
     await expect(popup).toHaveCount(0)
     await page.goto('/projetos')
     await expect(page.getByRole('dialog', { name: 'Resumo da semana' })).toHaveCount(0)
+  })
+})
+
+test.describe('reunião', () => {
+  test('mostra as telas da daily, filtra por equipe e sai com Esc', async ({ page }) => {
+    // Uma mudança de data prevista recente, para a tela de replanejadas.
+    await consultar(
+      `INSERT INTO "HistoricoAlteracao" ("id","acaoId","campo","valorAntigo","valorNovo","alteradoEm","alteradoPor")
+       VALUES (gen_random_uuid()::text,$1,'previstoTermino','2026-03-10','2026-03-20',now(),'user_e2e')`,
+      [acaoId],
+    )
+    await page.goto('/reuniao')
+
+    await expect(page.getByRole('heading', { name: 'Panorama' })).toBeVisible()
+    await expect(page.getByText('Ações atrasadas')).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: 'Tela 1 de 5' })).toBeVisible()
+
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByRole('heading', { name: /Atrasadas/ })).toBeVisible()
+    await expect(page.getByText('Projeto E2E')).toBeVisible()
+    await expect(page.getByText('Ação de partida')).toBeVisible()
+
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByRole('heading', { name: /Vencem nos próximos 7 dias/ })).toBeVisible()
+    await expect(page.getByText('Nada vence nos próximos 7 dias.')).toBeVisible()
+
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByRole('heading', { name: /Replanejadas na semana/ })).toBeVisible()
+    await expect(page.getByText('término: 10/03 → 20/03')).toBeVisible()
+    await expect(page.getByText(/por Ana Souza/)).toBeVisible()
+
+    await page.keyboard.press('ArrowLeft')
+    await expect(page.getByRole('heading', { name: /Vencem nos próximos 7 dias/ })).toBeVisible()
+
+    // Equipe: STI tem o projeto; outra equipe não tem nada.
+    await page.getByRole('navigation', { name: 'Equipe' }).getByRole('link', { name: 'STI' }).click()
+    await expect(page).toHaveURL(/equipe=STI/)
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByText('Projeto E2E')).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(page).toHaveURL(/127\.0\.0\.1:3100\/$/)
+  })
+
+  test('o Leitor também vê, e equipe inexistente vira todas', async ({ page }) => {
+    await consultar(`UPDATE "Colaborador" SET "somenteLeitura" = true WHERE "clerkUserId" = 'user_e2e'`)
+    await page.goto('/reuniao?equipe=NaoExiste')
+    await expect(page.getByRole('heading', { name: 'Panorama' })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Equipe' }).getByRole('link', { name: 'Todas as equipes' })).toHaveAttribute('aria-current', 'true')
   })
 })

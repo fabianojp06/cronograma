@@ -67,6 +67,11 @@ export const PASSOS_TOUR: readonly PassoTour[] = [
     texto: 'Os cards de toda a equipe na semana, para a daily. Somente leitura.',
   },
   {
+    alvo: alvoDoMenu('/reuniao'),
+    titulo: 'Reunião',
+    texto: 'Modo de projeção para a daily: telas grandes com atrasadas, vencimentos, replanejadas e concluídas da semana, por equipe.',
+  },
+  {
     alvo: alvoDoMenu('/modelos'),
     titulo: 'Modelos',
     texto: 'Moldes de projeto: crie um projeto novo, com as ações e as datas recalculadas, a partir de um modelo.',
