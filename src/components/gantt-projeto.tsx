@@ -14,6 +14,7 @@ import {
   ALTURA_LINHA_PX,
   LARGURA_ROTULO_PX,
   LARGURA_SEMANA_PX,
+  barraDeProgresso,
   barraEmPx,
   larguraDaGrade,
   montarSetas,
@@ -138,7 +139,11 @@ function Grade({ acoes, hoje, dependencias }: { acoes: LinhaGantt[]; hoje: Date;
   const barras = acoes.map((a) => ({
     previsto: barraEmPx(a.previstoInicio, a.previstoTermino, semanas),
     realizado: barraEmPx(a.realizadoInicio, a.realizadoTermino, semanas),
+    progresso: null as ReturnType<typeof barraDeProgresso>,
   }))
+  barras.forEach((b, i) => {
+    b.progresso = barraDeProgresso(acoes[i].status, b.previsto, acoes[i].realizadoInicio !== null || acoes[i].realizadoTermino !== null)
+  })
   const setas = montarSetas(
     dependencias,
     acoes.map((a, i) => ({ id: a.id, previsto: barras[i].previsto })),
@@ -215,6 +220,13 @@ function Grade({ acoes, hoje, dependencias }: { acoes: LinhaGantt[]; hoje: Date;
           <span className="h-3.5 w-7 rounded-sm border-2 border-warn bg-warn/15" />
           Previsto em atraso
         </span>
+        <span className="flex items-center gap-2">
+          <span
+            className="h-2 w-7 rounded-sm"
+            style={{ backgroundImage: 'repeating-linear-gradient(135deg, var(--color-realizado) 0, var(--color-realizado) 3px, transparent 3px, transparent 6px)' }}
+          />
+          Progresso estimado (ação em curso, sem data realizada)
+        </span>
         {xHoje !== null && (
           <span className="flex items-center gap-2">
             <span className="h-4 w-0.5 bg-accent" />
@@ -276,7 +288,7 @@ function Grade({ acoes, hoje, dependencias }: { acoes: LinhaGantt[]; hoje: Date;
           </div>
 
           {acoes.map((acao, indice) => {
-            const { previsto, realizado } = barras[indice]
+            const { previsto, realizado, progresso } = barras[indice]
             const emAtraso = previstoEmAtraso(acao, hoje)
             return (
               <div key={acao.id} className="flex border-b border-borderSoft" style={{ height: ALTURA_LINHA_PX }}>
@@ -326,6 +338,19 @@ function Grade({ acoes, hoje, dependencias }: { acoes: LinhaGantt[]; hoje: Date;
                       className={`absolute h-[22px] rounded-sm border-2 ${emAtraso ? 'border-warn bg-warn/15' : 'border-previsto bg-previsto/10'}`}
                       style={{ left: previsto.esquerda, width: previsto.largura, top: (ALTURA_LINHA_PX - 22) / 2 }}
                       title={emAtraso ? 'Previsto — em atraso' : 'Previsto'}
+                    />
+                  )}
+                  {progresso !== null && (
+                    <div
+                      className="absolute h-2.5 rounded-sm"
+                      style={{
+                        left: progresso.esquerda,
+                        width: progresso.largura,
+                        top: (ALTURA_LINHA_PX - 10) / 2,
+                        backgroundImage:
+                          'repeating-linear-gradient(135deg, var(--color-realizado) 0, var(--color-realizado) 3px, transparent 3px, transparent 6px)',
+                      }}
+                      title={`Progresso estimado (${ROTULOS_STATUS[acao.status]}) — sem data realizada apontada`}
                     />
                   )}
                   {realizado !== null && (

@@ -1667,6 +1667,7 @@ test.describe('Gantt: setas, risco e hoje', () => {
        VALUES ('gantt-r',$1,'gantt-b','RISCO','Fornecedor atrasa','ALTO','ABERTO','2026-03-25','x',now())`,
       [projeto],
     )
+    await consultar(`UPDATE "Acao" SET "status" = 'EM_CURSO_50' WHERE "id" = $1`, [primeira])
     await page.goto(`/projetos/${projeto}`)
     const fechar = page.getByRole('button', { name: 'Fechar' })
     if (await fechar.isVisible()) await fechar.click()
@@ -1679,6 +1680,8 @@ test.describe('Gantt: setas, risco e hoje', () => {
     }
     await expect(page.locator('svg path[stroke="currentColor"]').first()).toBeVisible() // a seta
     await expect(page.locator('[title^="Risco (impacto alto): Fornecedor atrasa"]')).toBeVisible() // o losango
+    // Ação em curso sem data realizada: progresso estimado hachurado.
+    await expect(page.locator('[title^="Progresso estimado"]')).toHaveCount(1)
     // O Realizado fica POR CIMA do Previsto: o centro vertical dele está dentro da faixa do previsto.
     const previsto = (await page.locator('[title="Previsto"], [title="Previsto — em atraso"]').nth(1).boundingBox())!
     const realizado = (await page.locator('[title="Realizado"]').first().boundingBox())!

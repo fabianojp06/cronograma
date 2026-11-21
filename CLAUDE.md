@@ -1104,6 +1104,7 @@ usam a mesma conta, em `gantt-geometria.ts` (puro, com teste).
 
 - **Previsto e Realizado na mesma linha**: contorno grosso (22 px) com o Realizado
   sólido e mais fino (10 px) POR CIMA. Uma linha por ação (antes eram duas).
+- **Progresso estimado** (`barraDeProgresso`): ação EM_CURSO_25/50/75 SEM nenhuma data realizada ganha uma barra HACHURADA (textura, não cor nova) com esse percentual do previsto. É estimativa: a data realizada, quando existe, vale mais e a hachura some; o verde sólido continua significando só "tem data realizada".
 - **Intervalo fechado**: o término ocupa o dia inteiro; ação de 1 dia tem largura
   mínima visível; com uma ponta só a barra tem uma semana a partir dela.
 - **"Hoje"**: linha sólida de 2 px na cor de acento e etiqueta "Hoje" no cabeçalho

@@ -118,3 +118,20 @@ export function montarSetas(
   }
   return setas
 }
+
+const PERCENTUAL_DO_STATUS: Record<string, number> = { EM_CURSO_25: 25, EM_CURSO_50: 50, EM_CURSO_75: 75 }
+
+/**
+ * Barra de PROGRESSO ESTIMADO: para ação em curso (25/50/75%) SEM nenhuma data
+ * realizada, preenche esse percentual do previsto. É estimativa, não fato
+ * apontado: a data realizada, quando existe, vale mais e esta barra some.
+ */
+export function barraDeProgresso(
+  status: string,
+  previsto: BarraEmPx | null,
+  temRealizado: boolean,
+): BarraEmPx | null {
+  const pct = PERCENTUAL_DO_STATUS[status]
+  if (!pct || !previsto || temRealizado) return null
+  return { esquerda: previsto.esquerda, largura: Math.max(LARGURA_MINIMA_PX, (previsto.largura * pct) / 100) }
+}
