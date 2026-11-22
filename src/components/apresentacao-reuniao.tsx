@@ -123,11 +123,14 @@ export function ApresentacaoReuniao({
   equipes,
   equipeAtual,
   rotuloSemana,
+  numeroSemana,
 }: {
   telas: Tela[]
   equipes: string[]
   equipeAtual: string | null
   rotuloSemana: string
+  /** Número da semana no calendário da CTCEA (o motivo visual do sistema). */
+  numeroSemana: number
 }) {
   const roteador = useRouter()
   const [indice, setIndice] = useState(0)
@@ -169,7 +172,9 @@ export function ApresentacaoReuniao({
     <div className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-bg text-text print:hidden">
       <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-border px-6 py-3 text-base">
         <span className="font-display font-extrabold">
-          Reunião <span className="font-normal text-textMuted">· {rotuloSemana}</span>
+          Reunião{' '}
+          <span className="ml-2 font-display text-2xl font-extrabold tabular-nums text-accent" title="Semana do calendário da CTCEA">S{numeroSemana}</span>
+          <span className="ml-2 font-normal text-textMuted">· {rotuloSemana}</span>
         </span>
         <nav aria-label="Equipe" className="flex flex-wrap items-center gap-1">
           {[null, ...equipes].map((nome) => (

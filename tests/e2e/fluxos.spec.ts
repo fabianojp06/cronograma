@@ -1730,3 +1730,19 @@ test.describe('tela da ação em duas colunas', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
   })
 })
+
+test.describe('identidade: a semana CTCEA', () => {
+  test('o número da semana aparece no Card WIN, na Reunião e no cabeçalho do Gantt', async ({ page }) => {
+    await page.goto('/wins')
+    const selo = page.locator('[data-selo-semana]')
+    await expect(selo).toBeVisible()
+    await expect(selo).toContainText(/seg \d{2}\/\d{2} a sex \d{2}\/\d{2}/)
+
+    await page.goto('/reuniao')
+    await expect(page.getByTitle('Semana do calendário da CTCEA')).toHaveText(/^S\d+$/)
+
+    await page.goto(`/projetos/${projetoId}`)
+    await page.getByLabel('Exibir por').selectOption({ index: 0 })
+    await expect(page.locator('[title^="Semana "][title$="calendário da CTCEA"]').first()).toHaveText(/^S\d+$/)
+  })
+})

@@ -1,4 +1,6 @@
 import Link from 'next/link'
+
+import { SeloSemana } from '@/components/selo-semana'
 import { auth } from '@clerk/nextjs/server'
 
 import { CardWin, type LinhaWin } from '@/components/card-win'
@@ -243,6 +245,8 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
+      <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+        <div>
       <p className="text-sm font-medium text-accent">
         {colaborador.nome}
       </p>
@@ -253,6 +257,9 @@ export default async function WinsPage({ searchParams }: PageProps<'/wins'>) {
         {formatarDataBR(periodo.inicio)} a {formatarDataBR(periodo.fim)} · What&apos;s
         Important Now
       </p>
+        </div>
+        <SeloSemana ano={semana.ano} semana={semana.semana} />
+      </div>
 
       <nav className="mt-4 flex items-center gap-4 text-sm">
         <Link className="text-textMuted hover:text-accent" href={linkSemana(anterior)}>

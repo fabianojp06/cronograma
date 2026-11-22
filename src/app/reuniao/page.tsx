@@ -1,3 +1,4 @@
+import { semanaDe } from '@/lib/semana-ctcea'
 import { ApresentacaoReuniao } from '@/components/apresentacao-reuniao'
 import { lerEquipe, montarTelas } from '@/lib/reuniao'
 import { carregarReuniao } from '@/lib/reuniao-servidor'
@@ -30,6 +31,7 @@ export default async function ReuniaoPage({
       equipeAtual={equipe}
       equipes={dados.equipes}
       rotuloSemana={rotuloDaSemana(semanaDisponivel(new Date()))}
+      numeroSemana={semanaDe(new Date()).semana}
       telas={telas}
     />
   )

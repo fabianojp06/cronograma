@@ -120,6 +120,22 @@ As telas **Dashboards** (`/dashboards`) e **Matriz de Priorização**
 seguindo os mesmos tokens e o mesmo estilo (traço lateral, barra embutida na
 linha, sem card com sombra).
 
+## Identidade: a semana CTCEA
+
+O motivo visual do sistema é UM só: a **semana do calendário da CTCEA** (`semana-ctcea.ts`),
+com o número em destaque e em algarismos tabulares. Aparece onde o tempo é o assunto:
+
+- **Card WIN e Equipe**: `SeloSemana` (número grande na cor de acento, "Semana de 2026" e os
+  dias úteis "seg 23/11 a sex 27/11") ao lado do título.
+- **Reunião**: "S48" em destaque no cabeçalho, com o intervalo do resumo ao lado.
+- **Gantt**: cada coluna leva "S47" (a semana da segunda-feira da coluna) acima do dia, e a
+  coluna de hoje ganha uma faixa de fundo suave.
+- **O calendário vai de domingo a sábado**, não de segunda a sexta; o selo mostra os DIAS
+  ÚTEIS dentro dela. Coluna do Gantt é segunda a domingo: no domingo, a coluna ainda traz
+  o número da semana que terminou (a nova começa naquele domingo).
+- Quem criar tela nova ligada a tempo reaproveita o `SeloSemana`/o "S{n}", em vez de inventar
+  outro rótulo. Não espalhe o motivo por onde o tempo não é o assunto.
+
 ## Tipografia e contraste
 
 Passada única sobre o sistema inteiro; as três regras são cobertas por

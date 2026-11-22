@@ -29,6 +29,7 @@ import {
   ROTULOS_GRANULARIDADE,
   type Granularidade,
 } from '@/lib/gantt-periodo'
+import { semanaDe } from '@/lib/semana-ctcea'
 import { ROTULOS_STATUS, type StatusAcao } from '@/lib/acao-validacao'
 
 export type LinhaGantt = AcaoNaGrade & {
@@ -56,7 +57,8 @@ export type MarcaDeRisco = {
   prazo: Date | null
 }
 
-const ALTURA_CABECALHO_PX = 56
+const ALTURA_CABECALHO_PX = 78
+const LINHA_CABECALHO_PX = ALTURA_CABECALHO_PX / 3
 
 /**
  * Grade semanal Previsto x Realizado de um Projeto (modelo CRO-DEP).
@@ -135,6 +137,8 @@ function Grade({ acoes, hoje, dependencias }: { acoes: LinhaGantt[]; hoje: Date;
   const meses = agruparPorMes(semanas)
   const xHoje = xDeHoje(hoje, semanas)
   const larguraGrade = larguraDaGrade(semanas)
+  const colunaDeHoje = xHoje === null ? null : Math.floor(xHoje / LARGURA_SEMANA_PX)
+  const chaveDaSemanaDeHoje = colunaDeHoje === null ? null : semanas[colunaDeHoje]?.chave
   const alturaCorpo = acoes.length * ALTURA_LINHA_PX
   const barras = acoes.map((a) => ({
     previsto: barraEmPx(a.previstoInicio, a.previstoTermino, semanas),
@@ -262,7 +266,7 @@ function Grade({ acoes, hoje, dependencias }: { acoes: LinhaGantt[]; hoje: Date;
               <span className="text-textFaint">Status e responsável</span>
             </div>
             <div className="shrink-0" style={{ width: larguraGrade }}>
-              <div className="flex" style={{ height: ALTURA_CABECALHO_PX / 2 }}>
+              <div className="flex" style={{ height: LINHA_CABECALHO_PX }}>
                 {meses.map((mes) => (
                   <div
                     key={mes.chave}
@@ -273,11 +277,25 @@ function Grade({ acoes, hoje, dependencias }: { acoes: LinhaGantt[]; hoje: Date;
                   </div>
                 ))}
               </div>
-              <div className="flex" style={{ height: ALTURA_CABECALHO_PX / 2 }}>
+              <div className="flex" style={{ height: LINHA_CABECALHO_PX }}>
                 {semanas.map((semana) => (
                   <div
                     key={semana.chave}
-                    className="border-b border-l border-borderSoft pt-1.5 text-center tabular-nums text-textFaint"
+                    className={`border-l border-borderSoft pt-1 text-center text-xs font-semibold tabular-nums ${
+                      semana.chave === chaveDaSemanaDeHoje ? 'text-accent' : 'text-textMuted'
+                    }`}
+                    style={{ width: LARGURA_SEMANA_PX }}
+                    title={`Semana ${semanaDe(semana.inicio).semana} do calendário da CTCEA`}
+                  >
+                    S{semanaDe(semana.inicio).semana}
+                  </div>
+                ))}
+              </div>
+              <div className="flex" style={{ height: LINHA_CABECALHO_PX }}>
+                {semanas.map((semana) => (
+                  <div
+                    key={semana.chave}
+                    className="border-b border-l border-borderSoft pt-0.5 text-center text-xs tabular-nums text-textFaint"
                     style={{ width: LARGURA_SEMANA_PX }}
                   >
                     {semana.diaDoMes}
@@ -399,12 +417,18 @@ function Grade({ acoes, hoje, dependencias }: { acoes: LinhaGantt[]; hoje: Date;
                 ))}
               </svg>
             )}
+            {colunaDeHoje !== null && (
+              <div
+                className="absolute inset-y-0 bg-accent/[0.07]"
+                style={{ left: colunaDeHoje * LARGURA_SEMANA_PX, width: LARGURA_SEMANA_PX }}
+              />
+            )}
             {xHoje !== null && (
               <>
                 <div className="absolute bottom-0 w-0.5 bg-accent" style={{ left: xHoje - 1, top: 0 }} />
                 <span
                   className="absolute rounded bg-accent px-1.5 py-0.5 text-xs font-semibold leading-none text-onAccent"
-                  style={{ left: xHoje, top: -ALTURA_CABECALHO_PX / 2 + 3, transform: 'translateX(-50%)' }}
+                  style={{ left: xHoje, top: -6, transform: 'translateX(-50%)' }}
                 >
                   Hoje
                 </span>
