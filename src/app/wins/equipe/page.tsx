@@ -1,4 +1,6 @@
 import Link from 'next/link'
+
+import { SeloSemana } from '@/components/selo-semana'
 import { auth } from '@clerk/nextjs/server'
 
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
@@ -95,6 +97,8 @@ export default async function EquipePage({ searchParams }: PageProps<'/wins/equi
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
+      <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+        <div>
       <p className="text-sm font-medium text-accent">Equipe</p>
       <h1 className="mt-2 font-display text-2xl font-extrabold">
         Card WIN — {rotuloSemana(semana)}
@@ -103,6 +107,9 @@ export default async function EquipePage({ searchParams }: PageProps<'/wins/equi
         {formatarDataBR(periodo.inicio)} a {formatarDataBR(periodo.fim)} ·
         Compartilhamento dos cards
       </p>
+        </div>
+        <SeloSemana ano={semana.ano} semana={semana.semana} />
+      </div>
 
       <nav className="mt-4 flex flex-wrap items-center gap-4 text-sm">
         <Link className="text-textMuted hover:text-accent" href={link(anterior)}>
