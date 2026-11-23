@@ -210,6 +210,10 @@ export default async function ProjetoPage({
         <Link className="text-accent hover:underline" href="/projetos">
           Voltar para a listagem
         </Link>
+        {' · '}
+        <Link className="text-accent hover:underline" href={`/projetos/${projeto.id}/flash-report`}>
+          Flash Report
+        </Link>
         {podeEditar ? (
           <>
             {' · '}

@@ -131,6 +131,25 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     palavras: ['gantt', 'cronograma', 'foto', 'histórico', 'barra'],
   },
   {
+    id: 'flash-report',
+    grupo: 'Projetos e ações',
+    titulo: 'Flash Report do projeto',
+    resumo: 'O relatório semanal do projeto, para a reunião com a diretoria.',
+    perfil: 'todos',
+    rotas: ['/projetos/[id]/flash-report'],
+    passos: [
+      'Na tela do projeto, clique em "Flash Report". Abre a semana de hoje; use "Semana anterior" e "Semana seguinte" para navegar.',
+      'O cabeçalho traz o farol (palavra e motivo), o avanço previsto e realizado acumulados e o desvio em pontos percentuais.',
+      'O cronograma macro mostra o avanço de cada macroetapa; a curva compara o previsto (tracejado) com o realizado (contínuo).',
+      '"Imprimir / salvar em PDF" gera a página em A4 paisagem.',
+    ],
+    dicas: [
+      'Avanço físico é ponderado pelos dias úteis das ações; por isso difere do percentual de ações concluídas.',
+    ],
+    desde: '2026-11-23',
+    palavras: ['flash', 'relatório', 'farol', 'semanal'],
+  },
+  {
     id: 'projeto-criar-editar',
     grupo: 'Projetos e ações',
     titulo: 'Criar, editar e excluir projeto',

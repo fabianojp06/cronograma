@@ -12,7 +12,7 @@ import { useEffect } from 'react'
  * a impressão — também quando ela vem de Ctrl+P, pois escuta os eventos do
  * navegador e não só o clique do botão.
  */
-function useTemaClaroNaImpressao() {
+export function useTemaClaroNaImpressao() {
   useEffect(() => {
     const html = document.documentElement
     let eraEscuro = false
