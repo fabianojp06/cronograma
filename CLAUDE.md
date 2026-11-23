@@ -1410,19 +1410,37 @@ verde) → PR `homologacao` → `main`, aprovado por quem administra. A `main` �
 produção; o autoloop nunca abre PR nem mescla nela (`autoloop.sh`/`.ps1` recusam rodar
 sem a branch `homologacao` no remoto).
 
-- **Banco próprio** (Postgres no Railway, serviço `Postgres-WZMG`, acesso por TCP proxy).
-  A `DATABASE_URL` dele é cadastrada na Vercel só para a branch `homologacao`; a de Preview
-  das outras branches continua apontando para o banco de PRODUÇÃO (ver abaixo).
-- **Trava contra migrar produção por engano**: `decidirMigracao` só aplica migration na
-  branch `homologacao` se `HOMOLOGACAO_BANCO_HOST` (host:porta, cadastrado só nela) for
-  igual ao host da `DATABASE_URL`. Sem a trava, ou com host diferente, o build ERRA
-  (falha fechada), em vez de migrar ou publicar contra outro banco. Previews de outras
-  branches continuam sem migrar.
+- **Projeto próprio na Vercel**: `cronograma-homologacao` (`prj_l6yvZ2GWfDrZlV5wxA9hwOTr3sGC`),
+  ligado ao mesmo repositório, com **Production Branch = `homologacao`**. Endereço fixo:
+  `cronograma-homologacao.vercel.app`. A `DATABASE_URL` de produção NUNCA existe nele,
+  que é a proteção de verdade: não há como a homologação alcançar o banco de produção.
+  Os endereços com hash de cada deploy pedem login da Vercel (Vercel Authentication);
+  o endereço fixo não.
+- **Cada projeto só builda a sua branch** (Ignored Build Step, configurado na Vercel):
+  `cronograma-homologacao` pula tudo que não é `homologacao`; `cronograma-lktu` (produção)
+  pula a `homologacao`. Sem isso, cada push geraria um build falho no outro projeto e um
+  check vermelho no PR. Se um check da Vercel voltar a falhar na `homologacao`, comece
+  conferindo essas duas configurações.
+- **Banco próprio** (Postgres no Railway, serviço `Postgres-WZMG`, acesso por TCP proxy
+  público). A `DATABASE_URL` dele é montada à mão (`postgresql://usuario:senha@host:porta/banco`
+  a partir das variáveis do serviço) e cadastrada como Sensitive em Production do projeto
+  da homologação. Nunca cole em chat, issue ou commit.
+- **Migrations**: no projeto da homologação a Vercel enxerga o build como produção
+  (`VERCEL_ENV=production`), então `scripts/migrar-producao.ts` aplica as migrations no
+  banco dela a cada build, e um build sem `DATABASE_URL` falha, como na produção.
+  A trava `HOMOLOGACAO_BANCO_HOST` (`decidirMigracao`, ramo preview + branch `homologacao`)
+  só vale se alguém voltar a construir a branch no projeto de produção: aí o build ERRA
+  se o host da `DATABASE_URL` não for o do banco da homologação, em vez de migrar o banco
+  errado. Previews de outras branches continuam sem migrar.
 - **Login**: o Clerk é o mesmo da produção (a aplicação só tem uma instância, de
   desenvolvimento); as contas valem nos dois ambientes, mas o cadastro de colaborador é do
-  banco: na primeira entrada na homologação a pessoa passa por `/bem-vindo`.
-- **E-mails e cron**: desligados (`RESEND_API_KEY`, `CRON_SECRET` e `EMAIL_ALERTAS` só existem
-  em Production, e o envio exige `VERCEL_ENV=production`).
+  banco: na primeira entrada na homologação a pessoa passa por `/bem-vindo`. As variáveis
+  `NEXT_PUBLIC_CLERK_*` e `CLERK_SECRET_KEY` foram copiadas da produção.
+- **E-mails e cron**: desligados. `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_ALERTAS` e
+  `EMAILS_EXCECAO` NÃO existem no projeto da homologação (e o envio de e-mail exige a chave).
+  Ao cadastrar variável nova nele, confira antes se ela não religa e-mail ou cron.
+- **Carga inicial**: banco novo nasce vazio. `npm run db:seed` e `npm run carregar:modelos
+  -- --gravar`, com a `DATABASE_URL` da homologação no comando (ver README).
 
 ## Migrations em produção
 

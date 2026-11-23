@@ -227,7 +227,7 @@ faça commit do `.env` real: ele já está no `.gitignore`.
 | `APP_URL` | Não | Endereço público usado nos links dos e-mails |
 | `CRON_SECRET` | Em produção | Autoriza a chamada do cron em `/api/cron/atrasos` |
 | `PULAR_MIGRACAO` | Não | Emergência: pula a migration no build de produção ou da homologação |
-| `HOMOLOGACAO_BANCO_HOST` | Só na branch `homologacao` | `host:porta` do banco da homologação. Trava do build: sem ela, ou com a `DATABASE_URL` apontando para outro host, o build da homologação falha |
+| `HOMOLOGACAO_BANCO_HOST` | Não | `host:porta` do banco da homologação. Trava para o caso de a branch `homologacao` ser construída no projeto de produção: sem ela, ou com a `DATABASE_URL` apontando para outro host, esse build falha. No projeto próprio da homologação não é necessária |
 
 **E-mails só saem em produção** (`VERCEL_ENV=production`). Na máquina local, no CI
 e nos previews nenhum e-mail é enviado, mesmo com a chave configurada.
@@ -235,9 +235,11 @@ e nos previews nenhum e-mail é enviado, mesmo com a chave configurada.
 ## Homologação
 
 Segundo ambiente, com banco próprio, entre as branches de etapa e a produção:
-etapa → `homologacao` (publica no link fixo da Vercel da branch) → `main` (produção,
-promovida por PR aprovado por quem administra). Para rodar um importador contra o
-banco dela, aponte a `DATABASE_URL` do comando para o banco da homologação:
+etapa → `homologacao` (publica em `cronograma-homologacao.vercel.app`, um projeto próprio na
+Vercel com Production Branch = `homologacao`) → `main` (produção, promovida por PR aprovado
+por quem administra). Cada projeto da Vercel só builda a sua branch. Para rodar um
+importador contra o banco dela, aponte a `DATABASE_URL` do comando para o banco da
+homologação:
 
 ```bash
 DATABASE_URL="<url do banco da homologação>" npm run importar:pla-dep
