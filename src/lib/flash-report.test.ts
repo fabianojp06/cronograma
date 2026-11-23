@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ID_SEM_MACROETAPA,
   janelaDoProjeto,
   montarFlashReport,
   normalizarSemana,
@@ -7,6 +8,7 @@ import {
   type EntradaFlash,
   type RiscoDoRelatorio,
 } from './flash-report'
+import { avancoEm } from './avanco-fisico'
 import { periodoDaSemana, semanaDe, semanaSeguinte, chaveSemana, type SemanaCtcea } from './semana-ctcea'
 
 const DIA = 86_400_000
@@ -74,6 +76,7 @@ describe('janela e curva', () => {
     for (let n = 1; n <= 6; n++) {
       fotos.set(chaveSemana(semanaN(n)), [
         { status: n >= 5 ? 'CONCLUIDO' : 'NAO_INICIADO', previstoInicio: inicioN(1), previstoTermino: fimN(5) },
+        { status: 'NAO_INICIADO', previstoInicio: inicioN(6), previstoTermino: fimN(10) },
       ])
     }
     const r = montarFlashReport(entrada({ acoesNoFimDeCada: fotos }))
@@ -81,7 +84,8 @@ describe('janela e curva', () => {
     expect(r.curva.map((p) => p.rotulo)).toEqual(['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10'])
     for (let i = 1; i < 10; i++) expect(r.curva[i].previsto).toBeGreaterThanOrEqual(r.curva[i - 1].previsto)
     expect(r.curva[0].realizado).toBe(0)
-    expect(r.curva[4].realizado).toBe(100)
+    expect(r.curva[4].realizado).toBe(avancoEm(fotos.get(chaveSemana(semanaN(5)))!, periodoDaSemana(semanaN(5)).fim)!.realizado)
+    expect(r.curva[4].realizado).toBeGreaterThan(0)
     expect(r.curva[6].realizado).toBe(0) // semana escolhida, sem foto: ações atuais (nenhuma concluída)
     expect(r.curva.slice(7).every((p) => p.realizado === null)).toBe(true)
   })
@@ -98,7 +102,7 @@ describe('janela e curva', () => {
 })
 
 describe('macroetapas', () => {
-  it('células: null fora, REALIZADO, ATENCAO na semana escolhida, PLANEJADO depois', () => {
+  it('células: null fora, DECORRIDO (sem avanço, sem foto), ATENCAO na escolhida, PLANEJADO depois', () => {
     // m1 vai da semana 1 à 9 e está com 0% de realizado contra previsto alto.
     const acoes = [
       acao({ numero: 1, macroetapaId: 'm1', previstoInicio: inicioN(1), previstoTermino: fimN(9) }),
@@ -109,12 +113,44 @@ describe('macroetapas', () => {
     expect(m1.nome).toBe('Integrações')
     expect(m1.avanco!.desvio).toBeLessThanOrEqual(-10)
     expect(m1.celulas).toHaveLength(10)
-    expect(m1.celulas.slice(0, 6)).toEqual(Array(6).fill('REALIZADO'))
+    // Semanas passadas sem foto não têm como ser medidas: nunca verde.
+    expect(m1.celulas.slice(0, 6)).toEqual(Array(6).fill('DECORRIDO'))
     expect(m1.celulas[6]).toBe('ATENCAO')
     expect(m1.celulas.slice(7, 9)).toEqual(['PLANEJADO', 'PLANEJADO'])
     expect(m1.celulas[9]).toBeNull()
     const m2 = r.macroetapas[1]
     expect(m2.celulas.slice(0, 5)).toEqual(Array(5).fill(null))
+  })
+
+  it('cada semana passada usa a foto dela: sem avanço → DECORRIDO, com avanço → REALIZADO, atrasada → ATENCAO', () => {
+    // m1: uma ação de sexta da semana 1 até a sexta da 9. No sábado da semana 1 o
+    // previsto é de um dia (−2,x p.p. contra 0% realizado: ainda não é Atenção).
+    const acoes = [
+      acao({ numero: 1, macroetapaId: 'm1', previstoInicio: fimN(1), previstoTermino: fimN(9) }),
+      acao({ numero: 2, macroetapaId: 'm2', previstoInicio: inicioN(6), previstoTermino: fimN(10) }),
+    ]
+    const fotoComStatus = (status: AcaoDoRelatorio['status']) =>
+      acoes.map((a) => ({ id: a.id, status, previstoInicio: a.previstoInicio, previstoTermino: a.previstoTermino }))
+    const fotos = new Map([
+      [chaveSemana(semanaN(1)), fotoComStatus('NAO_INICIADO')], // 0% e previsto ~2%: DECORRIDO
+      [chaveSemana(semanaN(2)), fotoComStatus('NAO_INICIADO')], // 0% e previsto alto: atrasada ali → ATENCAO
+      [chaveSemana(semanaN(3)), fotoComStatus('CONCLUIDO')], // avanço → REALIZADO
+      [chaveSemana(semanaN(4)), fotoComStatus('CONCLUIDO')],
+      [chaveSemana(semanaN(5)), fotoComStatus('CONCLUIDO')],
+      [chaveSemana(semanaN(6)), fotoComStatus('CONCLUIDO')],
+      [chaveSemana(semanaN(7)), fotoComStatus('CONCLUIDO')],
+    ])
+    const r = montarFlashReport(entrada({ acoes, acoesNoFimDeCada: fotos }))
+    expect(r.macroetapas[0].celulas.slice(0, 7)).toEqual([
+      'DECORRIDO', 'ATENCAO', 'REALIZADO', 'REALIZADO', 'REALIZADO', 'REALIZADO', 'REALIZADO',
+    ])
+    expect(r.macroetapas[0].celulas.slice(7, 9)).toEqual(['PLANEJADO', 'PLANEJADO'])
+  })
+
+  it('linha leva o id da macroetapa; o grupo solto usa um id reservado', () => {
+    const acoes = [...entrada().acoes, acao({ numero: 3, previstoInicio: inicioN(2), previstoTermino: fimN(3) })]
+    const r = montarFlashReport(entrada({ acoes }))
+    expect(r.macroetapas.map((m) => m.id)).toEqual(['m1', 'm2', ID_SEM_MACROETAPA])
   })
 
   it('"Sem macroetapa" só se houver ação solta', () => {
@@ -343,7 +379,7 @@ describe('semana passada: estado da semana, não de hoje', () => {
   })
 
   it('semana passada avisa que alertas, riscos e próximas mostram hoje; semana atual não', () => {
-    expect(montarFlashReport(entrada()).avisos.join(' ')).toMatch(/alertas, riscos e próximas atividades mostram a situação de hoje/i)
+    expect(montarFlashReport(entrada()).avisos.join(' ')).toMatch(/riscos e as próximas atividades mostram a situação de hoje/i)
     const atual = montarFlashReport(entrada({ hoje: new Date(inicioN(7).getTime() + DIA) }))
     expect(atual.avisos.join(' ')).not.toMatch(/situação de hoje|sem foto/)
   })
@@ -421,5 +457,51 @@ describe('semana corrente: uma data só', () => {
     expect(r.farol.desvio).toBe(Math.round(r.consolidado!.desvio * 10) / 10)
     const ponto = r.curva[r.semanaDoProjeto - 1]
     expect(ponto.previsto).toBe(r.consolidado!.previsto)
+  })
+})
+
+describe('semana passada: previsto da curva e do cabeçalho vêm da mesma base', () => {
+  it('depois de um replanejamento, o ponto da semana escolhida e o consolidado coincidem', () => {
+    // Plano de hoje: as duas ações terminam na semana 10. Plano da semana 7 (foto):
+    // as duas já tinham terminado na semana 5, então previsto 100% naquela época.
+    const acoes = entrada().acoes
+    const foto = new Map([[chaveSemana(semanaN(7)), acoes.map((a) => ({
+      id: a.id, status: 'NAO_INICIADO' as const, previstoInicio: inicioN(1), previstoTermino: fimN(5),
+    }))]])
+    const r = montarFlashReport(entrada({ acoesNoFimDeCada: foto }))
+    expect(r.consolidado!.previsto).toBe(100)
+    expect(r.curva[r.semanaDoProjeto - 1].previsto).toBe(r.consolidado!.previsto)
+    expect(r.curva[r.semanaDoProjeto - 1].realizado).toBe(r.consolidado!.realizado)
+  })
+
+  it('todo ponto com foto usa o plano da própria foto (pode não ser monótono: valores honestos)', () => {
+    const acoes = entrada().acoes
+    const antes = acoes.map((a) => ({ id: a.id, status: 'NAO_INICIADO' as const, previstoInicio: inicioN(1), previstoTermino: fimN(5) }))
+    const foto = new Map([[chaveSemana(semanaN(2)), antes]])
+    const r = montarFlashReport(entrada({ acoesNoFimDeCada: foto }))
+    const sabado2 = periodoDaSemana(semanaN(2)).fim
+    expect(r.curva[1].previsto).toBe(avancoEm(antes, sabado2)!.previsto)
+    expect(r.curva[1].previsto).not.toBe(avancoEm(acoes, sabado2)!.previsto)
+  })
+})
+
+describe('aviso de ações sem datas', () => {
+  const semDatas = (n: number) => Array.from({ length: n }, (_, i) => acao({ numero: 50 + i }))
+  it('singular e plural, com o texto exato', () => {
+    const um = montarFlashReport(entrada({ acoes: [...entrada().acoes, ...semDatas(1)] }))
+    expect(um.avisos).toContain('1 ação sem datas previstas ficou fora do avanço físico.')
+    const dois = montarFlashReport(entrada({ acoes: [...entrada().acoes, ...semDatas(2)] }))
+    expect(dois.avisos).toContain('2 ações sem datas previstas ficaram fora do avanço físico.')
+  })
+  it('sem ação excluída, sem aviso', () => {
+    expect(montarFlashReport(entrada()).avisos.join(' ')).not.toMatch(/fora do avanço físico/)
+  })
+})
+
+describe('desvio nunca sai como -0', () => {
+  it('consolidado com desvio zero não é -0', () => {
+    const hoje = new Date(inicioN(7).getTime() + 2 * DIA)
+    const r = montarFlashReport(entrada({ hoje, acoes: [acao({ numero: 1, previstoInicio: inicioN(8), previstoTermino: fimN(9) })], macroetapas: [] }))
+    expect(Object.is(r.consolidado!.desvio, -0)).toBe(false)
   })
 })

@@ -140,7 +140,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     passos: [
       'Na tela do projeto, clique em "Flash Report". Abre a semana de hoje. Para outra semana, use "Semana anterior" ou "Semana seguinte", no alto da página (a semana é a do calendário da CTCEA, de domingo a sábado, e vai na URL como ?semana=aaaa-ss, então o link pode ser guardado).',
       'O cabeçalho traz o nome e a referência do projeto, o cliente e o objetivo (se preenchidos), o líder, a semana escolhida, a semana do projeto ("S03 / 12"), o farol (Atrasado, Atenção, Em dia, Adiantado ou Sem dados, com o motivo escrito) e o avanço físico previsto e realizado acumulados, com o desvio em pontos percentuais.',
-      'O cronograma macro mostra, por macroetapa, o previsto, o realizado e o desvio, e a faixa semana a semana; a última linha é o "Total consolidado". Se faltarem semanas na tela, role a tabela de lado.',
+      'O cronograma macro mostra, por macroetapa, o previsto, o realizado e o desvio, e a faixa semana a semana; a última linha é o "Total consolidado". Na faixa, verde (Realizado) só aparece onde houve avanço até o fim da semana; a hachurada é Atenção (desvio de −3 p.p. ou pior naquela semana); o contorno vazio é "Decorrido, sem avanço" (ou semana sem foto do histórico); o tracejado azul é semana futura. Se faltarem semanas na tela, role a tabela de lado.',
       'A curva compara o previsto acumulado (tracejado) com o realizado acumulado (contínuo, que para na semana escolhida). Os mesmos números aparecem na tabela logo abaixo do gráfico.',
       'Os blocos de baixo listam as atividades realizadas na semana, as próximas atividades, os principais riscos e bloqueios, os alertas e pontos de atenção e o "Pedido de ajuda e decisões executivas necessárias".',
       'Clique em "Imprimir / salvar em PDF" para sair em A4 paisagem (no navegador, escolha "Salvar como PDF"). Os controles de navegação não saem na impressão. "Como ler este relatório", no rodapé, resume as regras.',
@@ -148,9 +148,9 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     dicas: [
       'Avanço físico é a média, ponderada pelos dias úteis previstos de cada ação, do percentual de cada uma (não iniciada 0%, em curso 25, 50 ou 75%, concluída 100%). Por isso ele difere do "percentual concluído" do painel, que apenas conta quantas ações estão concluídas. Os dois estão certos: medem coisas diferentes.',
       'Uma data só: a semana de hoje é avaliada até hoje; uma semana passada é avaliada até o sábado dela. Semana futura não é avaliada além de hoje.',
-      'Semanas passadas usam a foto reconstruída do histórico de alterações. Se a semana for anterior ao primeiro registro do sistema, ou a foto não tiver as ações identificadas, um aviso amarelo no alto diz que os valores usam o estado atual.',
-      'Riscos, alertas e próximas atividades mostram sempre a situação de HOJE, mesmo numa semana passada, e o aviso diz isso.',
-      'Sem ações com datas previstas não há avanço para calcular: o aviso pede para preencher início e término previstos. Sem macroetapas, o aviso pede para cadastrá-las.',
+      'Semanas passadas usam a foto reconstruída do histórico de alterações. Se a semana for anterior ao primeiro registro do sistema, ou a foto não tiver as ações identificadas, um aviso no alto diz que os valores usam o estado atual.',
+      'Numa semana passada, o avanço, o farol e o alerta de desvio das macroetapas são os daquela semana; os alertas de ações atrasadas e bloqueadas, os riscos e as próximas atividades mostram a situação de HOJE, e o aviso diz isso.',
+      'Ação sem datas previstas pesa zero e fica fora das médias; um aviso diz quantas ficaram de fora. Sem ações com datas previstas não há avanço para calcular: o aviso pede para preencher início e término previstos. Sem macroetapas, o aviso pede para cadastrá-las.',
       'O relatório é só de consulta (todos os perfis abrem). Não é enviado por e-mail.',
     ],
     desde: '2026-11-23',
@@ -164,7 +164,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     perfil: 'editor',
     rotas: [],
     passos: [
-      'Na tela do projeto, role até "Macroetapas" (ou abra o link "Cadastre macroetapas" no Flash Report). Digite o nome e clique em "Adicionar macroetapa". Cada projeto aceita até 12.',
+      'Na tela do projeto, role até "Macroetapas" (ou abra o link "Cadastrar macroetapas" no Flash Report). Digite o nome e clique em "Adicionar macroetapa". Cada projeto aceita até 12.',
       'Para mudar o nome, clique em "Renomear", edite e clique em "Salvar". Para mudar a ordem, use "Subir" e "Descer": a ordem é a do Flash Report.',
       'Na tela de uma ação (nova ou editada), escolha a etapa no campo "Macroetapa". O campo só aparece quando o projeto tem macroetapas.',
       '"Excluir" remove só a macroetapa: as ações dela ficam no projeto, sem macroetapa, e passam a aparecer no grupo "Sem macroetapa" do Flash Report.',
@@ -186,9 +186,9 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     rotas: [],
     passos: [
       'Em "Projetos" e no painel, a coluna "Sinal" mostra uma palavra por projeto: Atrasado, Atenção, Em dia, Adiantado ou Sem dados. A palavra vem sempre escrita; a cor só reforça.',
-      'O sinal usa o desvio de avanço físico, em pontos percentuais (p.p.): realizado menos previsto. Até −10 p.p.: Atrasado. De −10 (exclusive) até −3 p.p.: Atenção (o −3 exato ainda é Atenção). Entre −3 e +3 p.p.: Em dia. Acima de +3 p.p.: Adiantado. Sem ações com datas previstas: Sem dados.',
+      'O sinal usa o desvio de avanço físico, em pontos percentuais (p.p.): realizado menos previsto. De −10 p.p. para baixo (o −10 exato inclusive): Atrasado. De −10 (exclusive) até −3 p.p.: Atenção (o −3 exato ainda é Atenção). Entre −3 (exclusive) e +3 p.p.: Em dia (o +3 exato ainda é Em dia). Acima de +3 p.p.: Adiantado. Sem ações com datas previstas: Sem dados.',
       'Se o projeto tem risco ou bloqueio de impacto ALTO aberto com prazo vencido, o sinal sobe um nível de gravidade (Em dia vira Atenção, por exemplo), e o motivo diz isso.',
-      'Para filtrar, escolha um valor em "Sinal" nos filtros. Para ver os piores primeiro, escolha "Pior sinal primeiro" em "Ordenar por". Os dois ficam na URL (?sinal= e ?ordem=sinal) e valem também na exportação para Excel, que ganha as colunas "Sinal" e "Desvio (p.p.)".',
+      'Para filtrar, escolha um valor em "Sinal" nos filtros. Para ver os piores primeiro, escolha "Pior sinal primeiro" em "Ordem". Esses filtros e essa ordem existem na lista "Projetos" e no painel. Os dois ficam na URL (?sinal= e ?ordem=sinal) e valem também na exportação para Excel, que ganha as colunas "Sinal" e "Desvio (p.p.)".',
     ],
     dicas: [
       'O "Status" conta as ações que passaram do prazo; o "Sinal" compara o avanço com o plano. Um projeto pode estar com poucas ações atrasadas e mesmo assim em Atenção, ou o contrário.',

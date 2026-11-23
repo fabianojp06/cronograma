@@ -13,11 +13,10 @@ import {
   type AcaoDoRelatorio,
   type FlashReport,
 } from './flash-report'
+import { inicioDeHojeUTC } from './data-hoje'
 import { corteDaFoto, fotoDoProjeto } from './foto-em-data'
 import { prisma } from './prisma'
 import { acaoEstaAtrasada } from './projeto-resumo'
-import { hojeEmBrasilia } from './resumo-semanal'
-import { riscoAberto } from './risco-projeto'
 import {
   chaveSemana,
   distanciaEmSemanas,
@@ -95,7 +94,8 @@ export async function carregarFlashReport(
   })
   if (!projeto) return null
 
-  const hoje = hojeEmBrasilia(agora)
+  // Mesmo "hoje" da lista, do painel e do Excel (`inicioDeHojeUTC`): o sinal e o farol não divergem.
+  const hoje = inicioDeHojeUTC(agora)
   const acoes: AcaoDoRelatorio[] = projeto.acoes.map((a) => ({
     id: a.id,
     numero: a.numero,
@@ -177,8 +177,7 @@ export async function carregarFlashReport(
     macroetapas: projeto.macroetapas,
     acoes,
     acoesNoFimDeCada,
-    riscos: projeto.riscos
-      .filter((r) => riscoAberto(r.status))
+    riscos: projeto.riscos // a consulta já traz só os abertos
       .map((r) => ({
         id: r.id,
         tipo: r.tipo,

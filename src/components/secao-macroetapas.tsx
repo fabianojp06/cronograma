@@ -29,7 +29,7 @@ function Mensagem({ estado }: { estado: EstadoMacroetapa }) {
   )
 }
 
-function Linha({ m, projetoId, primeira, ultima }: { m: MacroetapaDaLista; projetoId: string; primeira: boolean; ultima: boolean }) {
+function Linha({ m, numero, projetoId, primeira, ultima }: { m: MacroetapaDaLista; numero: number; projetoId: string; primeira: boolean; ultima: boolean }) {
   const [abertoCom, setAbertoCom] = useState<EstadoMacroetapa | null>(null)
   const [nome, setNome] = useState(m.nome)
   const [estRenomear, renomear, renomeando] = useActionState(renomearMacroetapa, INICIAL)
@@ -51,7 +51,7 @@ function Linha({ m, projetoId, primeira, ultima }: { m: MacroetapaDaLista; proje
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="min-w-0 break-words">
-            <span className="mr-2 tabular-nums text-textFaint">{m.ordem}.</span>
+            <span className="mr-2 tabular-nums text-textFaint">{numero}.</span>
             <span className="font-medium">{m.nome}</span>
             <span className="ml-2 text-xs text-textFaint">{m.acoes} {m.acoes === 1 ? 'ação' : 'ações'}</span>
           </p>
@@ -103,7 +103,7 @@ export function SecaoMacroetapas({ projetoId, macroetapas }: { projetoId: string
       ) : (
         <ul className="mt-3 space-y-2">
           {macroetapas.map((m, i) => (
-            <Linha key={m.id} m={m} primeira={i === 0} projetoId={projetoId} ultima={i === macroetapas.length - 1} />
+            <Linha key={m.id} m={m} numero={i + 1} primeira={i === 0} projetoId={projetoId} ultima={i === macroetapas.length - 1} />
           ))}
         </ul>
       )}

@@ -64,8 +64,15 @@ export type EntradaFlash = {
   hoje: Date
 }
 
-export type CelulaMacro = 'REALIZADO' | 'ATENCAO' | 'PLANEJADO' | null
-export type LinhaMacro = { nome: string; avanco: Avanco | null; celulas: CelulaMacro[] }
+/**
+ * `DECORRIDO` = semana já passada em que a macroetapa não teve avanço (realizado
+ * zero) e também não estava atrasada o bastante para `ATENCAO`, ou semana passada
+ * sem foto do histórico. Verde (`REALIZADO`) só onde houve avanço.
+ */
+export type CelulaMacro = 'REALIZADO' | 'ATENCAO' | 'DECORRIDO' | 'PLANEJADO' | null
+/** `id` é o da macroetapa, ou `ID_SEM_MACROETAPA` no grupo das ações soltas. */
+export type LinhaMacro = { id: string; nome: string; avanco: Avanco | null; celulas: CelulaMacro[] }
+export const ID_SEM_MACROETAPA = '__sem__'
 export type PontoCurva = { rotulo: string; previsto: number; realizado: number | null }
 export type ItemAtividade = { numero: number; descricao: string; data: Date | null }
 export type AlertaRelatorio = {
@@ -162,12 +169,17 @@ export function normalizarSemana(
   return escolhida
 }
 
+/**
+ * `avancoNaSemana(posicao)` devolve o avanço da macroetapa no fim da semana de
+ * posição `posicao` (1 = primeira da janela), ou `null` se não há como medir
+ * (sem foto, ou nenhuma ação com peso). Só é chamado para semanas até a escolhida.
+ */
 function celulasDaMacro(
   acoes: readonly AcaoParaAvanco[],
   primeira: SemanaCtcea,
   total: number,
   escolhida: number,
-  desvioNaSemana: number | null,
+  avancoNaSemana: (posicao: number) => Avanco | null,
 ): CelulaMacro[] {
   const faixa = janelaDoProjeto(acoes)
   const de = faixa ? distanciaEmSemanas(primeira, faixa.primeira) : 0
@@ -176,10 +188,10 @@ function celulasDaMacro(
     if (!faixa || i < de || i > ate) return null
     const posicao = i + 1
     if (posicao > escolhida) return 'PLANEJADO'
-    if (posicao === escolhida && desvioNaSemana !== null && desvioNaSemana <= LIMITE_ATENCAO) {
-      return 'ATENCAO'
-    }
-    return 'REALIZADO'
+    const av = avancoNaSemana(posicao)
+    if (av === null) return 'DECORRIDO'
+    if (av.desvio <= LIMITE_ATENCAO) return 'ATENCAO'
+    return av.realizado > 0 ? 'REALIZADO' : 'DECORRIDO'
   })
 }
 
@@ -215,13 +227,17 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
     }))
   }
   if (semanaPassada) {
-    avisos.push('Alertas, riscos e próximas atividades mostram a situação de hoje, não a da semana escolhida.')
+    avisos.push(
+      'Avanço, farol e alerta de desvio das macroetapas são os da semana escolhida; os alertas de ações atrasadas e bloqueadas, os riscos e as próximas atividades mostram a situação de hoje.',
+    )
   }
 
   const consolidado = avancoEm(fotoDaSemana ?? e.acoes, corte)
-  if (consolidado) consolidado.desvio = consolidado.desvio + 0 // troca -0 por 0
   if (consolidado === null) {
     avisos.push('Nenhuma ação com datas previstas: não há avanço físico para calcular. Preencha início e término previstos das ações.')
+  } else if (consolidado.acoesSemPeso > 0) {
+    const n = consolidado.acoesSemPeso
+    avisos.push(`${n} ${plural(n, 'ação sem datas previstas ficou', 'ações sem datas previstas ficaram')} fora do avanço físico.`)
   }
 
   // Farol: semana passada → no sábado dela, com a foto; atual → hoje.
@@ -243,10 +259,12 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
       const s = somarSemanas(janela.primeira, i)
       const sabado = periodoDaSemana(s).fim
       const data = i + 1 === semanaDoProjeto ? corte : sabado
-      const previsto = avancoEm(e.acoes, data)?.previsto ?? 0
+      // Previsto e realizado do mesmo ponto saem da MESMA base (a foto da semana, se
+      // houver): depois de um replanejamento, o plano de hoje não é o daquela semana.
+      const foto = e.acoesNoFimDeCada.get(chaveSemana(s))
+      const previsto = avancoEm(foto ?? e.acoes, data)?.previsto ?? 0
       let realizado: number | null = null
       if (i + 1 <= semanaDoProjeto) {
-        const foto = e.acoesNoFimDeCada.get(chaveSemana(s))
         const base = foto ?? (i + 1 === semanaDoProjeto ? e.acoes : null)
         if (base) realizado = avancoEm(base, data)?.realizado ?? 0
       }
@@ -256,11 +274,18 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
 
   // Macroetapas.
   const ids = new Set(e.macroetapas.map((m) => m.id))
-  const grupos: { nome: string; acoes: AcaoComMacro[] }[] = [...e.macroetapas]
+  type Grupo = { id: string; nome: string; acoes: AcaoComMacro[]; pertence: (macroId: string | null) => boolean }
+  const grupos: Grupo[] = [...e.macroetapas]
     .sort((a, b) => a.ordem - b.ordem)
-    .map((m) => ({ nome: m.nome, acoes: baseDaSemana.filter((a) => a.macroetapaId === m.id) }))
-  const soltas = baseDaSemana.filter((a) => a.macroetapaId === null || !ids.has(a.macroetapaId))
-  if (soltas.length > 0) grupos.push({ nome: 'Sem macroetapa', acoes: soltas })
+    .map((m) => ({
+      id: m.id,
+      nome: m.nome,
+      acoes: baseDaSemana.filter((a) => a.macroetapaId === m.id),
+      pertence: (macroId) => macroId === m.id,
+    }))
+  const solta = (macroId: string | null) => macroId === null || !ids.has(macroId)
+  const soltas = baseDaSemana.filter((a) => solta(a.macroetapaId))
+  if (soltas.length > 0) grupos.push({ id: ID_SEM_MACROETAPA, nome: 'Sem macroetapa', acoes: soltas, pertence: solta })
   if (e.macroetapas.length === 0 && e.acoes.length > 0) {
     avisos.push('O projeto não tem macroetapas: cadastre macroetapas para ver o avanço por etapa.')
   }
@@ -269,11 +294,22 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
   const alertas: AlertaRelatorio[] = []
   for (const g of grupos) {
     const avanco = avancoEm(g.acoes, corte)
+    // Semana escolhida: o avanço do cabeçalho da linha. Semanas anteriores: a foto
+    // daquela semana (precisa dos ids para agrupar); sem foto, não há como medir.
+    const avancoNaSemana = (posicao: number): Avanco | null => {
+      if (posicao === semanaDoProjeto) return avanco
+      const s = somarSemanas(janela!.primeira, posicao - 1)
+      const foto = e.acoesNoFimDeCada.get(chaveSemana(s))
+      if (!foto || !foto.every((f) => f.id !== undefined)) return null
+      const doGrupo = foto.filter((f) => g.pertence(idsDasAcoes.get(f.id!)?.macroetapaId ?? null))
+      return avancoEm(doGrupo, periodoDaSemana(s).fim)
+    }
     macroetapas.push({
+      id: g.id,
       nome: g.nome,
       avanco,
       celulas: janela
-        ? celulasDaMacro(g.acoes, janela.primeira, totalSemanas, semanaDoProjeto, avanco?.desvio ?? null)
+        ? celulasDaMacro(g.acoes, janela.primeira, totalSemanas, semanaDoProjeto, avancoNaSemana)
         : [],
     })
     if (avanco && avanco.desvio <= LIMITE_ATRASADO) {

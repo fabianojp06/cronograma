@@ -8,19 +8,29 @@ const COL = '1.875rem'
 const HACHURA =
   'repeating-linear-gradient(45deg, rgb(0 0 0 / 0.35) 0 3px, transparent 3px 6px)'
 
+const CLASSE: Record<Exclude<CelulaMacro, null>, string> = {
+  REALIZADO: 'bg-realizado',
+  ATENCAO: 'bg-atencao',
+  // Neutro e vazado (contorno cheio, sem preenchimento): não é verde, não é o
+  // tracejado azul do planejado, e se distingue sem depender de cor.
+  DECORRIDO: 'border-2 border-solid border-textFaint bg-transparent',
+  PLANEJADO: 'border-2 border-dashed border-previsto bg-previsto/10',
+}
+
+const TEXTO: Record<Exclude<CelulaMacro, null>, string> = {
+  REALIZADO: 'Realizado',
+  ATENCAO: 'Atenção',
+  DECORRIDO: 'Decorrido, sem avanço',
+  PLANEJADO: 'Planejado',
+}
+
 function Celula({ tipo, rotulo }: { tipo: CelulaMacro; rotulo: string }) {
   if (tipo === null) return <span aria-hidden="true" />
-  const texto = tipo === 'REALIZADO' ? 'Realizado' : tipo === 'ATENCAO' ? 'Atenção' : 'Planejado'
-  const classe =
-    tipo === 'REALIZADO'
-      ? 'bg-realizado'
-      : tipo === 'ATENCAO'
-        ? 'bg-atencao'
-        : 'border-2 border-dashed border-previsto bg-previsto/10'
+  const texto = TEXTO[tipo]
   return (
     <span className="flex h-full items-center justify-center" title={`${rotulo}: ${texto}`}>
       <span
-        className={`block h-4 w-full rounded-sm ${classe}`}
+        className={`block h-4 w-full rounded-sm ${CLASSE[tipo]}`}
         style={tipo === 'ATENCAO' ? { backgroundImage: HACHURA } : undefined}
       />
       <span className="sr-only">{texto}</span>
@@ -29,16 +39,10 @@ function Celula({ tipo, rotulo }: { tipo: CelulaMacro; rotulo: string }) {
 }
 
 function Amostra({ tipo }: { tipo: Exclude<CelulaMacro, null> }) {
-  const classe =
-    tipo === 'REALIZADO'
-      ? 'bg-realizado'
-      : tipo === 'ATENCAO'
-        ? 'bg-atencao'
-        : 'border-2 border-dashed border-previsto bg-previsto/10'
   return (
     <span
       aria-hidden="true"
-      className={`inline-block h-3 w-5 rounded-sm align-middle ${classe}`}
+      className={`inline-block h-3 w-5 rounded-sm align-middle ${CLASSE[tipo]}`}
       style={tipo === 'ATENCAO' ? { backgroundImage: HACHURA } : undefined}
     />
   )
@@ -86,7 +90,7 @@ export function GanttMacro({
               ))}
             </div>
             {macroetapas.map((m) => (
-              <div className="grid items-center border-b border-borderSoft text-sm" key={m.nome} role="row" style={{ gridTemplateColumns: colunas }}>
+              <div className="grid items-center border-b border-borderSoft text-sm" key={m.id} role="row" style={{ gridTemplateColumns: colunas }}>
                 <span className="truncate py-2 pr-2 font-medium" role="rowheader" title={m.nome}>{m.nome}</span>
                 <span className="pr-2 text-right tabular-nums text-textMuted" role="cell">{m.avanco ? percentualEscrito(m.avanco.previsto) : '—'}</span>
                 <span className="pr-2 text-right tabular-nums" role="cell">{m.avanco ? percentualEscrito(m.avanco.realizado) : '—'}</span>
@@ -112,8 +116,9 @@ export function GanttMacro({
       )}
       <p className="mt-1 text-xs text-textFaint print:hidden">Se faltarem semanas na tela, role a tabela de lado.</p>
       <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-textMuted">
-        <span><Amostra tipo="REALIZADO" /> Realizado (semana já fechada)</span>
-        <span><Amostra tipo="ATENCAO" /> Atenção (desvio de −3 p.p. ou pior na semana)</span>
+        <span><Amostra tipo="REALIZADO" /> Realizado (houve avanço até o fim da semana)</span>
+        <span><Amostra tipo="ATENCAO" /> Atenção (desvio de −3 p.p. ou pior no fim da semana)</span>
+        <span><Amostra tipo="DECORRIDO" /> Decorrido, sem avanço (ou semana sem foto do histórico)</span>
         <span><Amostra tipo="PLANEJADO" /> Planejado (semana futura)</span>
         <span className="text-accent">Coluna em destaque: semana escolhida</span>
       </p>

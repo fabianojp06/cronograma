@@ -15,7 +15,7 @@ import { CurvaAvanco } from '@/components/flash-report/curva-avanco'
 import { GanttMacro } from '@/components/flash-report/gantt-macro'
 import { carregarFlashReport } from '@/lib/flash-report-servidor'
 import { chaveSemana, rotuloSemana } from '@/lib/semana-ctcea'
-import { hojeEmBrasilia } from '@/lib/resumo-semanal'
+import { inicioDeHojeUTC } from '@/lib/data-hoje'
 
 export const metadata = { title: 'Flash Report — Cronograma CTCEA' }
 
@@ -34,7 +34,7 @@ export default async function FlashReportPage({
   if (!dados) notFound()
 
   const { relatorio, cabecalho, semana, semanaAnterior, semanaSeguinte, temMacroetapas } = dados
-  const hoje = hojeEmBrasilia(agora)
+  const hoje = inicioDeHojeUTC(agora)
   const rota = `/projetos/${cabecalho.id}/flash-report`
   const link = 'text-accent hover:underline'
 
@@ -107,8 +107,9 @@ export default async function FlashReportPage({
           </p>
           <p>
             <strong className="font-medium text-text">Semana</strong> é a semana do calendário da CTCEA (domingo a
-            sábado). Semanas passadas usam a foto reconstruída do histórico de alterações; riscos, alertas e próximas
-            atividades mostram sempre a situação de hoje.
+            sábado). Semanas passadas usam a foto reconstruída do histórico de alterações (avanço, farol e alerta de
+            desvio das macroetapas); os alertas de ações atrasadas e bloqueadas, os riscos e as próximas atividades
+            mostram sempre a situação de hoje.
           </p>
         </div>
       </details>

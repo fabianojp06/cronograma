@@ -31,7 +31,7 @@
 ## Review Focus
 
 1. Projeto sem ação com data, ou com data só numa ponta, ou término antes do início: sinal "Sem dados", relatório com aviso; nunca `NaN`, divisão por zero ou erro 500 (Tasks 2, 3, 7).
-2. `?semana=` inválida, futura ou fora da janela do projeto: cai na semana corrente (Task 8).
+2. `?semana=` inválida ou futura: cai na semana corrente; válida mas fora da janela do projeto: limitada à primeira ou à última semana da janela (Task 8).
 3. Projeto antigo, com todas as ações sem macroetapa: relatório mostra só "Sem macroetapa" com convite a cadastrar, não uma tela vazia (Tasks 7, 8).
 4. POST forjado escolhendo macroetapa de OUTRO projeto, ou nome repetido com outro acento/caixa: recusado com mensagem (Task 4, 5).
 5. Excluir macroetapa que tem ações: as ações ficam desvinculadas e o histórico registra a troca (Task 4).

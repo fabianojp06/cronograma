@@ -1359,7 +1359,20 @@ telas em `src/components/flash-report/`.
   (não é campo auditado do risco).
 - **Regra de data única**: `corte = min(hoje, sábado da semana escolhida)`. Semana de hoje
   é avaliada até hoje; passada, até o sábado. Previsto, realizado, curva e farol usam o
-  mesmo corte; riscos, alertas e próximas atividades são sempre de HOJE (o aviso diz).
+  mesmo corte. Numa semana passada, avanço, farol, curva e alerta de desvio das macroetapas
+  usam a foto DAQUELA semana (previsto e realizado de cada ponto da curva saem da mesma
+  foto, então o ponto da semana escolhida bate com o cabeçalho mesmo após replanejamento);
+  os alertas de ações atrasadas e bloqueadas, os riscos e as próximas atividades são sempre
+  de HOJE (o aviso diz).
+- **"Hoje" é `inicioDeHojeUTC`**, o mesmo da lista, do painel e do Excel: o relatório e o
+  sinal da lista nunca divergem à noite (21h–23h59 em Brasília). Levar o sistema inteiro
+  para o horário de Brasília é uma decisão à parte, que mexeria em todas essas telas.
+- **Células do Gantt macro**: por semana de cada macroetapa até a escolhida, avanço no fim
+  da semana (foto dela): `ATENCAO` se desvio ≤ −3; senão `REALIZADO` (verde) só se houve
+  avanço (realizado > 0); senão `DECORRIDO` (contorno neutro, texto "Decorrido, sem
+  avanço"). Semana passada sem foto é `DECORRIDO`; depois da escolhida, `PLANEJADO`.
+  Verde sempre significa realizado, nunca "o tempo passou".
+- **Ação sem datas previstas pesa 0**, fica fora das médias e é contada num aviso do relatório.
 - **Semanas passadas dependem do histórico** (`foto-em-data`). Antes do primeiro registro
   do sistema a foto não é confiável e a tela avisa. `acoesNoFimDeCada` precisa do `id` da
   ação para casar a foto com a macroetapa; sem ele o aviso cai para "estado atual".

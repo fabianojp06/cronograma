@@ -9,10 +9,10 @@ import { consultar, encerrarBanco, limparBanco } from './banco'
 
 const id = () => crypto.randomUUID()
 
-/** Data (aaaa-mm-dd) a `n` dias de hoje em Brasília. */
+/** Data (aaaa-mm-dd) a `n` dias de hoje, na mesma noção da tela (`inicioDeHojeUTC`). */
 function dia(n: number): string {
-  const br = new Date(Date.now() - 3 * 3_600_000)
-  const d = new Date(Date.UTC(br.getUTCFullYear(), br.getUTCMonth(), br.getUTCDate() + n))
+  const agora = new Date()
+  const d = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate() + n))
   return d.toISOString().slice(0, 10)
 }
 
@@ -111,6 +111,8 @@ test('mostra cabeçalho, macroetapas, riscos, alertas e pedido de ajuda', async 
     await expect(gantt.getByRole('row').filter({ hasText: nome })).toContainText(/\d+,\d%/)
   }
   await expect(gantt.getByRole('row').filter({ hasText: 'Total consolidado' })).toContainText(/\d+,\d%/)
+
+  await expect(page.getByText('Decorrido, sem avanço (ou semana sem foto do histórico)')).toBeVisible()
 
   await expect(page.getByRole('region', { name: 'Pedido de ajuda e decisões' })).toContainText(
     'Liberação de acessos VPN para consultores',
