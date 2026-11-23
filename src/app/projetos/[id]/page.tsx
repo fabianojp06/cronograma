@@ -11,6 +11,8 @@ import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { corteDaFoto, fotoDoProjeto, lerDataDaFoto } from '@/lib/foto-em-data'
 import { formatarDataBR } from '@/lib/formatacao'
 import { contaPodeAdministrar, sessaoPodeEditar } from '@/lib/administracao-servidor'
+import { AvisoSomenteLeitura } from '@/components/aviso-somente-leitura'
+import { SecaoMacroetapas } from '@/components/secao-macroetapas'
 import { SecaoRiscos } from '@/components/secao-riscos'
 import { riscoAberto } from '@/lib/risco-projeto'
 import {
@@ -46,6 +48,14 @@ export default async function ProjetoPage({
       acao: { select: { numero: true } },
     },
   })
+  const macroetapasBrutas = podeEditar
+    ? await prisma.macroetapa.findMany({
+        where: { projetoId: id },
+        orderBy: [{ ordem: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, nome: true, ordem: true, _count: { select: { acoes: true } } },
+      })
+    : []
+  const macroetapas = macroetapasBrutas.map((m) => ({ id: m.id, nome: m.nome, ordem: m.ordem, acoes: m._count.acoes }))
   // `?em=aaaa-mm-dd`: o projeto como estava no fim daquele dia, reconstruído do histórico.
   const parametros = await searchParams
   const em = lerDataDaFoto(parametros.em, agora)
@@ -300,6 +310,13 @@ export default async function ProjetoPage({
           riscos={riscosDoProjeto}
           userId={userId}
         />
+      ) : null}
+      {em === null ? (
+        podeEditar ? (
+          <SecaoMacroetapas macroetapas={macroetapas} projetoId={projeto.id} />
+        ) : (
+          <AvisoSomenteLeitura />
+        )
       ) : null}
     </main>
   )
