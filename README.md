@@ -226,10 +226,25 @@ faça commit do `.env` real: ele já está no `.gitignore`.
 | `EMAIL_ALERTAS` | Não | Quem recebe os alertas de erro. Sem ela, vão para os administradores ativos |
 | `APP_URL` | Não | Endereço público usado nos links dos e-mails |
 | `CRON_SECRET` | Em produção | Autoriza a chamada do cron em `/api/cron/atrasos` |
-| `PULAR_MIGRACAO` | Não | Emergência: pula a migration no build de produção |
+| `PULAR_MIGRACAO` | Não | Emergência: pula a migration no build de produção ou da homologação |
+| `HOMOLOGACAO_BANCO_HOST` | Só na branch `homologacao` | `host:porta` do banco da homologação. Trava do build: sem ela, ou com a `DATABASE_URL` apontando para outro host, o build da homologação falha |
 
 **E-mails só saem em produção** (`VERCEL_ENV=production`). Na máquina local, no CI
 e nos previews nenhum e-mail é enviado, mesmo com a chave configurada.
+
+## Homologação
+
+Segundo ambiente, com banco próprio, entre as branches de etapa e a produção:
+etapa → `homologacao` (publica no link fixo da Vercel da branch) → `main` (produção,
+promovida por PR aprovado por quem administra). Para rodar um importador contra o
+banco dela, aponte a `DATABASE_URL` do comando para o banco da homologação:
+
+```bash
+DATABASE_URL="<url do banco da homologação>" npm run importar:pla-dep
+```
+
+O mesmo vale para `importar:cro-dep`, `importar:card-win` e `carregar:modelos`.
+Nunca cole a URL do banco em chat, issue ou commit.
 
 ## Scripts
 

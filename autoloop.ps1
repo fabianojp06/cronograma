@@ -103,6 +103,17 @@ function Test-Prerequisitos {
                 Write-Log "de rodar o autoloop, para poder reverter facilmente se algo der errado."
             }
         }
+        if ($isRepo -eq "true") {
+            # O fluxo passa pela homologacao: sem a branch no GitHub o loop nao tem onde
+            # abrir PR (a main e so a producao). Para em vez de cair na main.
+            git ls-remote --exit-code --heads origin homologacao *> $null
+            if ($LASTEXITCODE -ne 0) {
+                Write-Log "ERRO: a branch 'homologacao' nao existe no repositorio remoto."
+                Write-Log "O autoloop trabalha contra ela (nunca contra a main). Crie-a antes de rodar."
+                Pop-Location
+                exit 1
+            }
+        }
         Pop-Location
     }
 }
@@ -122,6 +133,7 @@ Sua tarefa nesta rodada:
    - se encontrar um bloqueio real (decisao de negocio, credencial faltando, ambiguidade que so o usuario resolve), escreva "$TokenBloqueado" na secao Status e explique o motivo
    - se o backlog inteiro estiver concluido, escreva "$TokenConcluido" na secao Status
 5. Nao peca confirmacao ao usuario - decida e prossiga, a menos que seja um bloqueio real (item 4).
+6. Git: trabalhe numa branch etapa-N criada a partir de origin/homologacao, abra o PR contra a branch homologacao e so mescle la, depois do CI verde. NUNCA faca push, PR ou merge na main: a promocao para a producao e decisao humana.
 
 $Extra
 

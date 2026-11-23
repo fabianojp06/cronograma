@@ -81,6 +81,16 @@ checar_prerequisitos() {
     exit 1
   fi
 
+  # O fluxo passa pela homologação: sem a branch `homologacao` no GitHub o loop
+  # não tem onde abrir PR (a main é só a produção). Para em vez de cair na main.
+  if command -v git &> /dev/null && git -C "$PROJECT_DIR" rev-parse --is-inside-work-tree &> /dev/null; then
+    if ! git -C "$PROJECT_DIR" ls-remote --exit-code --heads origin homologacao &> /dev/null; then
+      log "ERRO: a branch 'homologacao' não existe no repositório remoto."
+      log "O autoloop trabalha contra ela (nunca contra a main). Crie-a antes de rodar."
+      exit 1
+    fi
+  fi
+
   # Aviso (não bloqueia) se o git não estiver limpo.
   if command -v git &> /dev/null && git -C "$PROJECT_DIR" rev-parse --is-inside-work-tree &> /dev/null; then
     if [ -n "$(git -C "$PROJECT_DIR" status --porcelain)" ]; then
@@ -105,6 +115,7 @@ Sua tarefa nesta rodada:
    - se encontrar um bloqueio real (decisão de negócio, credencial faltando, ambiguidade que só o usuário resolve), escreva "$TOKEN_BLOQUEADO" na seção Status e explique o motivo
    - se o backlog inteiro estiver concluído, escreva "$TOKEN_CONCLUIDO" na seção Status
 5. Não peça confirmação ao usuário — decida e prossiga, a menos que seja um bloqueio real (item 4).
+6. Git: trabalhe numa branch etapa-N criada a partir de origin/homologacao, abra o PR contra a branch homologacao e só mescle lá, depois do CI verde. NUNCA faça push, PR ou merge na main: a promoção para a produção é decisão humana.
 
 ${extra}
 
