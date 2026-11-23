@@ -18,6 +18,10 @@
      para dado comum. Texto/borda; contraste sobre `surface` validado >= 3:1. */
   --atencao: #A16207;
   --table-head-bg: #FAFBFC;
+  /* Cor dos gráficos de VOLUME (barras, linha, mapa de calor). É o acento,
+     exceto onde o acento vira azul (`.tema-workspace`): lá o azul é de controle
+     e o volume ganha um tom próprio, para não ser lido como "Previsto". */
+  --magnitude: #0F766E;
 
   /* Tintas dos quadrantes da Matriz de Priorização. São fundo de região, não
      marca de dado: a identidade do quadrante vem da posição e do rótulo, e o
@@ -42,6 +46,7 @@
   --warn: #F3866A;
   --atencao: #E3B341;
   --table-head-bg: #0F1A1F;
+  --magnitude: #2DD4BF;
 
   --quad-quick-wins: #0F2A22;
   --quad-estrategicos: #2A2013;
@@ -65,6 +70,7 @@
   --color-onAccent: var(--on-accent);
   --color-warn: var(--warn);
   --color-atencao: var(--atencao);
+  --color-magnitude: var(--magnitude);
   --color-tableHeadBg: var(--table-head-bg);
 
   --color-quadQuickWins: var(--quad-quick-wins);
@@ -78,6 +84,43 @@
 
   --font-display: var(--font-manrope);
   --font-sans: var(--font-public-sans);
+}
+
+/* Estilo "Workspace" (opção B do desenho): azul, Space Grotesk + Inter e formas
+   arredondadas. Vale só dentro de `.tema-workspace` (hoje, os Dashboards): os
+   tokens são trocados no escopo, então nenhum componente testa o tema.
+   O azul é de controle (abas, links, foco, botões) e difere do azul de
+   "Previsto" (#2563EB), que continua significando só o previsto. */
+.tema-workspace {
+  --accent: #2B4BBE;
+  --on-accent: #FFFFFF;
+  --magnitude: #35507A;
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+.dark .tema-workspace {
+  --accent: #8FA8FF;
+  --on-accent: #0B1418;
+  --magnitude: #8DA9D4;
+}
+.tema-workspace h1,
+.tema-workspace h2,
+.tema-workspace h3,
+.tema-workspace h4,
+.tema-workspace .font-display {
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+}
+.tema-workspace input,
+.tema-workspace select,
+.tema-workspace button {
+  border-radius: 0.5rem;
+}
+/* O formulário de filtros é compartilhado com o painel (traço lateral lá);
+   aqui vira um painel arredondado, como no desenho B. */
+.tema-workspace form[method="get"] {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 1rem;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));

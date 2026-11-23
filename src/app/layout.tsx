@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Public_Sans } from "next/font/google";
+import { Inter, Manrope, Public_Sans, Space_Grotesk } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ptBR } from "@clerk/localizations";
 import "./globals.css";
@@ -9,6 +9,17 @@ import { SCRIPT_TEMA } from "@/lib/tema";
 
 const manrope = Manrope({
   variable: "--font-manrope",
+  subsets: ["latin"],
+});
+
+// Tipografia do estilo "Workspace" (só os Dashboards a usam; ver `.tema-workspace`).
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -53,7 +64,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           que o cliente encontra difere do que veio do servidor — de propósito. */}
       <html
         lang="pt-BR"
-        className={`${manrope.variable} ${publicSans.variable} h-full antialiased`}
+        className={`${manrope.variable} ${publicSans.variable} ${spaceGrotesk.variable} ${inter.variable} h-full antialiased`}
         suppressHydrationWarning
       >
         <head>

@@ -40,7 +40,7 @@ export function MapaDeCalor({
               {matriz.colunas.map((c, j) => {
                 const v = matriz.valores[i][j]
                 const tinta = matriz.maximo === 0 ? 0 : Math.round((v / matriz.maximo) * TINTA_MAXIMA)
-                const cor = colunasDeAlerta.includes(c.id) ? 'var(--warn)' : 'var(--accent)'
+                const cor = colunasDeAlerta.includes(c.id) ? 'var(--warn)' : 'var(--magnitude)'
                 return (
                   <td
                     className={`px-2 py-2 text-center tabular-nums ${v === 0 ? 'text-textFaint' : 'font-semibold'}`}

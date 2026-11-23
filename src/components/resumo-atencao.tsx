@@ -20,8 +20,8 @@ export function ResumoAtencao({
         {itens.map((item) => (
           <li key={item.id}>
             <Link
-              className={`block h-full border-l-2 bg-surface py-2 pl-4 pr-2 hover:bg-bg ${
-                item.tom === 'alerta' ? 'border-warn' : 'border-borderSoft'
+              className={`block h-full rounded-xl border bg-surface px-4 py-3 hover:bg-bg ${
+                item.tom === 'alerta' ? 'border-warn' : 'border-border'
               }`}
               href={hrefDaAba(item.aba, parametros, item.ancora)}
             >
@@ -29,7 +29,7 @@ export function ResumoAtencao({
                 {item.rotulo}
               </span>
               <span
-                className={`mt-1 block font-display text-2xl font-extrabold tabular-nums ${
+                className={`mt-1 block font-display text-2xl font-semibold tabular-nums ${
                   item.tom === 'alerta' ? 'text-warn' : ''
                 }`}
               >
