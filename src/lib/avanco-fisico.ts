@@ -35,8 +35,9 @@ export type Avanco = {
   acoesSemPeso: number
 }
 
-function umaCasa(n: number): number {
-  return Math.round(n * 10) / 10
+export function umaCasa(n: number): number {
+  // "+ 0" troca -0 por 0 (Math.round(-0.04) é -0 e apareceria como "-0,0").
+  return Math.round(n * 10) / 10 + 0
 }
 
 /** Dias úteis do previsto; 0 se faltar data ou o término vier antes do início. */
