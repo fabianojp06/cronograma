@@ -65,6 +65,9 @@ function CampoData({
   )
 }
 
+/** Macroetapa do projeto que pode ser escolhida (já em ordem). */
+export type OpcaoMacroetapa = { id: string; nome: string }
+
 /** Colaborador que pode ser escolhido como responsável. */
 export type OpcaoResponsavel = { id: string; nome: string; temEmail: boolean }
 
@@ -74,6 +77,7 @@ export type ValoresAcao = {
   descricao: string
   status: StatusAcao
   responsavelId: string | null
+  macroetapaId: string | null
   /** `updatedAt` ao abrir a edição — a gravação confere que ainda é essa. */
   versao: string
 } & { [C in CampoData]: string | null }
@@ -92,6 +96,7 @@ export type ValoresAcao = {
 export function FormularioAcao({
   projetoId,
   responsaveis,
+  macroetapas = [],
   acao: valores,
 }: {
   projetoId: string
@@ -102,6 +107,8 @@ export function FormularioAcao({
    * apagaria o responsável em silêncio.
    */
   responsaveis: readonly OpcaoResponsavel[]
+  /** Macroetapas do projeto, ordenadas por `ordem`. Vazia = o campo nem aparece. */
+  macroetapas?: readonly OpcaoMacroetapa[]
   acao?: ValoresAcao
 }) {
   const editando = valores !== undefined
@@ -226,6 +233,27 @@ export function FormularioAcao({
               </p>
               <Erro mensagem={erros?.responsavelId} />
             </div>
+            {macroetapas.length > 0 || valores?.macroetapaId ? (
+              <div className="sm:max-w-md">
+                <label className={classeRotulo} htmlFor="macroetapaId">
+                  Macroetapa
+                </label>
+                <select
+                  className={classeCampo}
+                  id="macroetapaId"
+                  name="macroetapaId"
+                  defaultValue={valores?.macroetapaId ?? ''}
+                >
+                  <option value="">Sem macroetapa</option>
+                  {macroetapas.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome}
+                    </option>
+                  ))}
+                </select>
+                <Erro mensagem={erros?.macroetapaId} />
+              </div>
+            ) : null}
           </div>
         </section>
 

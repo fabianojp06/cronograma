@@ -19,7 +19,7 @@ export default async function EditarRiscoPage({ params }: { params: Promise<{ id
     where: { id: riscoId, projetoId: id, projeto: { ativo: true } },
     select: {
       id: true, tipo: true, titulo: true, descricao: true, impacto: true, status: true, acaoId: true,
-      responsavelId: true, prazo: true, plano: true,
+      responsavelId: true, prazo: true, plano: true, pedeAjuda: true,
       responsavel: { select: { nome: true, ativo: true } },
       projeto: { select: { id: true, nome: true, acoes: { orderBy: { numero: 'asc' }, select: { id: true, numero: true, descricao: true } } } },
       historico: { orderBy: { alteradoEm: 'desc' }, select: { id: true, campo: true, valorAntigo: true, valorNovo: true, alteradoEm: true, alteradoPor: true } },
@@ -56,6 +56,7 @@ export default async function EditarRiscoPage({ params }: { params: Promise<{ id
             tipo: risco.tipo, titulo: risco.titulo, descricao: risco.descricao ?? '', impacto: risco.impacto, status: risco.status,
             acaoId: risco.acaoId ?? '', responsavelId: risco.responsavelId ?? '',
             prazo: risco.prazo ? risco.prazo.toISOString().slice(0, 10) : '', plano: risco.plano ?? '',
+            pedeAjuda: risco.pedeAjuda,
           }}
           projetoId={risco.projeto.id}
           responsaveis={pessoas}

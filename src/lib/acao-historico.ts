@@ -19,12 +19,17 @@ import { CAMPOS_DATA, type DadosAcao } from './acao-validacao'
  * nada a quem lê, e o nome registra quem respondia pela ação naquele momento —
  * se a pessoa for renomeada depois, a linha antiga continua contando o que
  * aconteceu, como o `comentario` da promoção de WIN.
+ *
+ * `macroetapa` segue a mesma ideia: o banco guarda `macroetapaId`, o histórico
+ * grava o NOME (vazio = sem macroetapa). Mudar de macroetapa é classificação,
+ * não replanejamento: não pede motivo.
  */
 export const CAMPOS_AUDITADOS = [
   'status',
   ...CAMPOS_DATA,
   'responsavel',
-] as const satisfies readonly (keyof DadosAcao | 'responsavel')[]
+  'macroetapa',
+] as const satisfies readonly (keyof DadosAcao | 'responsavel' | 'macroetapa')[]
 
 export type CampoAuditado = (typeof CAMPOS_AUDITADOS)[number]
 

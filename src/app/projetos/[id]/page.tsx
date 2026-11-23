@@ -43,7 +43,7 @@ export default async function ProjetoPage({
     where: { projetoId: id },
     select: {
       id: true, acaoId: true, tipo: true, titulo: true, descricao: true, impacto: true, status: true, prazo: true,
-      plano: true, criadoPor: true, criadoEm: true,
+      plano: true, pedeAjuda: true, criadoPor: true, criadoEm: true,
       responsavel: { select: { nome: true } },
       acao: { select: { numero: true } },
     },

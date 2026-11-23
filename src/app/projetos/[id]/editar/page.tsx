@@ -34,6 +34,8 @@ export default async function EditarProjetoPage({
       apoio: true,
       setorEnvolvido: true,
       comentario: true,
+      cliente: true,
+      objetivo: true,
     },
   })
 

@@ -13,6 +13,7 @@ import { lerIdProjeto } from '@/lib/projeto-edicao'
 import {
   ehColisaoDeNumero,
   lerIdAcao,
+  lerMacroetapaId,
   lerResponsavelId,
   proximoNumero,
   TENTATIVAS_NUMERO,
@@ -24,10 +25,12 @@ import { lerMotivoReplanejamento, replanejaDataExistente } from '@/lib/motivo-re
 import { validarRealizado, type ErrosRealizado } from '@/lib/acao-realizado'
 import {
   avisarResponsavel,
+  conferirMacroetapa,
   conferirResponsavel,
   estadoAuditado,
   lerVersao,
   MENSAGEM_CONFLITO_EDICAO,
+  MENSAGEM_MACROETAPA_INVALIDA,
   MENSAGEM_RESPONSAVEL_INVALIDO,
   SELECAO_AUDITADA,
 } from '@/lib/acao-apoio'
@@ -83,6 +86,7 @@ export async function criarAcao(
   if (!validacao.ok) return { erros: validacao.erros }
 
   const responsavelId = lerResponsavelId(formData)
+  const macroetapaId = lerMacroetapaId(formData)
 
   let criada: { id: string; numero: number } | null = null
   let responsavelAviso: { nome: string; email: string | null } | null = null
@@ -101,6 +105,9 @@ export async function criarAcao(
     if (!projeto) return { erroGeral: 'Projeto não encontrado ou excluído.' }
     projetoAviso = projeto
 
+    const macroetapa = await conferirMacroetapa(macroetapaId, projetoId)
+    if (!macroetapa.ok) return { erros: { macroetapaId: MENSAGEM_MACROETAPA_INVALIDA } }
+
     for (let tentativa = 0; tentativa < TENTATIVAS_NUMERO; tentativa += 1) {
       const ultima = await prisma.acao.findFirst({
         where: { projetoId },
@@ -111,7 +118,7 @@ export async function criarAcao(
 
       try {
         const acao = await prisma.acao.create({
-          data: { projetoId, numero, ...validacao.dados, responsavelId },
+          data: { projetoId, numero, ...validacao.dados, responsavelId, macroetapaId },
           select: { id: true, numero: true },
         })
         criada = acao
@@ -196,6 +203,10 @@ export async function atualizarAcao(
     const responsavel = await conferirResponsavel(responsavelId, atual.responsavelId)
     if (!responsavel.ok) return { erros: { responsavelId: MENSAGEM_RESPONSAVEL_INVALIDO } }
 
+    const macroetapaId = lerMacroetapaId(formData)
+    const macroetapa = await conferirMacroetapa(macroetapaId, projetoId)
+    if (!macroetapa.ok) return { erros: { macroetapaId: MENSAGEM_MACROETAPA_INVALIDA } }
+
     // Mudou uma data prevista que já existia? Então pergunta o motivo.
     let motivo: { motivo: string; detalhe: string | null } | undefined
     if (replanejaDataExistente(atual, validacao.dados)) {
@@ -210,11 +221,12 @@ export async function atualizarAcao(
       acaoId,
       versaoEsperada: lerVersao(formData),
       atual: estadoAuditado(atual),
-      dados: { ...validacao.dados, responsavelId },
-      novos:
-        responsavel.nome === undefined
-          ? validacao.dados
-          : { ...validacao.dados, responsavel: responsavel.nome },
+      dados: { ...validacao.dados, responsavelId, macroetapaId },
+      novos: {
+        ...validacao.dados,
+        ...(responsavel.nome === undefined ? {} : { responsavel: responsavel.nome }),
+        ...(macroetapa.nome === undefined ? {} : { macroetapa: macroetapa.nome }),
+      },
       alteradoPor: userId,
       motivo,
     })

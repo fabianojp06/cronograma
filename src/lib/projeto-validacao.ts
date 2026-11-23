@@ -20,10 +20,19 @@ export const CAMPOS_TEXTO_OPCIONAIS = [
 
 export type CampoTextoOpcional = (typeof CAMPOS_TEXTO_OPCIONAIS)[number]
 
+/**
+ * Campos do Flash Report. Diferente dos opcionais acima, **ausente não é vazio**:
+ * a chave só entra nos dados quando o formulário traz o campo (vazio → `null`),
+ * para uma aba aberta antes desta versão não apagar o que já estava gravado.
+ */
+export const CAMPOS_FLASH = ['cliente', 'objetivo'] as const
+export type CampoFlash = (typeof CAMPOS_FLASH)[number]
+const LIMITE_FLASH: Record<CampoFlash, number> = { cliente: 120, objetivo: 1000 }
+
 export type DadosProjeto = {
   nome: string
   prioridade: number | null
-} & { [C in CampoTextoOpcional]: string | null }
+} & { [C in CampoTextoOpcional]: string | null } & { [C in CampoFlash]?: string | null }
 
 /** Erros indexados pelo nome do campo — a UI exibe a mensagem junto ao input. */
 export type ErrosProjeto = Partial<Record<keyof DadosProjeto, string>>
@@ -48,6 +57,14 @@ function lerCampo(entrada: EntradaProjeto, campo: string): string {
       : (entrada as Record<string, FormDataEntryValue | null | undefined>)[campo]
 
   return typeof bruto === 'string' ? bruto.trim() : ''
+}
+
+function campoPresente(entrada: EntradaProjeto, campo: string): boolean {
+  const bruto =
+    typeof (entrada as FormData).get === 'function'
+      ? (entrada as FormData).get(campo)
+      : (entrada as Record<string, FormDataEntryValue | null | undefined>)[campo]
+  return typeof bruto === 'string'
 }
 
 function limiteDoCampo(campo: CampoTextoOpcional): number {
@@ -85,7 +102,17 @@ export function validarDadosProjeto(entrada: EntradaProjeto): ResultadoValidacao
     }
   }
 
+  const flash: { [C in CampoFlash]?: string | null } = {}
+  for (const campo of CAMPOS_FLASH) {
+    if (!campoPresente(entrada, campo)) continue
+    const valor = lerCampo(entrada, campo)
+    if (valor.length > LIMITE_FLASH[campo]) {
+      erros[campo] = `Este campo deve ter no máximo ${LIMITE_FLASH[campo]} caracteres.`
+    }
+    flash[campo] = valor === '' ? null : valor
+  }
+
   if (Object.keys(erros).length > 0) return { ok: false, erros }
 
-  return { ok: true, dados: { nome, prioridade, ...textos } }
+  return { ok: true, dados: { nome, prioridade, ...textos, ...flash } }
 }

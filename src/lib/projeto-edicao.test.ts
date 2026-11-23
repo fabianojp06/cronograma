@@ -23,7 +23,7 @@ const BASE: DadosProjeto = {
 
 describe('CAMPOS_PROJETO', () => {
   it('cobre todos os campos editáveis do Projeto', () => {
-    expect(CAMPOS_PROJETO).toEqual(['nome', 'prioridade', ...CAMPOS_TEXTO_OPCIONAIS])
+    expect(CAMPOS_PROJETO).toEqual(['nome', 'prioridade', ...CAMPOS_TEXTO_OPCIONAIS, 'cliente', 'objetivo'])
   })
 })
 
@@ -72,5 +72,18 @@ describe('camposAlterados', () => {
 
   it('detecta preenchimento de um campo antes nulo', () => {
     expect(camposAlterados(BASE, { ...BASE, apoio: 'GIA' })).toEqual(['apoio'])
+  })
+})
+
+describe('camposAlterados com cliente/objetivo', () => {
+  it('campo ausente nos novos dados não conta como alteração', () => {
+    const atual = { nome: 'P', cliente: 'Marinha', objetivo: 'X' } as Partial<DadosProjeto>
+    const novos = { nome: 'P', prioridade: null } as DadosProjeto
+    expect(camposAlterados({ ...atual, prioridade: null }, novos)).toEqual([])
+  })
+
+  it('mudar o cliente é alteração', () => {
+    const novos = { nome: 'P', prioridade: null, cliente: 'Outro' } as DadosProjeto
+    expect(camposAlterados({ nome: 'P', prioridade: null, cliente: 'Marinha' }, novos)).toEqual(['cliente'])
   })
 })

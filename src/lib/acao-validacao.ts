@@ -41,7 +41,9 @@ export type DadosAcao = {
   status: StatusAcao
 } & { [C in CampoData]: Date | null }
 
-export type ErrosAcao = Partial<Record<keyof DadosAcao | 'responsavelId' | 'motivo', string>>
+export type ErrosAcao = Partial<
+  Record<keyof DadosAcao | 'responsavelId' | 'macroetapaId' | 'motivo', string>
+>
 
 export type ResultadoValidacaoAcao =
   | { ok: true; dados: DadosAcao }
@@ -100,6 +102,22 @@ export function lerResponsavelId(entrada: EntradaAcao): string | null | undefine
     typeof (entrada as FormData).get === 'function'
       ? (entrada as FormData).get('responsavelId')
       : (entrada as Record<string, FormDataEntryValue | null | undefined>).responsavelId
+  if (typeof bruto !== 'string') return undefined
+  const id = bruto.trim()
+  return id === '' ? null : id
+}
+
+/**
+ * Lê a macroetapa escolhida no formulário. Não confere se ela existe nem se é
+ * do projeto — isso exige banco e fica na Server Action. Mesma regra do
+ * responsável: ausente → `undefined` (não mexer), vazio → `null` (sem
+ * macroetapa, de propósito), com texto → o id.
+ */
+export function lerMacroetapaId(entrada: EntradaAcao): string | null | undefined {
+  const bruto =
+    typeof (entrada as FormData).get === 'function'
+      ? (entrada as FormData).get('macroetapaId')
+      : (entrada as Record<string, FormDataEntryValue | null | undefined>).macroetapaId
   if (typeof bruto !== 'string') return undefined
   const id = bruto.trim()
   return id === '' ? null : id

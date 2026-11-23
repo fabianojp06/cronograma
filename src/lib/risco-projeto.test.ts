@@ -96,3 +96,16 @@ describe('histórico', () => {
     expect(valorDoHistoricoRisco('responsavel', 'Ana')).toBe('Ana')
   })
 })
+
+describe('validarRisco: pede decisão da diretoria', () => {
+  it('sem o marcador do campo, não mexe (ausente)', () => {
+    const r = validarRisco(fd(valido))
+    expect(r.ok && 'pedeAjuda' in r.dados).toBe(false)
+  })
+  it('com o marcador, caixa marcada = true e desmarcada = false', () => {
+    const marcada = validarRisco(fd({ ...valido, pedeAjudaCampo: '1', pedeAjuda: 'on' }))
+    expect(marcada.ok && marcada.dados.pedeAjuda).toBe(true)
+    const desmarcada = validarRisco(fd({ ...valido, pedeAjudaCampo: '1' }))
+    expect(desmarcada.ok && desmarcada.dados.pedeAjuda).toBe(false)
+  })
+})

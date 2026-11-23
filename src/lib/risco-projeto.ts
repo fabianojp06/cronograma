@@ -45,6 +45,12 @@ export type DadosRisco = {
   responsavelId: string | null
   prazo: Date | null
   plano: string | null
+  /**
+   * Precisa de decisão da diretoria. Ausente (`undefined`) = o formulário não
+   * trouxe o campo: não mexer. O formulário sinaliza que trouxe com
+   * `pedeAjudaCampo`, porque caixa desmarcada não envia nada.
+   */
+  pedeAjuda?: boolean
 }
 
 export type ErrosRisco = Partial<Record<keyof DadosRisco, string>>
@@ -102,6 +108,7 @@ export function validarRisco(formData: FormData): ResultadoRisco {
       responsavelId: texto(formData, 'responsavelId') || null,
       prazo: prazo ?? null,
       plano: plano === '' ? null : plano,
+      ...(formData.has('pedeAjudaCampo') ? { pedeAjuda: formData.has('pedeAjuda') } : {}),
     },
   }
 }

@@ -42,6 +42,7 @@ export async function duplicarAcao(
         previstoInicio: true,
         previstoTermino: true,
         responsavelId: true,
+        macroetapaId: true,
         responsavel: { select: { nome: true, email: true, ativo: true } },
         projeto: { select: { id: true, nome: true, referencia: true } },
       },
@@ -68,6 +69,7 @@ export async function duplicarAcao(
             previstoInicio: original.previstoInicio,
             previstoTermino: original.previstoTermino,
             responsavelId,
+            macroetapaId: original.macroetapaId,
           },
           select: { id: true, numero: true, descricao: true },
         })

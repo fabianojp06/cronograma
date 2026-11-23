@@ -108,7 +108,7 @@ export function lerVersao(formData: FormData): Date | undefined {
   return Number.isNaN(data.getTime()) ? undefined : data
 }
 
-type CampoColuna = Exclude<(typeof CAMPOS_AUDITADOS)[number], 'responsavel'>
+type CampoColuna = Exclude<(typeof CAMPOS_AUDITADOS)[number], 'responsavel' | 'macroetapa'>
 
 /**
  * `select` com o estado auditável da Ação — base do "valor antigo". O
@@ -116,17 +116,19 @@ type CampoColuna = Exclude<(typeof CAMPOS_AUDITADOS)[number], 'responsavel'>
  */
 export const SELECAO_AUDITADA = {
   ...(Object.fromEntries(
-    CAMPOS_AUDITADOS.filter((campo) => campo !== 'responsavel').map((campo) => [campo, true]),
+    CAMPOS_AUDITADOS.filter((campo) => campo !== 'responsavel' && campo !== 'macroetapa').map((campo) => [campo, true]),
   ) as { [C in CampoColuna]: true }),
   responsavelId: true,
   responsavel: { select: { nome: true } },
+  macroetapaId: true,
+  macroetapa: { select: { nome: true } },
 } as const
 
 /** Achata o que `SELECAO_AUDITADA` trouxe para o formato que o histórico compara. */
 export function estadoAuditado(atual: {
   [C in CampoColuna]: Date | string | null
-} & { responsavel: { nome: string } | null }): EstadoAuditado {
-  const { responsavel, ...colunas } = atual
+} & { responsavel: { nome: string } | null; macroetapa: { nome: string } | null }): EstadoAuditado {
+  const { responsavel, macroetapa, ...colunas } = atual
   return {
     status: colunas.status,
     previstoInicio: colunas.previstoInicio,
@@ -134,5 +136,26 @@ export function estadoAuditado(atual: {
     realizadoInicio: colunas.realizadoInicio,
     realizadoTermino: colunas.realizadoTermino,
     responsavel: responsavel?.nome ?? null,
+    macroetapa: macroetapa?.nome ?? null,
   }
+}
+
+export const MENSAGEM_MACROETAPA_INVALIDA = 'Escolha uma macroetapa deste projeto, ou deixe sem macroetapa.'
+
+/**
+ * Confere que a macroetapa escolhida é do MESMO projeto da ação (um id forjado
+ * de outro projeto é recusado) e devolve o nome, que é o que entra no histórico.
+ * `undefined` (campo ausente) não consulta nada; `null` é "sem macroetapa".
+ */
+export async function conferirMacroetapa(
+  macroetapaId: string | null | undefined,
+  projetoId: string,
+): Promise<{ ok: true; nome: string | null | undefined } | { ok: false }> {
+  if (macroetapaId === undefined) return { ok: true, nome: undefined }
+  if (macroetapaId === null) return { ok: true, nome: null }
+  const macroetapa = await prisma.macroetapa.findFirst({
+    where: { id: macroetapaId, projetoId },
+    select: { nome: true },
+  })
+  return macroetapa ? { ok: true, nome: macroetapa.nome } : { ok: false }
 }
