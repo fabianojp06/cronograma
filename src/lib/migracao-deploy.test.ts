@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { VARIAVEL_ESCAPE, decidirMigracao } from './migracao-deploy'
+import { VARIAVEL_ESCAPE, decidirMigracao, hostDoBanco } from './migracao-deploy'
 
 const BANCO = 'postgresql://usuario:senha@host:5432/banco'
 
@@ -69,5 +69,57 @@ describe('decidirMigracao', () => {
 
   it('nunca aplica quando o ambiente está totalmente vazio', () => {
     expect(decidirMigracao({}).acao).toBe('PULAR')
+  })
+})
+
+describe('homologação (branch homologacao, banco próprio)', () => {
+  const HOMOLOG = 'postgresql://u:s@roundhouse.proxy.rlwy.net:12382/railway'
+  const base = {
+    VERCEL_ENV: 'preview',
+    VERCEL_GIT_COMMIT_REF: 'homologacao',
+    HOMOLOGACAO_BANCO_HOST: 'roundhouse.proxy.rlwy.net:12382',
+  }
+
+  it('aplica quando a DATABASE_URL é do banco da homologação', () => {
+    expect(decidirMigracao({ ...base, DATABASE_URL: HOMOLOG })).toEqual({ acao: 'APLICAR' })
+  })
+
+  it('ERRA se a DATABASE_URL aponta para outro banco (o de produção, por exemplo)', () => {
+    const d = decidirMigracao({ ...base, DATABASE_URL: BANCO })
+    expect(d.acao).toBe('ERRO')
+    if (d.acao === 'ERRO') expect(d.motivo).toContain('não para')
+  })
+
+  it('ERRA sem a trava de host: nunca migra às cegas', () => {
+    expect(
+      decidirMigracao({ ...base, HOMOLOGACAO_BANCO_HOST: undefined, DATABASE_URL: HOMOLOG }).acao,
+    ).toBe('ERRO')
+  })
+
+  it('ERRA sem DATABASE_URL ou com uma ilegível', () => {
+    expect(decidirMigracao({ ...base }).acao).toBe('ERRO')
+    expect(decidirMigracao({ ...base, DATABASE_URL: 'isso nao e url' }).acao).toBe('ERRO')
+  })
+
+  it('outras branches de preview continuam sem migrar, mesmo com a trava definida', () => {
+    const d = decidirMigracao({ ...base, VERCEL_GIT_COMMIT_REF: 'etapa-9', DATABASE_URL: HOMOLOG })
+    expect(d.acao).toBe('PULAR')
+  })
+
+  it('a branch homologacao fora de preview não ganha o caminho da homologação', () => {
+    expect(
+      decidirMigracao({ ...base, VERCEL_ENV: 'development', DATABASE_URL: HOMOLOG }).acao,
+    ).toBe('PULAR')
+  })
+
+  it('o escape manual ainda vale', () => {
+    expect(decidirMigracao({ ...base, DATABASE_URL: HOMOLOG, PULAR_MIGRACAO: '1' }).acao).toBe('PULAR')
+  })
+
+  it('hostDoBanco lê host:porta e devolve null para o que não é URL', () => {
+    expect(hostDoBanco(HOMOLOG)).toBe('roundhouse.proxy.rlwy.net:12382')
+    expect(hostDoBanco('postgresql://u:s@host/banco')).toBe('host')
+    expect(hostDoBanco('')).toBeNull()
+    expect(hostDoBanco(undefined)).toBeNull()
   })
 })

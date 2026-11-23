@@ -1403,6 +1403,27 @@ Três peças, todas só para produção e todas puras onde dá (`monitoramento.t
   do `/dashboards`. O cron de atraso grava cada execução em `gravarExecucaoCron`;
   passar de 9 dias sem execução acende o aviso.
 
+## Homologação (branch `homologacao`)
+
+Fluxo: branch da etapa → PR contra `homologacao` (o autoloop mescla só lá, com o CI
+verde) → PR `homologacao` → `main`, aprovado por quem administra. A `main` é só a
+produção; o autoloop nunca abre PR nem mescla nela (`autoloop.sh`/`.ps1` recusam rodar
+sem a branch `homologacao` no remoto).
+
+- **Banco próprio** (Postgres no Railway, serviço `Postgres-WZMG`, acesso por TCP proxy).
+  A `DATABASE_URL` dele é cadastrada na Vercel só para a branch `homologacao`; a de Preview
+  das outras branches continua apontando para o banco de PRODUÇÃO (ver abaixo).
+- **Trava contra migrar produção por engano**: `decidirMigracao` só aplica migration na
+  branch `homologacao` se `HOMOLOGACAO_BANCO_HOST` (host:porta, cadastrado só nela) for
+  igual ao host da `DATABASE_URL`. Sem a trava, ou com host diferente, o build ERRA
+  (falha fechada), em vez de migrar ou publicar contra outro banco. Previews de outras
+  branches continuam sem migrar.
+- **Login**: o Clerk é o mesmo da produção (a aplicação só tem uma instância, de
+  desenvolvimento); as contas valem nos dois ambientes, mas o cadastro de colaborador é do
+  banco: na primeira entrada na homologação a pessoa passa por `/bem-vindo`.
+- **E-mails e cron**: desligados (`RESEND_API_KEY`, `CRON_SECRET` e `EMAIL_ALERTAS` só existem
+  em Production, e o envio exige `VERCEL_ENV=production`).
+
 ## Migrations em produção
 
 O `build` roda `scripts/migrar-producao.ts` antes do `next build`, e esse script

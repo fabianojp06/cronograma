@@ -1,5 +1,6 @@
 /**
- * Roda `prisma migrate deploy` somente quando o build é de produção na Vercel.
+ * Roda `prisma migrate deploy` somente quando o build é de produção na Vercel
+ * ou da branch `homologacao` (esta, só com a trava do host do banco).
  *
  * Executado antes do `next build` (ver o script `build` no package.json). A
  * decisão de aplicar ou não fica em `src/lib/migracao-deploy.ts`, coberta por
@@ -20,6 +21,8 @@ const decisao = decidirMigracao({
   VERCEL_ENV: process.env.VERCEL_ENV,
   DATABASE_URL: process.env.DATABASE_URL,
   PULAR_MIGRACAO: process.env.PULAR_MIGRACAO,
+  VERCEL_GIT_COMMIT_REF: process.env.VERCEL_GIT_COMMIT_REF,
+  HOMOLOGACAO_BANCO_HOST: process.env.HOMOLOGACAO_BANCO_HOST,
 })
 
 if (decisao.acao === 'ERRO') {
@@ -32,7 +35,9 @@ if (decisao.acao === 'PULAR') {
   process.exit(0)
 }
 
-console.log('[migração] Build de produção — aplicando migrations pendentes.')
+console.log(
+  `[migração] Build de ${process.env.VERCEL_ENV === 'production' ? 'produção' : 'homologação'} — aplicando migrations pendentes.`,
+)
 
 const resultado = spawnSync('npx', ['prisma', 'migrate', 'deploy'], {
   stdio: 'inherit',
