@@ -3,6 +3,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
+import type { Prisma } from '../../generated/prisma/client'
 import { MENSAGEM_SOMENTE_LEITURA } from '@/lib/administracao'
 import { contaPodeEditar } from '@/lib/administracao-servidor'
 import { podeCriarMais, validarNomeMacroetapa } from '@/lib/macroetapa'
@@ -27,6 +28,14 @@ async function autorizar(projetoId: string): Promise<{ userId: string } | { recu
   return { userId }
 }
 
+/** Serializa as mudanças de macroetapa de um mesmo projeto até o fim da transação. */
+async function travarProjeto(tx: Prisma.TransactionClient, projetoId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'macroetapa:' + projetoId}))`
+}
+
+const JA_EXISTE: EstadoMacroetapa = { ok: false, mensagem: 'Já existe uma macroetapa com esse nome neste projeto.' }
+const ehNomeRepetido = (erro: unknown) => (erro as { code?: string } | null)?.code === 'P2002'
+
 const atualizar = (projetoId: string) => revalidatePath(`/projetos/${projetoId}`)
 const FALHA: EstadoMacroetapa = { ok: false, mensagem: 'Não foi possível concluir. Tente novamente.' }
 const NAO_ENCONTRADA: EstadoMacroetapa = { ok: false, mensagem: 'Macroetapa não encontrada neste projeto.' }
@@ -38,17 +47,22 @@ export async function criarMacroetapa(_anterior: EstadoMacroetapa, formData: For
   if ('recusa' in acesso) return acesso.recusa
 
   try {
-    const existentes = await prisma.macroetapa.findMany({ where: { projetoId }, select: { id: true, nome: true, ordem: true } })
-    if (!podeCriarMais(existentes.length)) {
-      return { ok: false, mensagem: 'O projeto já tem o máximo de 12 macroetapas.' }
-    }
-    const nome = validarNomeMacroetapa(texto(formData, 'nome'), existentes)
-    if (!nome.ok) return { ok: false, mensagem: nome.erro }
-    const ordem = existentes.reduce((maior, m) => Math.max(maior, m.ordem), 0) + 1
-    await prisma.macroetapa.create({ data: { projetoId, nome: nome.nome, ordem } })
-    atualizar(projetoId)
-    return { ok: true, mensagem: 'Macroetapa criada.' }
+    const resultado = await prisma.$transaction(async (tx): Promise<EstadoMacroetapa> => {
+      await travarProjeto(tx, projetoId)
+      const existentes = await tx.macroetapa.findMany({ where: { projetoId }, select: { id: true, nome: true, ordem: true } })
+      if (!podeCriarMais(existentes.length)) {
+        return { ok: false, mensagem: 'O projeto já tem o máximo de 12 macroetapas.' }
+      }
+      const nome = validarNomeMacroetapa(texto(formData, 'nome'), existentes)
+      if (!nome.ok) return { ok: false, mensagem: nome.erro }
+      const ordem = existentes.reduce((maior, m) => Math.max(maior, m.ordem), 0) + 1
+      await tx.macroetapa.create({ data: { projetoId, nome: nome.nome, ordem } })
+      return { ok: true, mensagem: 'Macroetapa criada.' }
+    })
+    if (resultado.ok) atualizar(projetoId)
+    return resultado
   } catch (erro) {
+    if (ehNomeRepetido(erro)) return JA_EXISTE
     await registrarFalha('Falha ao criar macroetapa', erro)
     return FALHA
   }
@@ -62,15 +76,20 @@ export async function renomearMacroetapa(_anterior: EstadoMacroetapa, formData: 
   if ('recusa' in acesso) return acesso.recusa
 
   try {
-    const existentes = await prisma.macroetapa.findMany({ where: { projetoId }, select: { id: true, nome: true } })
-    if (!existentes.some((m) => m.id === id)) return NAO_ENCONTRADA
-    const nome = validarNomeMacroetapa(texto(formData, 'nome'), existentes, id)
-    if (!nome.ok) return { ok: false, mensagem: nome.erro }
-    const { count } = await prisma.macroetapa.updateMany({ where: { id, projetoId }, data: { nome: nome.nome } })
-    if (count === 0) return NAO_ENCONTRADA
-    atualizar(projetoId)
-    return { ok: true, mensagem: 'Macroetapa renomeada.' }
+    const resultado = await prisma.$transaction(async (tx): Promise<EstadoMacroetapa> => {
+      await travarProjeto(tx, projetoId)
+      const existentes = await tx.macroetapa.findMany({ where: { projetoId }, select: { id: true, nome: true } })
+      if (!existentes.some((m) => m.id === id)) return NAO_ENCONTRADA
+      const nome = validarNomeMacroetapa(texto(formData, 'nome'), existentes, id)
+      if (!nome.ok) return { ok: false, mensagem: nome.erro }
+      const { count } = await tx.macroetapa.updateMany({ where: { id, projetoId }, data: { nome: nome.nome } })
+      if (count === 0) return NAO_ENCONTRADA
+      return { ok: true, mensagem: 'Macroetapa renomeada.' }
+    })
+    if (resultado.ok) atualizar(projetoId)
+    return resultado
   } catch (erro) {
+    if (ehNomeRepetido(erro)) return JA_EXISTE
     await registrarFalha('Falha ao renomear macroetapa', erro)
     return FALHA
   }
@@ -87,6 +106,7 @@ export async function reordenarMacroetapa(_anterior: EstadoMacroetapa, formData:
 
   try {
     const trocou = await prisma.$transaction(async (tx) => {
+      await travarProjeto(tx, projetoId)
       const lista = await tx.macroetapa.findMany({
         where: { projetoId },
         orderBy: [{ ordem: 'asc' }, { createdAt: 'asc' }],
@@ -123,6 +143,7 @@ export async function excluirMacroetapa(_anterior: EstadoMacroetapa, formData: F
 
   try {
     const excluida = await prisma.$transaction(async (tx) => {
+      await travarProjeto(tx, projetoId)
       const macro = await tx.macroetapa.findFirst({ where: { id, projetoId }, select: { nome: true } })
       if (!macro) return null
       const acoes = await tx.acao.findMany({ where: { macroetapaId: id, projetoId }, select: { id: true } })

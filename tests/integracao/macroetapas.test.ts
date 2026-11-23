@@ -69,6 +69,19 @@ describe('criarMacroetapa', () => {
     expect(await prisma.macroetapa.count({ where: { projetoId } })).toBe(12)
   })
 
+  it('14 criações simultâneas: exatamente 12 passam, com ordens 1..12 únicas', async () => {
+    const r = await Promise.all(Array.from({ length: 14 }, (_, i) => criar(`Etapa ${i + 1}`)))
+    expect(r.filter((x) => x.ok)).toHaveLength(12)
+    expect((await ordenadas()).map((m) => m.ordem)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+  })
+
+  it('criações simultâneas do mesmo nome: só uma grava, a outra recebe a mensagem amigável', async () => {
+    const r = await Promise.all([criar('Mesmo'), criar('mesmo'), criar('MESMO')])
+    expect(r.filter((x) => x.ok)).toHaveLength(1)
+    expect(r.filter((x) => !x.ok).every((x) => /Já existe/.test(x.mensagem ?? ''))).toBe(true)
+    expect(await prisma.macroetapa.count({ where: { projetoId } })).toBe(1)
+  })
+
   it('Leitor e sessão ausente são recusados sem gravar', async () => {
     usuarioAtual.userId = 'user_leitor'
     expect(await criar('X')).toEqual({ ok: false, mensagem: MENSAGEM_SOMENTE_LEITURA })

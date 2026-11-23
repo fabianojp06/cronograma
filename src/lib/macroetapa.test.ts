@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { MAXIMO_MACROETAPAS, podeCriarMais, validarNomeMacroetapa } from './macroetapa'
+import { MAXIMO_MACROETAPAS, editorAberto, podeCriarMais, validarNomeMacroetapa } from './macroetapa'
 
 const existentes = [
   { id: 'a', nome: 'Homologação' },
@@ -30,5 +30,26 @@ describe('podeCriarMais', () => {
     expect(MAXIMO_MACROETAPAS).toBe(12)
     expect(podeCriarMais(11)).toBe(true)
     expect(podeCriarMais(12)).toBe(false)
+  })
+})
+
+describe('editorAberto', () => {
+  const inicial = {} as { ok?: boolean }
+  it('fechado quando não foi aberto', () => {
+    expect(editorAberto(null, inicial)).toBe(false)
+  })
+  it('aberto enquanto não há resposta nova', () => {
+    expect(editorAberto(inicial, inicial)).toBe(true)
+  })
+  it('fecha depois de salvar com sucesso', () => {
+    expect(editorAberto(inicial, { ok: true })).toBe(false)
+  })
+  it('continua aberto depois de erro', () => {
+    expect(editorAberto(inicial, { ok: false })).toBe(true)
+  })
+  it('a segunda abertura funciona, mesmo com o estado anterior em sucesso', () => {
+    const salvo = { ok: true }
+    expect(editorAberto(salvo, salvo)).toBe(true)
+    expect(editorAberto(salvo, { ok: true })).toBe(false)
   })
 })

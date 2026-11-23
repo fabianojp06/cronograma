@@ -10,7 +10,7 @@ import {
   type EstadoMacroetapa,
 } from '@/app/projetos/acoes-macroetapa'
 import { Spinner } from '@/components/indicador-envio'
-import { MAXIMO_MACROETAPAS, TAMANHO_NOME_MACROETAPA, podeCriarMais } from '@/lib/macroetapa'
+import { MAXIMO_MACROETAPAS, TAMANHO_NOME_MACROETAPA, editorAberto, podeCriarMais } from '@/lib/macroetapa'
 
 export type MacroetapaDaLista = { id: string; nome: string; ordem: number; acoes: number }
 
@@ -30,12 +30,12 @@ function Mensagem({ estado }: { estado: EstadoMacroetapa }) {
 }
 
 function Linha({ m, projetoId, primeira, ultima }: { m: MacroetapaDaLista; projetoId: string; primeira: boolean; ultima: boolean }) {
-  const [editando, setEditando] = useState(false)
+  const [abertoCom, setAbertoCom] = useState<EstadoMacroetapa | null>(null)
   const [nome, setNome] = useState(m.nome)
   const [estRenomear, renomear, renomeando] = useActionState(renomearMacroetapa, INICIAL)
   const [estOrdem, mover, movendo] = useActionState(reordenarMacroetapa, INICIAL)
   const [estExcluir, excluir, excluindo] = useActionState(excluirMacroetapa, INICIAL)
-  const aberto = editando && !estRenomear.ok
+  const aberto = editorAberto(abertoCom, estRenomear)
 
   return (
     <li className="border-l-2 border-borderSoft bg-surface px-3 py-2 text-sm">
@@ -46,7 +46,7 @@ function Linha({ m, projetoId, primeira, ultima }: { m: MacroetapaDaLista; proje
           <label className="sr-only" htmlFor={`macro-${m.id}`}>Nome da macroetapa</label>
           <input className={`${campo} max-w-xs`} id={`macro-${m.id}`} maxLength={TAMANHO_NOME_MACROETAPA} name="nome" onChange={(e) => setNome(e.target.value)} value={nome} />
           <button className={botao} disabled={renomeando} type="submit">{renomeando ? <Spinner /> : null}Salvar</button>
-          <button className="text-textMuted hover:text-accent" onClick={() => { setNome(m.nome); setEditando(false) }} type="button">Cancelar</button>
+          <button className="text-textMuted hover:text-accent" onClick={() => { setNome(m.nome); setAbertoCom(null) }} type="button">Cancelar</button>
         </form>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -62,16 +62,20 @@ function Linha({ m, projetoId, primeira, ultima }: { m: MacroetapaDaLista; proje
               <button aria-label={`Subir ${m.nome}`} className={botao} disabled={movendo || primeira} name="intencao" type="submit" value="subir">Subir</button>
               <button aria-label={`Descer ${m.nome}`} className={botao} disabled={movendo || ultima} name="intencao" type="submit" value="descer">Descer</button>
             </form>
-            <button className="text-textMuted hover:text-accent" onClick={() => setEditando(true)} type="button">Renomear</button>
+            <button aria-label={`Renomear ${m.nome}`} className="text-textMuted hover:text-accent" onClick={() => { setNome(m.nome); setAbertoCom(estRenomear) }} type="button">Renomear</button>
             <form
               action={excluir}
               onSubmit={(e) => {
-                if (!window.confirm(`Excluir a macroetapa "${m.nome}"? As ${m.acoes} ações vinculadas não são apagadas: só ficam sem macroetapa.`)) e.preventDefault()
+                if (!window.confirm(
+                    m.acoes === 0
+                      ? `Excluir a macroetapa "${m.nome}"?`
+                      : `Excluir a macroetapa "${m.nome}"? ${m.acoes === 1 ? 'A ação vinculada não é apagada' : `As ${m.acoes} ações vinculadas não são apagadas`}: só ficam sem macroetapa.`,
+                  )) e.preventDefault()
               }}
             >
               <input name="projetoId" type="hidden" value={projetoId} />
               <input name="id" type="hidden" value={m.id} />
-              <button className="text-warn hover:underline disabled:opacity-60" disabled={excluindo} type="submit">Excluir</button>
+              <button aria-label={`Excluir ${m.nome}`} className="text-warn hover:underline disabled:opacity-60" disabled={excluindo} type="submit">Excluir</button>
             </form>
           </div>
         </div>

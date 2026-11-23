@@ -31,3 +31,13 @@ export function validarNomeMacroetapa(
   }
   return { ok: true, nome: aparado }
 }
+
+/**
+ * O editor de nome fica aberto enquanto não houve resposta nova da ação, ou se
+ * a resposta nova foi erro. `abertoCom` é o estado visto no instante da abertura
+ * (`null` = fechado): um salvamento bem-sucedido troca o estado e fecha, e abrir
+ * de novo recomeça a conta com o estado então vigente.
+ */
+export function editorAberto<E extends { ok?: boolean }>(abertoCom: E | null, atual: E): boolean {
+  return abertoCom !== null && (atual === abertoCom || atual.ok !== true)
+}
