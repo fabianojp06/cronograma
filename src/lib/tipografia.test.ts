@@ -31,6 +31,24 @@ describe('contraste do texto "faint"', () => {
   }
 })
 
+describe('estilo Workspace (Dashboards)', () => {
+  const claroWs = css.slice(css.indexOf('.tema-workspace {'), css.indexOf('.dark .tema-workspace {'))
+  const escuroWs = css.slice(css.indexOf('.dark .tema-workspace {'), css.indexOf('.tema-workspace h1'))
+  for (const [nome, ws, base] of [['claro', claroWs, claro], ['escuro', escuroWs, escuro]] as const) {
+    it(`o azul de controle passa 4,5:1 e o de volume 3:1 sobre surface, bg e borderSoft (${nome})`, () => {
+      for (const fundo of ['bg', 'surface', 'border-soft']) {
+        expect(contraste(token(ws, 'accent'), token(base, fundo)), `accent/${fundo}`).toBeGreaterThanOrEqual(4.5)
+        expect(contraste(token(ws, 'magnitude'), token(base, fundo)), `magnitude/${fundo}`).toBeGreaterThanOrEqual(3)
+      }
+      expect(contraste(token(ws, 'on-accent'), token(ws, 'accent'))).toBeGreaterThanOrEqual(4.5)
+    })
+    it(`o azul de controle não é o azul de Previsto (${nome})`, () => {
+      expect(token(ws, 'accent').toLowerCase()).not.toBe('#2563eb')
+      expect(token(ws, 'magnitude').toLowerCase()).not.toBe('#2563eb')
+    })
+  }
+})
+
 function arquivos(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {
     const p = join(dir, n)

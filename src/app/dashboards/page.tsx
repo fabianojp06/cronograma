@@ -100,11 +100,13 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
   })
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-12">
-      <p className="text-sm font-medium text-accent">
-        Cronograma CTCEA
-      </p>
-      <h1 className="mt-2 font-display text-2xl font-extrabold">Dashboards</h1>
+    <main className="tema-workspace mx-auto w-full max-w-6xl px-6 py-10">
+      <nav aria-label="Trilha" className="flex items-center gap-2 text-sm text-textMuted print:hidden">
+        <Link className="hover:text-accent" href="/">Painel</Link>
+        <span aria-hidden="true">›</span>
+        <span className="font-medium text-text">Dashboards</span>
+      </nav>
+      <h1 className="mt-3 font-display text-3xl font-semibold ">Dashboards</h1>
       <p className="mt-2 max-w-3xl text-sm text-textMuted">
         Relatórios sobre a carteira de projetos. O <strong className="font-medium">período</strong>{' '}
         vale para todas as seções. Equipe, responsável, categoria e status valem para
@@ -163,7 +165,7 @@ export default async function DashboardsPage({ searchParams }: PageProps<'/dashb
                 </Link>
               }
             >
-              <IndicadoresPainel painel={painel} />
+              <IndicadoresPainel cartao painel={painel} />
             </DashboardSecao>
 
             <DashboardSecao relatorio={rel('composicao-status')}>

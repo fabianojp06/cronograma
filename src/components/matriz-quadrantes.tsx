@@ -300,7 +300,7 @@ export function MatrizQuadrantes({
                     cx={ponto.dx}
                     cy={ponto.dy}
                     r={ponto.r + 5}
-                    className="fill-none stroke-accent"
+                    className="fill-none stroke-magnitude"
                     strokeWidth={2}
                   />
                 ) : null}
@@ -310,7 +310,7 @@ export function MatrizQuadrantes({
                   cx={ponto.dx}
                   cy={ponto.dy}
                   r={ponto.r}
-                  className="fill-accent stroke-surface"
+                  className="fill-magnitude stroke-surface"
                   strokeWidth={2}
                 >
                   <title>

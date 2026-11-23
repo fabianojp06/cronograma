@@ -41,7 +41,7 @@ function Faixa({
             {/* Altura em pixels, não em %: a barra é filha de uma coluna de
                 altura automática, e aí `height: %` não resolve contra nada. */}
             <div
-              className="w-full max-w-8 rounded-t-sm bg-accent"
+              className="w-full max-w-8 rounded-t-sm bg-magnitude"
               style={{ height: `${maximo === 0 ? 0 : (valor / maximo) * ALTURA_PLOT}px` }}
             />
           </div>

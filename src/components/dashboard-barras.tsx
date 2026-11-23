@@ -60,7 +60,7 @@ export function DashboardBarras({
                     {/* Marca fina, extremidade arredondada, ancorada na base. */}
                     <div className="h-1.5 w-40 overflow-hidden rounded-full bg-borderSoft">
                       <div
-                        className="h-full rounded-r-full bg-accent"
+                        className="h-full rounded-r-full bg-magnitude"
                         style={{ width: `${largura}%` }}
                       />
                     </div>

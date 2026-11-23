@@ -10,6 +10,7 @@ function Indicador({
   traco = 'border-accent',
   corValor = 'text-text',
   href,
+  cartao = false,
 }: {
   rotulo: string
   valor: string
@@ -18,6 +19,8 @@ function Indicador({
   corValor?: string
   /** Quando presente, o indicador vira atalho para a listagem já filtrada. */
   href?: string
+  /** Forma de cartão arredondado (estilo Workspace) no lugar do traço lateral. */
+  cartao?: boolean
 }) {
   const conteudo = (
     <>
@@ -31,7 +34,9 @@ function Indicador({
     </>
   )
 
-  const classe = `block border-l-2 ${traco} bg-surface py-2 pl-4`
+  const classe = cartao
+    ? 'block rounded-xl border border-border bg-bg px-4 py-3'
+    : `block border-l-2 ${traco} bg-surface py-2 pl-4`
 
   return href ? (
     <Link className={classe} href={href}>
@@ -42,21 +47,24 @@ function Indicador({
   )
 }
 
-export function IndicadoresPainel({ painel }: { painel: ResumoPainel }) {
+export function IndicadoresPainel({ painel, cartao = false }: { painel: ResumoPainel; cartao?: boolean }) {
   return (
     <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Indicador
+        cartao={cartao}
         rotulo="Projetos ativos"
         valor={String(painel.totalProjetos)}
         detalhe={`${painel.projetosConcluidos} concluído(s)`}
       />
       <Indicador
+        cartao={cartao}
         rotulo="Ações"
         valor={String(painel.totalAcoes)}
         detalhe={`${painel.acoesConcluidas} concluída(s)`}
         traco="border-previsto"
       />
       <Indicador
+        cartao={cartao}
         rotulo="Progresso geral"
         valor={`${painel.percentualConcluido}%`}
         detalhe="ações concluídas sobre o total"
@@ -64,6 +72,7 @@ export function IndicadoresPainel({ painel }: { painel: ResumoPainel }) {
         corValor="text-realizado"
       />
       <Indicador
+        cartao={cartao}
         rotulo="Projetos com atraso"
         valor={String(painel.projetosAtrasados)}
         detalhe={`${painel.acoesAtrasadas} ação(ões) atrasada(s)`}

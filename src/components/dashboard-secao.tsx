@@ -18,9 +18,9 @@ export function DashboardSecao({
   children: React.ReactNode
 }) {
   return (
-    <section id={relatorio.id} className="scroll-mt-20 border-t border-border pt-8">
+    <section id={relatorio.id} className="scroll-mt-20 rounded-xl border border-border bg-surface p-5 sm:p-6 print:border-0 print:p-0">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-lg font-extrabold">{relatorio.titulo}</h3>
+        <h3 className="font-display text-lg font-semibold">{relatorio.titulo}</h3>
         {acao}
       </div>
       <p className="mt-1 text-sm text-textMuted">{relatorio.pergunta}</p>
@@ -33,7 +33,7 @@ export function DashboardSecao({
 /** Estado vazio padrão — um relatório sem dado diz por que, não some da tela. */
 export function SemDados({ children }: { children: React.ReactNode }) {
   return (
-    <p className="border-l-2 border-borderSoft bg-surface py-3 pl-4 text-sm text-textMuted">
+    <p className="rounded-lg bg-bg px-4 py-3 text-sm text-textMuted">
       {children}
     </p>
   )
@@ -52,7 +52,7 @@ function ComoLer({ id }: { id: string }) {
       <summary className="inline-flex min-h-8 cursor-pointer items-center text-textMuted hover:text-accent">
         Como ler este relatório
       </summary>
-      <div className="mt-2 max-w-3xl space-y-3 border-l-2 border-borderSoft bg-surface py-3 pl-4 pr-3">
+      <div className="mt-2 max-w-3xl space-y-3 rounded-lg bg-bg px-4 py-3">
         <p className="text-text">{guia.mostra}</p>
         <ul className="list-disc space-y-1 pl-5 text-textMuted">
           {guia.comoLer.map((linha) => (

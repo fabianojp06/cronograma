@@ -153,6 +153,21 @@ Passada única sobre o sistema inteiro; as três regras são cobertas por
   `font-semibold`). A hierarquia vem do peso e da cor, não de gritar. Não reintroduza
   `uppercase`/`tracking-wide`.
 
+## Estilo "Workspace" nos Dashboards (opção B do desenho)
+
+Só `/dashboards` (a `<main>` leva `tema-workspace`, em `globals.css`): acento **azul**
+(`#2B4BBE` claro / `#8FA8FF` escuro), Space Grotesk nos títulos e Inter no texto, cantos
+arredondados e seções em cartão. O resto do sistema continua no estilo "Painel Operacional".
+
+- **O azul é de controle** (abas, links, foco, botões). Ele difere do azul de Previsto
+  (`#2563EB`), que segue significando só o previsto. Os gráficos de VOLUME usam o token
+  `magnitude` (`bg-magnitude`, `stroke-magnitude`): igual ao acento fora do escopo, azul-marinho
+  (`#35507A`/`#8DA9D4`) dentro dele. Gráfico de volume novo usa `magnitude`, não `accent`.
+- Os tokens são trocados no escopo; nenhum componente testa o tema. `tipografia.test.ts`
+  confere o contraste do azul (4,5:1) e do volume (3:1) nos dois modos.
+- Estender o estilo a outra tela é pôr `tema-workspace` na `<main>` dela; o cabeçalho global
+  continua no acento verde-azulado.
+
 ## Regras de gráfico (tela Dashboards)
 
 Valem para qualquer visualização nova. Não são estéticas — cada uma evita um erro

@@ -54,16 +54,16 @@ export function RitmoDeEntrega({ semanas }: { semanas: SemanaDoRitmo[] }) {
             </g>
           ))}
           <path className="stroke-textMuted" d={linha((s) => s.mediaMovel)} fill="none" strokeDasharray="5 4" strokeWidth={2} />
-          <path className="stroke-accent" d={linha((s) => s.criadas)} fill="none" strokeWidth={2.5} />
+          <path className="stroke-magnitude" d={linha((s) => s.criadas)} fill="none" strokeWidth={2.5} />
           {semanas.map((s, i) => (
-            <circle className="fill-accent stroke-surface" cx={cx(i)} cy={y(s.criadas)} key={s.inicio} r={4} strokeWidth={1.5} />
+            <circle className="fill-magnitude stroke-surface" cx={cx(i)} cy={y(s.criadas)} key={s.inicio} r={4} strokeWidth={1.5} />
           ))}
         </svg>
       </div>
       <p className="mt-1 text-xs text-textFaint md:hidden">Arraste o gráfico para o lado para ver todas as semanas.</p>
       <figcaption className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-textMuted">
         <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="inline-block size-3 bg-realizado" /> Concluídas por semana</span>
-        <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="inline-block h-0.5 w-5 bg-accent" /> Ações criadas por semana</span>
+        <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="inline-block h-0.5 w-5 bg-magnitude" /> Ações criadas por semana</span>
         <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="inline-block w-5 border-t-2 border-dashed border-textMuted" /> Média de concluídas (4 semanas)</span>
       </figcaption>
     </figure>
