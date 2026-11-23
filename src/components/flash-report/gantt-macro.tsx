@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { desvioEscritoFlash, percentualEscrito } from '@/lib/formato-flash'
 import type { CelulaMacro, FlashReport } from '@/lib/flash-report'
 
-const COL = '2rem'
+const COL = '1.875rem'
 
 const HACHURA =
   'repeating-linear-gradient(45deg, rgb(0 0 0 / 0.35) 0 3px, transparent 3px 6px)'
@@ -54,8 +54,8 @@ export function GanttMacro({
   temMacroetapas: boolean
 }) {
   const { macroetapas, totalSemanas, semanaDoProjeto, consolidado } = relatorio
-  const colunas = `minmax(11rem,1fr) 4.5rem 4.5rem 5.5rem repeat(${totalSemanas}, ${COL})`
-  const largura = `calc(11rem + 14.5rem + ${totalSemanas} * ${COL})`
+  const colunas = `minmax(8rem,1fr) 4.5rem 4.75rem 5.75rem repeat(${totalSemanas}, ${COL})`
+  const largura = `calc(8rem + 15rem + ${totalSemanas} * ${COL})`
   const semanas = Array.from({ length: totalSemanas }, (_, i) => i + 1)
   const faixa = (i: number) => (i === semanaDoProjeto ? 'bg-accent/10' : '')
 
@@ -71,9 +71,9 @@ export function GanttMacro({
           <div role="table" aria-label="Avanço por macroetapa" style={{ minWidth: largura }}>
             <div className="grid items-end border-b border-border text-xs font-semibold text-textMuted" role="row" style={{ gridTemplateColumns: colunas }}>
               <span className="py-1.5 pr-2" role="columnheader">Macroetapa</span>
-              <span className="py-1.5 text-right tabular-nums" role="columnheader">Previsto</span>
-              <span className="py-1.5 text-right tabular-nums" role="columnheader">Realizado</span>
-              <span className="py-1.5 pr-3 text-right tabular-nums" role="columnheader">Desvio</span>
+              <span className="py-1.5 pr-2 text-right tabular-nums" role="columnheader">Previsto</span>
+              <span className="py-1.5 pr-2 text-right tabular-nums" role="columnheader">Realizado</span>
+              <span className="py-1.5 pr-3 text-right tabular-nums whitespace-nowrap" role="columnheader">Desvio</span>
               {semanas.map((n) => (
                 <span
                   className={`py-1.5 text-center tabular-nums ${faixa(n)} ${n === semanaDoProjeto ? 'text-accent' : ''}`}
@@ -88,9 +88,9 @@ export function GanttMacro({
             {macroetapas.map((m) => (
               <div className="grid items-center border-b border-borderSoft text-sm" key={m.nome} role="row" style={{ gridTemplateColumns: colunas }}>
                 <span className="truncate py-2 pr-2 font-medium" role="rowheader" title={m.nome}>{m.nome}</span>
-                <span className="text-right tabular-nums text-textMuted" role="cell">{m.avanco ? percentualEscrito(m.avanco.previsto) : '—'}</span>
-                <span className="text-right tabular-nums" role="cell">{m.avanco ? percentualEscrito(m.avanco.realizado) : '—'}</span>
-                <span className="pr-3 text-right tabular-nums" role="cell">{m.avanco ? desvioEscritoFlash(m.avanco.desvio) : '—'}</span>
+                <span className="pr-2 text-right tabular-nums text-textMuted" role="cell">{m.avanco ? percentualEscrito(m.avanco.previsto) : '—'}</span>
+                <span className="pr-2 text-right tabular-nums" role="cell">{m.avanco ? percentualEscrito(m.avanco.realizado) : '—'}</span>
+                <span className="pr-3 text-right tabular-nums whitespace-nowrap" role="cell">{m.avanco ? desvioEscritoFlash(m.avanco.desvio) : '—'}</span>
                 {semanas.map((n, i) => (
                   <span className={`h-full px-px ${faixa(n)}`} key={n} role="cell">
                     <Celula rotulo={`${m.nome}, S${String(n).padStart(2, '0')}`} tipo={m.celulas[i] ?? null} />
@@ -100,9 +100,9 @@ export function GanttMacro({
             ))}
             <div className="grid items-center border-b border-border bg-tableHeadBg text-sm font-semibold" role="row" style={{ gridTemplateColumns: colunas }}>
               <span className="py-2 pr-2" role="rowheader">Total consolidado</span>
-              <span className="text-right tabular-nums" role="cell">{consolidado ? percentualEscrito(consolidado.previsto) : '—'}</span>
-              <span className="text-right tabular-nums" role="cell">{consolidado ? percentualEscrito(consolidado.realizado) : '—'}</span>
-              <span className="pr-3 text-right tabular-nums" role="cell">{consolidado ? desvioEscritoFlash(consolidado.desvio) : '—'}</span>
+              <span className="pr-2 text-right tabular-nums" role="cell">{consolidado ? percentualEscrito(consolidado.previsto) : '—'}</span>
+              <span className="pr-2 text-right tabular-nums" role="cell">{consolidado ? percentualEscrito(consolidado.realizado) : '—'}</span>
+              <span className="pr-3 text-right tabular-nums whitespace-nowrap" role="cell">{consolidado ? desvioEscritoFlash(consolidado.desvio) : '—'}</span>
               {semanas.map((n) => (
                 <span className={`h-full ${faixa(n)}`} key={n} role="cell" />
               ))}
@@ -110,6 +110,7 @@ export function GanttMacro({
           </div>
         </div>
       )}
+      <p className="mt-1 text-xs text-textFaint print:hidden">Se faltarem semanas na tela, role a tabela de lado.</p>
       <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-textMuted">
         <span><Amostra tipo="REALIZADO" /> Realizado (semana já fechada)</span>
         <span><Amostra tipo="ATENCAO" /> Atenção (desvio de −3 p.p. ou pior na semana)</span>

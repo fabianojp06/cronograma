@@ -98,6 +98,11 @@ test('mostra cabeçalho, macroetapas, riscos, alertas e pedido de ajuda', async 
   await expect(page.getByText('Flash Report', { exact: true }).first()).toBeVisible()
   await expect(page.locator('[data-selo-semana]')).toBeVisible()
   await expect(page.getByTestId('farol')).toContainText(/Atrasado|Atenção|Em dia|Adiantado/)
+  // Uma data só: o desvio do farol é o mesmo número do "Desvio" do cabeçalho.
+  const numero = (t: string) => Number((/[−+-]?\d+(?:,\d)?/.exec(t)?.[0] ?? 'x').replace('−', '-').replace(',', '.'))
+  const doFarol = await page.getByTestId('farol').locator('span', { hasText: /p\.p\./ }).first().innerText()
+  const doCabecalho = await page.getByText('Desvio', { exact: true }).locator('xpath=following-sibling::dd').innerText()
+  expect(numero(doFarol)).toBe(numero(doCabecalho))
   await expect(page.getByText('DIREX')).toBeVisible()
   await expect(page.getByText('Implantar o novo fluxo de portfólio.')).toBeVisible()
 

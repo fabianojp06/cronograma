@@ -192,6 +192,10 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
   const semanaDoProjeto = janela ? distanciaEmSemanas(janela.primeira, e.semana) + 1 : 0
   const fotoDaSemana = e.acoesNoFimDeCada.get(chaveSemana(e.semana))
   const semanaPassada = fim.getTime() < e.hoje.getTime()
+  // Uma data só para tudo (consolidado, macros, farol, curva): o sábado da semana
+  // passada, ou hoje na semana corrente (mid-semana não compara previsto de sábado
+  // com realizado de hoje).
+  const corte = semanaPassada ? fim : e.hoje
 
   // Estado "da semana": a foto, se houver. Semana passada sem foto cai no
   // estado atual (aproximação) e o relatório avisa.
@@ -214,7 +218,7 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
     avisos.push('Alertas, riscos e próximas atividades mostram a situação de hoje, não a da semana escolhida.')
   }
 
-  const consolidado = avancoEm(fotoDaSemana ?? e.acoes, fim)
+  const consolidado = avancoEm(fotoDaSemana ?? e.acoes, corte)
   if (consolidado) consolidado.desvio = consolidado.desvio + 0 // troca -0 por 0
   if (consolidado === null) {
     avisos.push('Nenhuma ação com datas previstas: não há avanço físico para calcular. Preencha início e término previstos das ações.')
@@ -224,8 +228,8 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
   const riscosAbertos = e.riscos.filter((r) => riscoAberto(r.status))
   const farol = sinalDoProjeto(
     semanaPassada
-      ? { acoes: fotoDaSemana ?? e.acoes, riscos: riscosAbertos, hoje: fim }
-      : { acoes: e.acoes, riscos: riscosAbertos, hoje: e.hoje },
+      ? { acoes: fotoDaSemana ?? e.acoes, riscos: riscosAbertos, hoje: corte }
+      : { acoes: e.acoes, riscos: riscosAbertos, hoje: corte },
   )
 
   // Curva S.
@@ -238,12 +242,13 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
     for (let i = 0; i < totalSemanas; i++) {
       const s = somarSemanas(janela.primeira, i)
       const sabado = periodoDaSemana(s).fim
-      const previsto = avancoEm(e.acoes, sabado)?.previsto ?? 0
+      const data = i + 1 === semanaDoProjeto ? corte : sabado
+      const previsto = avancoEm(e.acoes, data)?.previsto ?? 0
       let realizado: number | null = null
       if (i + 1 <= semanaDoProjeto) {
         const foto = e.acoesNoFimDeCada.get(chaveSemana(s))
         const base = foto ?? (i + 1 === semanaDoProjeto ? e.acoes : null)
-        if (base) realizado = avancoEm(base, sabado)?.realizado ?? 0
+        if (base) realizado = avancoEm(base, data)?.realizado ?? 0
       }
       curva.push({ rotulo: `S${String(i + 1).padStart(2, '0')}`, previsto, realizado })
     }
@@ -263,7 +268,7 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
   const macroetapas: LinhaMacro[] = []
   const alertas: AlertaRelatorio[] = []
   for (const g of grupos) {
-    const avanco = avancoEm(g.acoes, fim)
+    const avanco = avancoEm(g.acoes, corte)
     macroetapas.push({
       nome: g.nome,
       avanco,

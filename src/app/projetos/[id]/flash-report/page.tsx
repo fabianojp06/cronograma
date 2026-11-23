@@ -74,7 +74,7 @@ export default async function FlashReportPage({
       <AvisosFlash avisos={relatorio.avisos} />
 
       {relatorio.totalSemanas > 0 ? (
-        <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-2 print:grid-cols-2">
+        <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] print:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <GanttMacro projetoId={cabecalho.id} relatorio={relatorio} temMacroetapas={temMacroetapas} />
           <CurvaAvanco curva={relatorio.curva} escolhida={relatorio.semanaDoProjeto} />
         </div>

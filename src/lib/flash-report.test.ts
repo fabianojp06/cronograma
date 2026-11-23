@@ -403,3 +403,23 @@ describe('janelas e dados incomuns', () => {
     expect(r.macroetapas.map((m) => m.nome)).toEqual(['Integrações', 'Entrega', 'Sem macroetapa'])
   })
 })
+
+describe('semana corrente: uma data só', () => {
+  it('farol, consolidado e curva usam hoje (não o sábado) e dão o mesmo desvio', () => {
+    // Quarta-feira da semana 7; ação 1 (S1-S5) concluída, ação 2 não começou.
+    const hoje = new Date(inicioN(7).getTime() + 2 * DIA)
+    const r = montarFlashReport(
+      entrada({
+        semana: semanaN(7),
+        hoje,
+        acoes: [
+          acao({ numero: 1, macroetapaId: 'm1', status: 'EM_CURSO_50', previstoInicio: inicioN(5), previstoTermino: fimN(9) }),
+          acao({ numero: 2, macroetapaId: 'm2', previstoInicio: inicioN(1), previstoTermino: fimN(10) }),
+        ],
+      }),
+    )
+    expect(r.farol.desvio).toBe(Math.round(r.consolidado!.desvio * 10) / 10)
+    const ponto = r.curva[r.semanaDoProjeto - 1]
+    expect(ponto.previsto).toBe(r.consolidado!.previsto)
+  })
+})
