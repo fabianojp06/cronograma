@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 
-import { AlternadorTema } from "@/components/alternador-tema";
+import { AlternadorTema, BotaoTema } from "@/components/alternador-tema";
 import { SinoNotificacoes } from "@/components/sino-notificacoes";
 import { MenuAjuda } from "@/components/menu-ajuda";
 import { MenuCelular } from "@/components/menu-celular";
@@ -47,6 +47,7 @@ export async function Cabecalho() {
           <span data-tour="sino" className="inline-flex">
             <SinoNotificacoes />
           </span>
+          <BotaoTema />
           <MenuAjuda administrador={administrador} />
           <UserButton />
         </Show>

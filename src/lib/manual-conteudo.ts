@@ -60,7 +60,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     passos: [
       'O menu no topo tem o Painel e três grupos: Trabalho (Projetos, Priorização e Modelos), Pessoas (Meus projetos, Minhas ações, Card WIN e Equipe) e Análise (Dashboards e Reunião). Clique no nome do grupo para abrir a lista e escolha a tela. O grupo da tela em que você está fica destacado. Quem administra o sistema vê também o grupo "Administração", com as ferramentas de administrador.',
       'No celular e no tablet em pé, o menu vira o botão "Menu", no alto: toque nele para abrir as telas, já separadas por grupo, e escolha uma.',
-      'O ícone de interrogação, ao lado do sino, abre "Ajuda e preferências": o Manual (esta página), "Fazer o tour" (um passeio de 1 minuto sobre onde fica cada coisa) e a escolha do tema. O avatar, mais à direita, é a sua conta (perfil e sair).',
+      'O botão de sol ou lua, ao lado do sino, alterna entre o tema claro e o escuro com um clique. O ícone de interrogação abre "Ajuda e preferências": o Manual (esta página), "Fazer o tour" (um passeio de 1 minuto sobre onde fica cada coisa) e a escolha do tema. O avatar, mais à direita, é a sua conta (perfil e sair).',
       'O sino mostra quantas notificações você não leu. Clique para ver os avisos de comentários e de liberações de início, e use "Marcar como lida" ou "Marcar todas como lidas".',
       'Em "Ajuda e preferências", escolha o tema: Sistema (padrão), Claro ou Escuro. A escolha fica guardada neste navegador.',
     ],
