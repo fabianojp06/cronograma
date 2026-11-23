@@ -12,6 +12,7 @@
 
 import { ROTULOS_STATUS, type StatusAcao } from './acao-validacao'
 import type { LinhaProjeto } from '@/components/lista-projetos'
+import { ROTULO_SINAL } from './farol-projeto'
 import { acaoEstaAtrasada, ROTULO_STATUS_AGREGADO } from './projeto-resumo'
 
 export const RELATORIOS_EXPORTAVEIS = ['projetos', 'acoes', 'atrasadas'] as const
@@ -27,7 +28,7 @@ export type Coluna = {
   titulo: string
   /** Largura em caracteres. */
   largura: number
-  tipo?: 'data' | 'inteiro' | 'percentual'
+  tipo?: 'data' | 'inteiro' | 'percentual' | 'decimal'
 }
 
 export type TabelaExportacao = {
@@ -52,6 +53,8 @@ export function tabelaDeProjetos(linhas: readonly LinhaProjeto[]): TabelaExporta
       { titulo: 'Atrasadas', largura: 10, tipo: 'inteiro' },
       { titulo: '% concluído', largura: 12, tipo: 'percentual' },
       { titulo: 'Situação', largura: 14 },
+      { titulo: 'Sinal', largura: 12 },
+      { titulo: 'Desvio (p.p.)', largura: 14, tipo: 'decimal' },
     ],
     linhas: linhas.map((l) => [
       l.referencia,
@@ -66,6 +69,8 @@ export function tabelaDeProjetos(linhas: readonly LinhaProjeto[]): TabelaExporta
       // Guardado como fração (0–1) para o formato % da planilha.
       l.resumo.percentualConcluido / 100,
       ROTULO_STATUS_AGREGADO[l.resumo.status],
+      ROTULO_SINAL[l.sinal.sinal],
+      l.sinal.desvio,
     ]),
   }
 }

@@ -5,6 +5,7 @@
  */
 
 import {
+  CAMPOS_FLASH,
   CAMPOS_TEXTO_OPCIONAIS,
   type DadosProjeto,
   type EntradaProjeto,
@@ -15,6 +16,7 @@ export const CAMPOS_PROJETO = [
   'nome',
   'prioridade',
   ...CAMPOS_TEXTO_OPCIONAIS,
+  ...CAMPOS_FLASH,
 ] as const satisfies readonly (keyof DadosProjeto)[]
 
 /** Valores que preenchem o formulário de edição (null vira string vazia). */
@@ -52,5 +54,8 @@ export function camposAlterados(
   atual: Partial<DadosProjeto>,
   novos: DadosProjeto,
 ): (keyof DadosProjeto)[] {
-  return CAMPOS_PROJETO.filter((campo) => (atual[campo] ?? null) !== novos[campo])
+  // Campo ausente nos novos dados (`undefined`) é "não mexer", não alteração.
+  return CAMPOS_PROJETO.filter(
+    (campo) => novos[campo] !== undefined && (atual[campo] ?? null) !== novos[campo],
+  )
 }

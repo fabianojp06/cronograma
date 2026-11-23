@@ -23,6 +23,7 @@ const ATUAL: EstadoAuditado = {
   realizadoInicio: null,
   realizadoTermino: null,
   responsavel: null,
+  macroetapa: null,
 }
 
 const DADOS: DadosAcao = {
@@ -57,8 +58,8 @@ function clienteFalso() {
 }
 
 describe('CAMPOS_AUDITADOS', () => {
-  it('cobre o status, as quatro datas e o responsável', () => {
-    expect(CAMPOS_AUDITADOS).toEqual(['status', ...CAMPOS_DATA, 'responsavel'])
+  it('cobre o status, as quatro datas, o responsável e a macroetapa', () => {
+    expect(CAMPOS_AUDITADOS).toEqual(['status', ...CAMPOS_DATA, 'responsavel', 'macroetapa'])
   })
 })
 

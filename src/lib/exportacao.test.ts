@@ -67,11 +67,28 @@ describe('tabelaDeProjetos', () => {
       HOJE,
     )
     const t = tabelaDeProjetos([
-      { id: 'p', referencia: 'PLA-1', nome: 'Portal', equipe: 'STI', categoria: null, responsavel: 'Ana', prioridade: 1, resumo },
+      { id: 'p', referencia: 'PLA-1', nome: 'Portal', equipe: 'STI', categoria: null, responsavel: 'Ana', prioridade: 1, resumo, sinal: { sinal: 'ATENCAO', desvio: -4.2, motivo: 'm', subiuPorRisco: false } },
+      { id: 'q', referencia: null, nome: 'Sem', equipe: null, categoria: null, responsavel: null, prioridade: null, resumo, sinal: { sinal: 'SEM_DADOS', desvio: null, motivo: 'm', subiuPorRisco: false } },
     ])
     expect(t.linhas[0][9]).toBe(0.5)
     expect(t.linhas[0][10]).toBe('Atrasado')
     expect(t.linhas[0]).toHaveLength(t.colunas.length)
+  })
+
+  it('traz o Sinal por extenso e o desvio em p.p. como número (nulo sem dados)', () => {
+    const t = tabelaDeProjetos([
+      { id: 'p', referencia: null, nome: 'A', equipe: null, categoria: null, responsavel: null, prioridade: null, resumo: resumirAcoes([], HOJE), sinal: { sinal: 'ATENCAO', desvio: -4.2, motivo: 'm', subiuPorRisco: false } },
+      { id: 'q', referencia: null, nome: 'B', equipe: null, categoria: null, responsavel: null, prioridade: null, resumo: resumirAcoes([], HOJE), sinal: { sinal: 'SEM_DADOS', desvio: null, motivo: 'm', subiuPorRisco: false } },
+    ])
+    const i = t.colunas.findIndex((c) => c.titulo === 'Sinal')
+    const j = t.colunas.findIndex((c) => c.titulo === 'Desvio (p.p.)')
+    expect(i).toBeGreaterThan(-1)
+    expect(j).toBe(i + 1)
+    expect(t.linhas[0][i]).toBe('Atenção')
+    expect(t.linhas[0][j]).toBe(-4.2)
+    expect(t.linhas[1][i]).toBe('Sem dados')
+    expect(t.linhas[1][j]).toBeNull()
+    expect(t.colunas[j].tipo).toBe('decimal')
   })
 })
 

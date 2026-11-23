@@ -28,6 +28,7 @@ export type ValoresRisco = {
   responsavelId: string
   prazo: string
   plano: string
+  pedeAjuda: boolean
 }
 
 export const RISCO_EM_BRANCO: ValoresRisco = {
@@ -40,6 +41,7 @@ export const RISCO_EM_BRANCO: ValoresRisco = {
   responsavelId: '',
   prazo: '',
   plano: '',
+  pedeAjuda: false,
 }
 
 const INICIAL: EstadoRisco = {}
@@ -66,9 +68,11 @@ export function FormularioRisco({
   const [estado, enviar, pendente] = useActionState(editando ? atualizarRisco : criarRisco, INICIAL)
   const [v, setV] = useState(inicial)
   const mudar =
-    (nome: keyof ValoresRisco) =>
+    (nome: Exclude<keyof ValoresRisco, 'pedeAjuda'>) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setV((x) => ({ ...x, [nome]: e.target.value }))
+  const mudarPedeAjuda = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setV((x) => ({ ...x, pedeAjuda: e.target.checked }))
   const erros = estado.erros ?? {}
 
   return (
@@ -156,6 +160,19 @@ export function FormularioRisco({
         <label className={rotulo} htmlFor="risco-plano">Plano de ação (o que será feito)</label>
         <textarea className={campo} id="risco-plano" maxLength={2000} name="plano" onChange={mudar('plano')} rows={3} value={v.plano} />
         <Erro texto={erros.plano} />
+      </div>
+
+      <div>
+        {/* Caixa desmarcada não envia nada: o campo oculto diz ao servidor que a
+            pergunta estava na tela, para desmarcar valer e uma aba antiga não apagar. */}
+        <input name="pedeAjudaCampo" type="hidden" value="1" />
+        <label className="inline-flex items-center gap-2 text-sm" htmlFor="risco-pede-ajuda">
+          <input checked={v.pedeAjuda} id="risco-pede-ajuda" name="pedeAjuda" onChange={mudarPedeAjuda} type="checkbox" />
+          Precisa de decisão da diretoria
+        </label>
+        <p className="mt-1 text-xs text-textFaint">
+          Marque quando o tratamento depende de uma decisão que a equipe não pode tomar sozinha.
+        </p>
       </div>
 
       {estado.erroGeral ? (

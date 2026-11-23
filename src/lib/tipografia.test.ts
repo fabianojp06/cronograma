@@ -31,6 +31,25 @@ describe('contraste do texto "faint"', () => {
   }
 })
 
+describe('sinal do projeto: atenção e ícones', () => {
+  const realizado = (css.match(/--color-realizado:\s*(#[0-9A-Fa-f]{6})/) ?? [])[1]
+  for (const [nome, bloco] of [['claro', claro], ['escuro', escuro]] as const) {
+    // borderSoft fica de fora de propósito: a célula do Sinal só fica sobre
+    // `surface` (a linha da tabela) e `bg`; nunca sobre borderSoft.
+    it(`--atencao passa 4,5:1 sobre surface e bg (${nome})`, () => {
+      for (const fundo of ['bg', 'surface']) {
+        expect(contraste(token(bloco, 'atencao'), token(bloco, fundo)), `atencao/${fundo}`).toBeGreaterThanOrEqual(4.5)
+      }
+    })
+    it(`bolinha e ícone do sinal passam 3:1 sobre surface (${nome})`, () => {
+      const cores = { warn: token(bloco, 'warn'), atencao: token(bloco, 'atencao'), faint: token(bloco, 'text-faint'), realizado }
+      for (const [rotulo, cor] of Object.entries(cores)) {
+        expect(contraste(cor, token(bloco, 'surface')), `${rotulo} (${nome})`).toBeGreaterThanOrEqual(3)
+      }
+    })
+  }
+})
+
 describe('estilo Workspace (Dashboards)', () => {
   const claroWs = css.slice(css.indexOf('.tema-workspace {'), css.indexOf('.dark .tema-workspace {'))
   const escuroWs = css.slice(css.indexOf('.dark .tema-workspace {'), css.indexOf('.tema-workspace h1'))

@@ -127,6 +127,36 @@ export function FormularioProjeto({
       </section>
 
       <section className="border-l-2 border-borderSoft pl-4">
+        <h2 className="font-display text-base font-bold">Contexto</h2>
+        <div className="mt-4 space-y-4">
+          <div className="sm:max-w-md">
+            <Campo
+              nome="cliente"
+              defaultValue={valores?.cliente}
+              rotulo="Cliente"
+              erros={erros}
+              maxLength={120}
+              placeholder="Ex.: Diretoria de Pessoal"
+            />
+          </div>
+          <div>
+            <label className={classeRotulo} htmlFor="objetivo">
+              Objetivo
+            </label>
+            <textarea
+              className={`${classeCampo} min-h-20`}
+              id="objetivo"
+              name="objetivo"
+              defaultValue={valores?.objetivo}
+              maxLength={1000}
+              placeholder="O que o projeto precisa entregar, em poucas linhas"
+            />
+            <Erro mensagem={erros?.objetivo} />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-l-2 border-borderSoft pl-4">
         <h2 className="font-display text-base font-bold">Classificação</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <Campo

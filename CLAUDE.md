@@ -1336,6 +1336,54 @@ projeto, por exemplo). Regra pura em `primeiro-acesso.ts`.
 - As telas "Minhas ações", "Meus projetos" e "Notificações" ainda explicam como
   se ligar a um colaborador, mas na prática o desvio para `/bem-vindo` vem antes.
 
+## Flash Report e Sinal do projeto
+
+Relatório semanal do projeto para a diretoria (`/projetos/[id]/flash-report?semana=aaaa-ss`)
+e o "Sinal" (farol) na lista, no painel e no Excel. Regras puras em `avanco-fisico.ts`,
+`farol-projeto.ts` e `flash-report.ts`; leitura em `flash-report-servidor.ts`;
+telas em `src/components/flash-report/`.
+
+- **O sinal tem UM só cálculo** (`farol-projeto.ts`): desvio = realizado − previsto, em
+  p.p. `LIMITE_ATRASADO` −10, `LIMITE_ATENCAO` −3, `LIMITE_ADIANTADO` +3. **A fronteira
+  −3 pertence a Atenção** (e −10 a Atrasado). Risco de impacto ALTO aberto com prazo
+  vencido sobe um nível de gravidade. Lista, painel, Excel e Flash Report chamam a mesma
+  função; não recalcule o sinal em outro lugar.
+- **Duas medidas, dois nomes.** "Avanço físico" é ponderado por dias úteis previstos
+  (previsto pela posição de hoje no intervalo; realizado pelo status 0/25/50/75/100). O
+  "percentual concluído" do painel conta AÇÕES. Nunca chame um pelo nome do outro.
+- **Macroetapa é opcional** (`Macroetapa`, `Acao.macroetapaId`); ação sem ela cai no grupo
+  "Sem macroetapa" e entra no total. O histórico da ação grava o NOME da macroetapa, não o
+  id. **Excluir só desvincula** as ações e registra histórico. Criar e renomear usam trava
+  advisory por projeto (limite de 12 por projeto), para duas abas não furarem o teto.
+- **`RiscoProjeto.pedeAjuda`** alimenta o bloco "Pedido de ajuda" e não gera histórico
+  (não é campo auditado do risco).
+- **Regra de data única**: `corte = min(hoje, sábado da semana escolhida)`. Semana de hoje
+  é avaliada até hoje; passada, até o sábado. Previsto, realizado, curva e farol usam o
+  mesmo corte. Numa semana passada, avanço, farol, curva e alerta de desvio das macroetapas
+  usam a foto DAQUELA semana (previsto e realizado de cada ponto da curva saem da mesma
+  foto, então o ponto da semana escolhida bate com o cabeçalho mesmo após replanejamento);
+  os alertas de ações atrasadas e bloqueadas, os riscos e as próximas atividades são sempre
+  de HOJE (o aviso diz).
+- **"Hoje" é `inicioDeHojeUTC`**, o mesmo da lista, do painel e do Excel: o relatório e o
+  sinal da lista nunca divergem à noite (21h–23h59 em Brasília). Levar o sistema inteiro
+  para o horário de Brasília é uma decisão à parte, que mexeria em todas essas telas.
+- **Células do Gantt macro**: por semana de cada macroetapa até a escolhida, avanço no fim
+  da semana (foto dela): `ATENCAO` se desvio ≤ −3; senão `REALIZADO` (verde) só se houve
+  avanço (realizado > 0); senão `DECORRIDO` (contorno neutro, texto "Decorrido, sem
+  avanço"). Semana passada sem foto é `DECORRIDO`; depois da escolhida, `PLANEJADO`.
+  Verde sempre significa realizado, nunca "o tempo passou".
+- **Ação sem datas previstas pesa 0**, fica fora das médias e é contada num aviso do relatório.
+- **Semanas passadas dependem do histórico** (`foto-em-data`). Antes do primeiro registro
+  do sistema a foto não é confiável e a tela avisa. `acoesNoFimDeCada` precisa do `id` da
+  ação para casar a foto com a macroetapa; sem ele o aviso cai para "estado atual".
+- **`umaCasa` nunca devolve −0** (aparecia "−0,0 p.p."); teste de borda cobre.
+- O cabeçalho mostra `Projeto.responsavel`/líder, cliente e objetivo (`Projeto.cliente`,
+  `Projeto.objetivo`, opcionais).
+- **Fora de escopo, de propósito**: envio por e-mail, relatório consolidado de vários
+  projetos e macroetapas nos modelos de projeto.
+- Manual: seções `flash-report`, `macroetapas`, `sinal-projeto` e
+  `cliente-objetivo-decisao`; glossário com Avanço físico, Desvio, Sinal e Macroetapa.
+
 ## Teste de navegador (Playwright)
 
 `npm run test:e2e` sobe o sistema construído de verdade (`next build` + `next

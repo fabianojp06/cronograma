@@ -11,6 +11,8 @@ import { inicioDeHojeUTC } from '@/lib/data-hoje'
 import { corteDaFoto, fotoDoProjeto, lerDataDaFoto } from '@/lib/foto-em-data'
 import { formatarDataBR } from '@/lib/formatacao'
 import { contaPodeAdministrar, sessaoPodeEditar } from '@/lib/administracao-servidor'
+import { AvisoSomenteLeitura } from '@/components/aviso-somente-leitura'
+import { SecaoMacroetapas } from '@/components/secao-macroetapas'
 import { SecaoRiscos } from '@/components/secao-riscos'
 import { riscoAberto } from '@/lib/risco-projeto'
 import {
@@ -41,11 +43,19 @@ export default async function ProjetoPage({
     where: { projetoId: id },
     select: {
       id: true, acaoId: true, tipo: true, titulo: true, descricao: true, impacto: true, status: true, prazo: true,
-      plano: true, criadoPor: true, criadoEm: true,
+      plano: true, pedeAjuda: true, criadoPor: true, criadoEm: true,
       responsavel: { select: { nome: true } },
       acao: { select: { numero: true } },
     },
   })
+  const macroetapasBrutas = podeEditar
+    ? await prisma.macroetapa.findMany({
+        where: { projetoId: id },
+        orderBy: [{ ordem: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, nome: true, ordem: true, _count: { select: { acoes: true } } },
+      })
+    : []
+  const macroetapas = macroetapasBrutas.map((m) => ({ id: m.id, nome: m.nome, ordem: m.ordem, acoes: m._count.acoes }))
   // `?em=aaaa-mm-dd`: o projeto como estava no fim daquele dia, reconstruído do histórico.
   const parametros = await searchParams
   const em = lerDataDaFoto(parametros.em, agora)
@@ -200,6 +210,10 @@ export default async function ProjetoPage({
         <Link className="text-accent hover:underline" href="/projetos">
           Voltar para a listagem
         </Link>
+        {' · '}
+        <Link className="text-accent hover:underline" href={`/projetos/${projeto.id}/flash-report`}>
+          Flash Report
+        </Link>
         {podeEditar ? (
           <>
             {' · '}
@@ -300,6 +314,13 @@ export default async function ProjetoPage({
           riscos={riscosDoProjeto}
           userId={userId}
         />
+      ) : null}
+      {em === null ? (
+        podeEditar ? (
+          <SecaoMacroetapas macroetapas={macroetapas} projetoId={projeto.id} />
+        ) : (
+          <AvisoSomenteLeitura />
+        )
       ) : null}
     </main>
   )

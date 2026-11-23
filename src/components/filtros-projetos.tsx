@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTransition, type FormEvent } from 'react'
 
+import { ORDEM_SINAL, ROTULO_SINAL } from '@/lib/farol-projeto'
 import { ROTULO_STATUS_AGREGADO, STATUS_AGREGADOS } from '@/lib/projeto-resumo'
 import { Processando, Spinner } from '@/components/indicador-envio'
 import { periodoAtivo, type Periodo } from '@/lib/filtro-periodo'
@@ -32,6 +33,7 @@ export function FiltrosProjetos({
   acao = '/projetos',
   periodo,
   comBusca = false,
+  comSinal = false,
   extras,
 }: {
   filtros: FiltrosProjeto
@@ -44,6 +46,8 @@ export function FiltrosProjetos({
   periodo?: Periodo
   /** Mostra o campo de busca por texto (painel e listagem; os Dashboards não usam). */
   comBusca?: boolean
+  /** Mostra o filtro e a ordenação por sinal (painel e listagem). */
+  comSinal?: boolean
   /** Parâmetros que acompanham o envio sem serem campos (ex.: a aba dos Dashboards). */
   extras?: Record<string, string>
 }) {
@@ -175,6 +179,49 @@ export function FiltrosProjetos({
           </select>
         </div>
       </div>
+
+      {comSinal ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className={classeRotulo} htmlFor="sinal">
+              Sinal
+            </label>
+            <select
+              className={classeSelect}
+              id="sinal"
+              name="sinal"
+              defaultValue={filtros.sinal ?? ''}
+            >
+              <option value="">Todos</option>
+              {ORDEM_SINAL.map((sinal) => (
+                <option key={sinal} value={sinal}>
+                  {ROTULO_SINAL[sinal]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={classeRotulo} htmlFor="ordem">
+              Ordem
+            </label>
+            <select
+              className={classeSelect}
+              id="ordem"
+              name="ordem"
+              defaultValue={filtros.ordem ?? ''}
+            >
+              <option value="">Padrão (prioridade e nome)</option>
+              <option value="sinal">Pior sinal primeiro</option>
+            </select>
+          </div>
+          <p className="text-sm text-textMuted sm:col-span-2">
+            O <strong className="font-medium">status</strong> conta as ações que passaram do
+            prazo; o <strong className="font-medium">sinal</strong> compara o avanço realizado
+            com o previsto (em pontos percentuais) e sobe um nível se há risco de impacto alto
+            vencido.
+          </p>
+        </div>
+      ) : null}
 
       {periodo !== undefined ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

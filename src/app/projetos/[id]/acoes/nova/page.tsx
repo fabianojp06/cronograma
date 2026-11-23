@@ -34,6 +34,12 @@ export default async function NovaAcaoPage({
     temEmail: c.email !== null,
   }))
 
+  const macroetapas = await prisma.macroetapa.findMany({
+    where: { projetoId: projeto.id },
+    orderBy: [{ ordem: 'asc' }, { createdAt: 'asc' }],
+    select: { id: true, nome: true },
+  })
+
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
       <p className="text-sm font-medium text-accent">
@@ -45,7 +51,7 @@ export default async function NovaAcaoPage({
         ação é sequencial e atribuída automaticamente dentro do projeto.
       </p>
       {podeEditar ? (
-        <FormularioAcao projetoId={projeto.id} responsaveis={responsaveis} />
+        <FormularioAcao projetoId={projeto.id} responsaveis={responsaveis} macroetapas={macroetapas} />
       ) : (
         <AvisoSomenteLeitura voltarPara={`/projetos/${projeto.id}`} rotuloVoltar="Voltar para o projeto" />
       )}

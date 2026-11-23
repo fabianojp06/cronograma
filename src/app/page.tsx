@@ -12,7 +12,9 @@ import { lerPagina, paginar, TAMANHO_PAGINA_PROJETOS } from '@/lib/paginacao'
 import { prisma } from '@/lib/prisma'
 import {
   filtrarPorBusca,
+  filtrarPorSinal,
   filtrarPorStatus,
+  ordenarLinhas,
   filtrosComoParametros,
   lerFiltros,
   whereProjetoAtivo,
@@ -45,7 +47,17 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
         responsavel: true,
         prioridade: true,
         acoes: {
-          select: { status: true, previstoTermino: true, realizadoTermino: true },
+          select: {
+            status: true,
+            previstoInicio: true,
+            previstoTermino: true,
+            realizadoTermino: true,
+          },
+        },
+        // Só os abertos e só o que o sinal lê: entra na mesma consulta (sem N+1).
+        riscos: {
+          where: { status: { in: ['ABERTO', 'EM_TRATAMENTO'] } },
+          select: { impacto: true, status: true, prazo: true },
         },
       },
     }),
@@ -57,7 +69,10 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
     }),
   ])
 
-  const linhas = filtrarPorBusca(filtrarPorStatus(montarLinhas(projetos, hoje), filtros), filtros)
+  const linhas = ordenarLinhas(
+    filtrarPorBusca(filtrarPorSinal(filtrarPorStatus(montarLinhas(projetos, hoje), filtros), filtros), filtros),
+    filtros,
+  )
   const painel = resumirPainel(linhas)
   const pagina = paginar(linhas, lerPagina(parametros), TAMANHO_PAGINA_PROJETOS)
 
@@ -98,6 +113,7 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
         categorias={opcoesDistintas(valores.map((v) => v.categoria))}
         acao="/"
         comBusca
+        comSinal
       />
       </div>
 

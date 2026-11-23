@@ -86,3 +86,29 @@ describe('validarDadosProjeto', () => {
     )
   })
 })
+
+describe('cliente e objetivo (Flash Report)', () => {
+  it('ausentes ficam fora dos dados (não mexer)', () => {
+    const r = validarDadosProjeto({ nome: 'P' })
+    expect(r.ok && 'cliente' in r.dados).toBe(false)
+    expect(r.ok && 'objetivo' in r.dados).toBe(false)
+  })
+
+  it('vazios viram null e preenchidos são aparados', () => {
+    const vazio = validarDadosProjeto({ nome: 'P', cliente: '  ', objetivo: '' })
+    expect(vazio.ok && vazio.dados.cliente).toBeNull()
+    expect(vazio.ok && vazio.dados.objetivo).toBeNull()
+    const cheio = validarDadosProjeto({ nome: 'P', cliente: ' Marinha ', objetivo: ' Entregar ' })
+    expect(cheio.ok && cheio.dados.cliente).toBe('Marinha')
+    expect(cheio.ok && cheio.dados.objetivo).toBe('Entregar')
+  })
+
+  it('recusa cliente acima de 120 e objetivo acima de 1000 caracteres', () => {
+    const r = validarDadosProjeto({ nome: 'P', cliente: 'x'.repeat(121), objetivo: 'y'.repeat(1001) })
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.erros.cliente).toMatch(/120/)
+    expect(r.erros.objetivo).toMatch(/1000/)
+    expect(validarDadosProjeto({ nome: 'P', cliente: 'x'.repeat(120), objetivo: 'y'.repeat(1000) }).ok).toBe(true)
+  })
+})

@@ -17,6 +17,7 @@ export const ROTULO_CAMPO_AUDITADO: Record<CampoAuditado, string> = {
   realizadoInicio: 'Início realizado',
   realizadoTermino: 'Término realizado',
   responsavel: 'Responsável',
+  macroetapa: 'Macroetapa',
 }
 
 /** Linhas de histórico que não são coluna da Ação: vínculos e liberações de início. */

@@ -51,6 +51,7 @@ export default async function EditarAcaoPage({
       realizadoInicio: true,
       realizadoTermino: true,
       responsavelId: true,
+      macroetapaId: true,
       updatedAt: true,
       responsavel: { select: { nome: true, ativo: true, email: true } },
       projeto: { select: { id: true, nome: true, referencia: true, responsavel: true, liderId: true } },
@@ -161,6 +162,11 @@ export default async function EditarAcaoPage({
       id: o.id,
       rotulo: `${o.numero} — ${o.descricao.length > 60 ? `${o.descricao.slice(0, 60)}…` : o.descricao}`,
     }))
+  const macroetapas = await prisma.macroetapa.findMany({
+    where: { projetoId: acao.projeto.id },
+    orderBy: [{ ordem: 'asc' }, { createdAt: 'asc' }],
+    select: { id: true, nome: true },
+  })
   const ehLider =
     userId !== null && (await contaELiderDoProjeto(userId, acao.projeto))
 
@@ -169,6 +175,7 @@ export default async function EditarAcaoPage({
     descricao: acao.descricao,
     status: acao.status as StatusAcao,
     responsavelId: acao.responsavelId,
+    macroetapaId: acao.macroetapaId,
     versao: acao.updatedAt.toISOString(),
     previstoInicio: serializarValor(acao.previstoInicio),
     previstoTermino: serializarValor(acao.previstoTermino),
@@ -195,7 +202,7 @@ export default async function EditarAcaoPage({
       <div className="mt-6 grid items-start gap-x-10 gap-y-8 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_28rem]">
         {podeEditar ? (
           <div>
-            <FormularioAcao projetoId={acao.projeto.id} responsaveis={responsaveis} acao={valores} />
+            <FormularioAcao projetoId={acao.projeto.id} responsaveis={responsaveis} macroetapas={macroetapas} acao={valores} />
             <BotaoDuplicarAcao acaoId={acao.id} />
           </div>
         ) : (

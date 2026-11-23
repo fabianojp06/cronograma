@@ -4,6 +4,7 @@ import {
   CAMPOS_DATA,
   ehColisaoDeNumero,
   lerDataISO,
+  lerMacroetapaId,
   lerResponsavelId,
   proximoNumero,
   ROTULOS_STATUS,
@@ -228,5 +229,27 @@ describe('lerResponsavelId', () => {
   it('trata campo ausente como "não mexer"', () => {
     expect(lerResponsavelId(fd({ descricao: 'x' }))).toBeUndefined()
     expect(lerResponsavelId({})).toBeUndefined()
+  })
+})
+
+describe('lerMacroetapaId', () => {
+  function fd(campos: Record<string, string>) {
+    const f = new FormData()
+    for (const [k, v] of Object.entries(campos)) f.set(k, v)
+    return f
+  }
+
+  it('devolve o id escolhido', () => {
+    expect(lerMacroetapaId(fd({ macroetapaId: 'mac-1' }))).toBe('mac-1')
+  })
+
+  it('trata vazio como "sem macroetapa"', () => {
+    expect(lerMacroetapaId(fd({ macroetapaId: '' }))).toBeNull()
+    expect(lerMacroetapaId(fd({ macroetapaId: '  ' }))).toBeNull()
+  })
+
+  it('trata campo ausente como "não mexer"', () => {
+    expect(lerMacroetapaId(fd({ descricao: 'x' }))).toBeUndefined()
+    expect(lerMacroetapaId({})).toBeUndefined()
   })
 })

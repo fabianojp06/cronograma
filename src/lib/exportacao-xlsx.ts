@@ -12,6 +12,7 @@ const FORMATOS = {
   data: 'dd/mm/yyyy',
   inteiro: '0',
   percentual: '0%',
+  decimal: '0.0',
 } as const
 
 export async function gerarXlsx(tabela: TabelaExportacao): Promise<Buffer> {

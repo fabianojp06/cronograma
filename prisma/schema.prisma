@@ -18,7 +18,7 @@ enum StatusAcao {
 }
 
 model Projeto {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   referencia     String? // ex: "CRO-DEP-2026-001"
   nome           String
   equipe         String? // ex: STI, GIA, GRH
@@ -35,7 +35,7 @@ model Projeto {
   setorEnvolvido String?
   comentario     String?
   prioridade     Int?
-  ativo          Boolean  @default(true) // exclusão lógica — nunca DELETE físico
+  ativo          Boolean      @default(true) // exclusão lógica — nunca DELETE físico
   /// Quando e por quem foi excluído por último (`userId` do Clerk); nulo nos projetos
   /// excluídos antes desta coluna existir.
   excluidoEm     DateTime?
@@ -43,13 +43,17 @@ model Projeto {
   /// Quando e por quem foi restaurado da lixeira pela última vez.
   restauradoEm   DateTime?
   restauradoPor  String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  /// Cliente e objetivo do projeto (Flash Report).
+  cliente        String?
+  objetivo       String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
-  acoes     Acao[]
-  avaliacao AvaliacaoProjeto?
-  wins      Win[]
-  riscos    RiscoProjeto[]
+  acoes       Acao[]
+  avaliacao   AvaliacaoProjeto?
+  wins        Win[]
+  riscos      RiscoProjeto[]
+  macroetapas Macroetapa[]
 
   @@index([ativo])
   @@index([equipe])
@@ -76,34 +80,56 @@ model Acao {
   responsavelId String?
   responsavel   Colaborador? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
 
+  /// Macroetapa do projeto a que a ação pertence (Flash Report). Excluir a
+  /// macroetapa só desvincula.
+  macroetapaId String?
+  macroetapa   Macroetapa? @relation(fields: [macroetapaId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  historico   HistoricoAlteracao[]
-  wins        Win[]
-  comentarios ComentarioAcao[]
+  historico      HistoricoAlteracao[]
+  wins           Win[]
+  comentarios    ComentarioAcao[]
   /// Ações que precisam terminar antes desta começar.
-  dependeDe   DependenciaAcao[] @relation("DependenteDe")
+  dependeDe      DependenciaAcao[]    @relation("DependenteDe")
   /// Ações que esperam por esta.
-  predecessoraDe DependenciaAcao[] @relation("Predecessora")
-  liberacoes  LiberacaoAcao[]
-  riscos      RiscoProjeto[]
-  links       LinkAcao[]
+  predecessoraDe DependenciaAcao[]    @relation("Predecessora")
+  liberacoes     LiberacaoAcao[]
+  riscos         RiscoProjeto[]
+  links          LinkAcao[]
 
   @@unique([projetoId, numero])
   @@index([projetoId])
   @@index([responsavelId])
+  @@index([macroetapaId])
+}
+
+/// Agrupamento das ações de um projeto em etapas macro (Flash Report).
+model Macroetapa {
+  id        String   @id @default(cuid())
+  projetoId String
+  projeto   Projeto  @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  nome      String
+  ordem     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  acoes Acao[]
+
+  @@unique([projetoId, nome])
+  @@index([projetoId])
 }
 
 model HistoricoAlteracao {
-  id          String   @id @default(cuid())
-  acaoId      String
-  acao        Acao     @relation(fields: [acaoId], references: [id], onDelete: Cascade)
-  campo       String // ex: "status", "previstoTermino"
-  valorAntigo String?
-  valorNovo   String?
-  alteradoEm  DateTime @default(now())
-  alteradoPor String? // login/nome de quem alterou, se aplicável
+  id            String   @id @default(cuid())
+  acaoId        String
+  acao          Acao     @relation(fields: [acaoId], references: [id], onDelete: Cascade)
+  campo         String // ex: "status", "previstoTermino"
+  valorAntigo   String?
+  valorNovo     String?
+  alteradoEm    DateTime @default(now())
+  alteradoPor   String? // login/nome de quem alterou, se aplicável
   /// Só nas mudanças de data PREVISTA: por que o plano mudou (código de `motivo-replanejamento.ts`).
   motivo        String?
   motivoDetalhe String?
@@ -213,19 +239,19 @@ enum StatusWin {
 /// `clerkUserId` é opcional de propósito: um colaborador pode ter card antes
 /// de ter conta, e a aba Referências da planilha já listava quatro pessoas.
 model Colaborador {
-  id          String  @id @default(cuid())
-  nome        String  @unique
-  clerkUserId String? @unique
+  id             String  @id @default(cuid())
+  nome           String  @unique
+  clerkUserId    String? @unique
   /// Área da GIA — AGP, APD ou ACT. Serve de padrão ao abrir um card novo.
-  area        String?
+  area           String?
   /// E-mail para notificações. Semeado pelo Clerk no vínculo da conta e
   /// editável em /colaboradores — quem veio da planilha nunca fez login.
-  email       String?
-  ativo       Boolean @default(true)
+  email          String?
+  ativo          Boolean @default(true)
   /// Pode excluir projeto, editar os pesos da matriz e gerenciar colaboradores.
   /// Enquanto NINGUÉM for administrador, todos podem (o comportamento de antes
   /// desta coluna) — assim o sistema não nasce trancado. Ver `administracao.ts`.
-  administrador Boolean @default(false)
+  administrador  Boolean @default(false)
   /// Perfil Leitor: vê tudo e exporta, mas não grava nada. O padrão (false) é o
   /// Colaborador, que edita. Administrador nunca é leitor. Ver `administracao.ts`.
   somenteLeitura Boolean @default(false)
@@ -233,12 +259,12 @@ model Colaborador {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  cards CardSemanal[]
-  wins  Win[]
-  acoes Acao[]
-  notificacoes Notificacao[]
+  cards                     CardSemanal[]
+  wins                      Win[]
+  acoes                     Acao[]
+  notificacoes              Notificacao[]
   /// Projetos de que é o líder (escolhido na lista, em `Projeto.liderId`).
-  projetosLiderados Projeto[] @relation("LiderDoProjeto")
+  projetosLiderados         Projeto[]      @relation("LiderDoProjeto")
   riscosSobResponsabilidade RiscoProjeto[]
 
   @@index([ativo])
@@ -322,15 +348,15 @@ model WinSemana {
 
   /// 1 a 3 — o limite do método, garantido também no banco pela CHECK
   /// `WinSemana_ordem_entre_1_e_3`.
-  ordem  Int
+  ordem    Int
   /// O que aconteceu com esta APARIÇÃO — e não com o WIN.
   ///
   /// Mora aqui, e não em `Win`, porque um WIN promovido na semana 39 continua
   /// tendo acontecido nas semanas 37 e 38: ler o desfecho de `Win.promovidoEm`
   /// tiraria o WIN do denominador de todas as semanas anteriores.
   desfecho DesfechoWin @default(NO_CARD)
-  prazo  DateTime?
-  status StatusWin @default(PENDENTE)
+  prazo    DateTime?
+  status   StatusWin   @default(PENDENTE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -369,12 +395,12 @@ model RegistroErro {
 /// atraso). A Vercel Hobby guarda o log por 1 hora, então "o cron rodou? quantos
 /// e-mails saíram?" não teria resposta na segunda à tarde. Poda por quem grava.
 model ExecucaoCron {
-  id         String   @id @default(cuid())
-  nome       String
+  id          String   @id @default(cuid())
+  nome        String
   executadoEm DateTime @default(now())
-  ok         Boolean
+  ok          Boolean
   /// Resumo em texto: contagens em caso de sucesso, mensagem em caso de falha.
-  resumo     String
+  resumo      String
 
   @@index([nome, executadoEm])
 }
@@ -384,26 +410,26 @@ model ExecucaoCron {
 /// comentário e some com ele (cascata). Não há e-mail: o sino do cabeçalho conta
 /// as não lidas. Lida há mais de 30 dias é apagada por quem comenta.
 model Notificacao {
-  id            String         @id @default(cuid())
+  id             String          @id @default(cuid())
   destinatarioId String
-  destinatario  Colaborador    @relation(fields: [destinatarioId], references: [id], onDelete: Cascade)
+  destinatario   Colaborador     @relation(fields: [destinatarioId], references: [id], onDelete: Cascade)
   /// Aviso de comentário: preenchido; aviso de liberação de início: nulo.
-  comentarioId  String?
-  comentario    ComentarioAcao? @relation(fields: [comentarioId], references: [id], onDelete: Cascade)
+  comentarioId   String?
+  comentario     ComentarioAcao? @relation(fields: [comentarioId], references: [id], onDelete: Cascade)
   /// Aviso de liberação de início (pedido ou decisão): preenchido; senão, nulo.
-  liberacaoId   String?
-  liberacao     LiberacaoAcao? @relation(fields: [liberacaoId], references: [id], onDelete: Cascade)
+  liberacaoId    String?
+  liberacao      LiberacaoAcao?  @relation(fields: [liberacaoId], references: [id], onDelete: Cascade)
   /// Aviso do resumo semanal (motivo RESUMO_SEMANAL): preenchido; senão, nulo.
-  resumoId      String?
-  resumo        ResumoSemanal? @relation(fields: [resumoId], references: [id], onDelete: Cascade)
+  resumoId       String?
+  resumo         ResumoSemanal?  @relation(fields: [resumoId], references: [id], onDelete: Cascade)
   /// Aviso de risco/bloqueio atribuído (motivo RISCO_RESPONSAVEL): preenchido; senão, nulo.
-  riscoId       String?
-  risco         RiscoProjeto?  @relation(fields: [riscoId], references: [id], onDelete: Cascade)
+  riscoId        String?
+  risco          RiscoProjeto?   @relation(fields: [riscoId], references: [id], onDelete: Cascade)
   /// MARCADO (a pessoa foi escolhida em "Avisar") ou RESPONSAVEL (responde pela ação);
   /// LIBERACAO_PEDIDA, LIBERACAO_APROVADA ou LIBERACAO_RECUSADA nos avisos de liberação.
-  motivo        String
-  lida          Boolean        @default(false)
-  criadoEm      DateTime       @default(now())
+  motivo         String
+  lida           Boolean         @default(false)
+  criadoEm       DateTime        @default(now())
 
   @@unique([destinatarioId, comentarioId])
   @@unique([destinatarioId, resumoId])
@@ -446,19 +472,19 @@ model DependenciaAcao {
 /// Pedido para iniciar uma ação ANTES de as predecessoras terminarem, decidido
 /// pelo líder do projeto (ou um administrador). Aprovada, a ação fica liberada.
 model LiberacaoAcao {
-  id           String    @id @default(cuid())
-  acaoId       String
-  acao         Acao      @relation(fields: [acaoId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  acaoId        String
+  acao          Acao      @relation(fields: [acaoId], references: [id], onDelete: Cascade)
   /// `userId` do Clerk de quem pediu (ou do líder, quando liberou direto).
-  solicitante  String
-  motivo       String
+  solicitante   String
+  motivo        String
   /// PENDENTE, APROVADA ou RECUSADA.
-  status       String    @default("PENDENTE")
+  status        String    @default("PENDENTE")
   /// `userId` do Clerk de quem decidiu.
-  decididoPor  String?
+  decididoPor   String?
   justificativa String?
-  criadoEm     DateTime  @default(now())
-  decididoEm   DateTime?
+  criadoEm      DateTime  @default(now())
+  decididoEm    DateTime?
 
   notificacoes Notificacao[]
 
@@ -488,11 +514,11 @@ model ModeloProjeto {
 }
 
 model ModeloAcao {
-  id        String       @id @default(cuid())
-  modeloId  String
-  modelo    ModeloProjeto @relation(fields: [modeloId], references: [id], onDelete: Cascade)
-  ordem     Int
-  descricao String
+  id               String        @id @default(cuid())
+  modeloId         String
+  modelo           ModeloProjeto @relation(fields: [modeloId], references: [id], onDelete: Cascade)
+  ordem            Int
+  descricao        String
   /// Dias úteis entre o início do projeto e o início desta ação (0 = no mesmo dia).
   /// Nulo = a ação não tinha data prevista no projeto de origem.
   inicioDiasUteis  Int?
@@ -529,6 +555,8 @@ model RiscoProjeto {
   atualizadoEm  DateTime     @updatedAt
   /// Quando saiu de aberto (resolvido ou "aconteceu"); nulo enquanto aberto.
   resolvidoEm   DateTime?
+  /// Pede decisão ou ajuda da diretoria (Flash Report).
+  pedeAjuda     Boolean      @default(false)
 
   historico    RiscoHistorico[]
   notificacoes Notificacao[]

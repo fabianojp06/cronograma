@@ -9,7 +9,9 @@ import { lerPagina, paginar, TAMANHO_PAGINA_PROJETOS } from '@/lib/paginacao'
 import { prisma } from '@/lib/prisma'
 import {
   filtrarPorBusca,
+  filtrarPorSinal,
   filtrarPorStatus,
+  ordenarLinhas,
   filtrosComoParametros,
   lerFiltros,
   whereProjetoAtivo,
@@ -39,7 +41,17 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
         responsavel: true,
         prioridade: true,
         acoes: {
-          select: { status: true, previstoTermino: true, realizadoTermino: true },
+          select: {
+            status: true,
+            previstoInicio: true,
+            previstoTermino: true,
+            realizadoTermino: true,
+          },
+        },
+        // Só os abertos e só o que o sinal lê: entra na mesma consulta (sem N+1).
+        riscos: {
+          where: { status: { in: ['ABERTO', 'EM_TRATAMENTO'] } },
+          select: { impacto: true, status: true, prazo: true },
         },
       },
     }),
@@ -49,7 +61,10 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
     }),
   ])
 
-  const linhas = filtrarPorBusca(filtrarPorStatus(montarLinhas(projetos, hoje), filtros), filtros)
+  const linhas = ordenarLinhas(
+    filtrarPorBusca(filtrarPorSinal(filtrarPorStatus(montarLinhas(projetos, hoje), filtros), filtros), filtros),
+    filtros,
+  )
   const pagina = paginar(linhas, lerPagina(parametros), TAMANHO_PAGINA_PROJETOS)
 
   return (
@@ -89,6 +104,7 @@ export default async function ProjetosPage({ searchParams }: PageProps<'/projeto
         responsaveis={opcoesDistintas(valores.map((v) => v.responsavel))}
         categorias={opcoesDistintas(valores.map((v) => v.categoria))}
         comBusca
+        comSinal
       />
 
       <ListaProjetos linhas={pagina.itens} podeEditar={podeEditar} />

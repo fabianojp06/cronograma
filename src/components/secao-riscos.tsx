@@ -23,6 +23,7 @@ export type RiscoDaLista = {
   status: string
   prazo: Date | null
   plano: string | null
+  pedeAjuda: boolean
   criadoPor: string
   criadoEm: Date
   responsavel: { nome: string } | null
@@ -42,6 +43,9 @@ function Linha({ r, projetoId, podeEditar, userId, administrador, hoje }: {
           <p className="font-medium">
             <span className="mr-2 rounded border border-border px-1.5 py-0.5 text-xs font-semibold">{ROTULO_TIPO[r.tipo as TipoRisco] ?? r.tipo}</span>
             {r.titulo}
+            {r.pedeAjuda && riscoAberto(r.status) ? (
+              <span className="ml-2 rounded border border-warn px-1.5 py-0.5 text-xs font-semibold text-warn">Pede decisão da diretoria</span>
+            ) : null}
           </p>
           <p className="mt-1 text-xs text-textMuted">
             Impacto {ROTULO_IMPACTO[r.impacto as ImpactoRisco]?.toLowerCase() ?? r.impacto} · {ROTULO_STATUS_RISCO[r.status as StatusRisco] ?? r.status}
