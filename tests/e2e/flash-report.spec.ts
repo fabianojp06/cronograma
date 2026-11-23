@@ -154,6 +154,7 @@ for (const largura of [390, 768]) {
     await page.setViewportSize({ width: largura, height: 900 })
     await page.goto(`/projetos/${projetoId}/flash-report`)
     await expect(page.getByTestId('gantt-macro')).toBeVisible()
+    await expect(page.getByTestId('curva-avanco').getByText('role o gráfico de lado')).toBeVisible()
     const { scroll, janela } = await page.evaluate(() => ({
       scroll: document.documentElement.scrollWidth,
       janela: window.innerWidth,

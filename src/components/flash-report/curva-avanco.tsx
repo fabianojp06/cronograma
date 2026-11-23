@@ -62,6 +62,7 @@ export function CurvaAvanco({ curva, escolhida }: { curva: PontoCurva[]; escolhi
           ))}
         </svg>
       </div>
+      <p className="mt-1 text-xs text-textFaint print:hidden">Se faltarem semanas na tela, role o gráfico de lado.</p>
       <p className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-textMuted">
         <span className="inline-flex items-center gap-1.5">
           <svg aria-hidden="true" className="h-2 w-6" viewBox="0 0 24 8"><line className="stroke-previsto" strokeDasharray="5 3" strokeWidth={2} x1="0" x2="24" y1="4" y2="4" /></svg>
