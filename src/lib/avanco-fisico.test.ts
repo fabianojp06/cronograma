@@ -12,11 +12,11 @@ import {
 
 const d = (mes: number, dia: number) => new Date(Date.UTC(2026, mes - 1, dia))
 
-// 1 a 5 de junho de 2026: segunda a sexta, sem feriado nacional fixo.
+// 2 a 6 de março de 2026: segunda a sexta, sem feriado nacional fixo.
 const semana: AcaoParaAvanco = {
   status: StatusAcao.NAO_INICIADO,
-  previstoInicio: d(6, 1),
-  previstoTermino: d(6, 5),
+  previstoInicio: d(3, 2),
+  previstoTermino: d(3, 6),
 }
 
 describe('PERCENTUAL_DO_STATUS', () => {
@@ -39,61 +39,61 @@ describe('pesoDaAcao', () => {
   })
   it('é 0 se o término vem antes do início', () => {
     expect(
-      pesoDaAcao({ ...semana, previstoInicio: d(6, 5), previstoTermino: d(6, 1) }),
+      pesoDaAcao({ ...semana, previstoInicio: d(3, 6), previstoTermino: d(3, 2) }),
     ).toBe(0)
   })
 })
 
 describe('previstoDaAcaoEm', () => {
   it('é 0 antes do início', () => {
-    expect(previstoDaAcaoEm(semana, d(5, 29))).toBe(0)
+    expect(previstoDaAcaoEm(semana, d(2, 27))).toBe(0)
   })
   it('é 100 depois do término', () => {
-    expect(previstoDaAcaoEm(semana, d(6, 10))).toBe(100)
+    expect(previstoDaAcaoEm(semana, d(3, 11))).toBe(100)
   })
   it('é 60 no 3º dos 5 dias úteis', () => {
-    expect(previstoDaAcaoEm(semana, d(6, 3))).toBe(60)
+    expect(previstoDaAcaoEm(semana, d(3, 4))).toBe(60)
   })
   it('é 0 sem peso', () => {
-    expect(previstoDaAcaoEm({ ...semana, previstoInicio: null }, d(6, 3))).toBe(0)
+    expect(previstoDaAcaoEm({ ...semana, previstoInicio: null }, d(3, 4))).toBe(0)
   })
 })
 
 describe('previstoDaAcaoEm: bordas', () => {
   it('no dia de início vale 1/peso', () => {
-    expect(previstoDaAcaoEm(semana, d(6, 1))).toBe(20)
+    expect(previstoDaAcaoEm(semana, d(3, 2))).toBe(20)
   })
   it('exatamente no término vale 100', () => {
-    expect(previstoDaAcaoEm(semana, d(6, 5))).toBe(100)
+    expect(previstoDaAcaoEm(semana, d(3, 6))).toBe(100)
   })
   it('início == término (peso 1) vale 100 no próprio dia e 0 antes', () => {
     const um: AcaoParaAvanco = {
       ...semana,
-      previstoInicio: d(6, 3),
-      previstoTermino: d(6, 3),
+      previstoInicio: d(3, 4),
+      previstoTermino: d(3, 4),
     }
     expect(pesoDaAcao(um)).toBe(1)
-    expect(previstoDaAcaoEm(um, d(6, 3))).toBe(100)
-    expect(previstoDaAcaoEm(um, d(6, 2))).toBe(0)
+    expect(previstoDaAcaoEm(um, d(3, 4))).toBe(100)
+    expect(previstoDaAcaoEm(um, d(3, 3))).toBe(0)
   })
   it('fim de semana entre início e término não soma dias úteis', () => {
     const duas: AcaoParaAvanco = {
       ...semana,
-      previstoInicio: d(6, 4),
-      previstoTermino: d(6, 9),
+      previstoInicio: d(3, 5),
+      previstoTermino: d(3, 10),
     }
     expect(pesoDaAcao(duas)).toBe(4)
-    expect(previstoDaAcaoEm(duas, d(6, 6))).toBe(50)
-    expect(previstoDaAcaoEm(duas, d(6, 7))).toBe(50)
+    expect(previstoDaAcaoEm(duas, d(3, 7))).toBe(50)
+    expect(previstoDaAcaoEm(duas, d(3, 8))).toBe(50)
   })
   it('início no sábado e término no domingo não têm peso', () => {
     const fds: AcaoParaAvanco = {
       ...semana,
-      previstoInicio: d(6, 6),
-      previstoTermino: d(6, 7),
+      previstoInicio: d(3, 7),
+      previstoTermino: d(3, 8),
     }
     expect(pesoDaAcao(fds)).toBe(0)
-    expect(previstoDaAcaoEm(fds, d(6, 7))).toBe(0)
+    expect(previstoDaAcaoEm(fds, d(3, 8))).toBe(0)
   })
   it('início em feriado conta só os dias úteis seguintes', () => {
     // 07/09/2026 (segunda) é feriado: 7 a 11 de setembro = 4 dias úteis.
@@ -127,13 +127,13 @@ describe('avancoEm', () => {
   const curta: AcaoParaAvanco = { ...semana, status: StatusAcao.CONCLUIDO }
   const longa: AcaoParaAvanco = {
     status: StatusAcao.NAO_INICIADO,
-    previstoInicio: d(6, 8),
-    previstoTermino: d(6, 26),
+    previstoInicio: d(3, 9),
+    previstoTermino: d(3, 27),
   }
 
   it('pondera pelo peso (5 e 15 dias úteis)', () => {
     expect(pesoDaAcao(longa)).toBe(15)
-    const r = avancoEm([curta, longa], d(6, 7))
+    const r = avancoEm([curta, longa], d(3, 8))
     expect(r).toEqual({
       previsto: 25,
       realizado: 25,
@@ -143,7 +143,7 @@ describe('avancoEm', () => {
     })
   })
   it('desvio negativo quando o realizado fica atrás', () => {
-    const r = avancoEm([{ ...curta, status: StatusAcao.NAO_INICIADO }, longa], d(6, 7))
+    const r = avancoEm([{ ...curta, status: StatusAcao.NAO_INICIADO }, longa], d(3, 8))
     expect(r?.desvio).toBe(-25)
   })
   it('calcula o desvio antes de arredondar', () => {
@@ -152,17 +152,17 @@ describe('avancoEm', () => {
     // arredondando antes de subtrair daria 19,6 - 14,3 = 5,3.
     const a: AcaoParaAvanco = {
       status: StatusAcao.NAO_INICIADO,
-      previstoInicio: d(6, 1),
-      previstoTermino: d(6, 3),
+      previstoInicio: d(3, 2),
+      previstoTermino: d(3, 4),
     }
     const b: AcaoParaAvanco = {
       status: StatusAcao.EM_CURSO_25,
-      previstoInicio: d(6, 1),
-      previstoTermino: d(6, 15),
+      previstoInicio: d(3, 2),
+      previstoTermino: d(3, 16),
     }
     expect(pesoDaAcao(a)).toBe(3)
     expect(pesoDaAcao(b)).toBe(11)
-    const r = avancoEm([a, b], d(6, 1))
+    const r = avancoEm([a, b], d(3, 2))
     expect(r?.previsto).toBe(14.3)
     expect(r?.realizado).toBe(19.6)
     expect(r?.desvio).toBe(5.4)
@@ -173,17 +173,17 @@ describe('avancoEm', () => {
     // realizado - previsto levemente negativo.
     const a: AcaoParaAvanco = {
       status: StatusAcao.EM_CURSO_25,
-      previstoInicio: d(6, 4),
-      previstoTermino: d(6, 16),
+      previstoInicio: d(3, 5),
+      previstoTermino: d(3, 17),
     }
     const b: AcaoParaAvanco = {
       status: StatusAcao.EM_CURSO_25,
-      previstoInicio: d(6, 1),
-      previstoTermino: d(6, 15),
+      previstoInicio: d(3, 2),
+      previstoTermino: d(3, 16),
     }
     expect(pesoDaAcao(a)).toBe(9)
     expect(pesoDaAcao(b)).toBe(11)
-    const r = avancoEm([a, b], d(6, 4))
+    const r = avancoEm([a, b], d(3, 5))
     expect(r?.previsto).toBe(25)
     expect(Object.is(r?.desvio, 0)).toBe(true)
   })
@@ -192,13 +192,13 @@ describe('avancoEm', () => {
     expect(umaCasa(-0.06)).toBe(-0.1)
   })
   it('devolve null sem ações ou sem peso', () => {
-    expect(avancoEm([], d(6, 7))).toBeNull()
+    expect(avancoEm([], d(3, 8))).toBeNull()
     expect(
-      avancoEm([{ ...semana, previstoInicio: null }], d(6, 7)),
+      avancoEm([{ ...semana, previstoInicio: null }], d(3, 8)),
     ).toBeNull()
   })
   it('conta ações sem peso quando há ao menos uma com peso', () => {
-    const r = avancoEm([curta, { ...semana, previstoTermino: null }], d(6, 7))
+    const r = avancoEm([curta, { ...semana, previstoTermino: null }], d(3, 8))
     expect(r?.acoesSemPeso).toBe(1)
     expect(r?.peso).toBe(5)
   })

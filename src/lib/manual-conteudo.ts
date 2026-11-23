@@ -380,7 +380,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'Confira e confirme. O sistema grava exatamente o que foi mostrado, com uma linha de histórico por ação e por campo.',
     ],
     dicas: [
-      'O deslocamento é em dias úteis (pula fins de semana e feriados nacionais fixos); início e término andam juntos.',
+      'O deslocamento é em dias úteis (pula fins de semana, feriados nacionais fixos e os móveis: Carnaval, Sexta-feira Santa e Corpus Christi); início e término andam juntos.',
       'Ação concluída ou sem data prevista não tem o previsto remarcado; a prévia diz o motivo.',
       'Se alguém salvou uma ação depois da prévia, ela é pulada e listada no resultado, nunca sobrescrita.',
       'Quem passa a ser responsável recebe um e-mail só, com a lista das ações.',
@@ -671,7 +671,7 @@ export const GLOSSARIO: readonly TermoGlossario[] = [
   { termo: 'Realizado', definicao: 'O que de fato aconteceu: datas apontadas depois que a ação começou ou terminou.' },
   { termo: 'Atrasada', definicao: 'Ação não concluída cujo término previsto já passou.' },
   { termo: 'Status', definicao: 'Não iniciado, Em curso (25%, 50% ou 75%) ou Concluído.' },
-  { termo: 'Dias úteis', definicao: 'Dias sem sábado, domingo e feriados nacionais fixos. É a medida dos deslocamentos e das durações.' },
+  { termo: 'Dias úteis', definicao: 'Dias sem sábado, domingo, feriados nacionais fixos e os móveis (segunda e terça de Carnaval, Sexta-feira Santa e Corpus Christi). A Quarta-feira de Cinzas conta como dia útil; feriados estaduais e municipais não entram. É a medida dos deslocamentos e das durações.' },
   { termo: 'Replanejamento', definicao: 'Mudança de uma data prevista. Fica no histórico e alimenta o relatório de auditoria.' },
   { termo: 'WIN', definicao: 'What\'s Important Now: um compromisso da semana, até 3 por pessoa.' },
   { termo: 'GUT', definicao: 'Gravidade, Urgência e Tendência: três notas de 1 a 5 que se multiplicam na priorização.' },
