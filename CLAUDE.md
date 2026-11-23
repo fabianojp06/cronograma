@@ -1439,6 +1439,12 @@ sem a branch `homologacao` no remoto).
 - **E-mails e cron**: desligados. `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_ALERTAS` e
   `EMAILS_EXCECAO` NÃO existem no projeto da homologação (e o envio de e-mail exige a chave).
   Ao cadastrar variável nova nele, confira antes se ela não religa e-mail ou cron.
+- **Promoção `homologacao` → `main`**: abra o PR com o modelo `promocao.md`
+  (`.github/PULL_REQUEST_TEMPLATE/promocao.md`; pela URL, `?template=promocao.md`). Ele pede
+  a conferência das migrations e da validação na homologação. O workflow `aviso-migration`
+  só roda em PR contra a `main` e, se houver migration nova, deixa uma anotação de aviso e
+  um resumo no job. Não bloqueia: é um lembrete para quem aprova, porque a produção aplica
+  a migration no build, antes do código no ar, no banco real.
 - **Carga inicial**: banco novo nasce vazio. `npm run db:seed` e `npm run carregar:modelos
   -- --gravar`, com a `DATABASE_URL` da homologação no comando (ver README).
 
