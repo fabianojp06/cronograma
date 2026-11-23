@@ -151,6 +151,44 @@ describe('atividades', () => {
   })
 })
 
+import { diasUteisEntre } from './dias-uteis'
+import { pesoDaAcao } from './avanco-fisico'
+import { totalDeSemanas } from './semana-ctcea'
+
+/** Termino (dia útil) tal que a ação tem exatamente `n` dias úteis de peso. */
+function terminoComPeso(inicio: Date, n: number): Date {
+  let t = inicio
+  while (diasUteisEntre(inicio, t) < n || diasUteisEntre(inicio, new Date(t.getTime() - DIA)) === n) {
+    t = new Date(t.getTime() + DIA)
+  }
+  return t
+}
+
+/**
+ * Macroetapa "Integrações" de 100 dias úteis, toda vencida em relação à semana
+ * escolhida (previsto = 100%): `a` dias concluídos, `b` dias em `statusB`
+ * (padrão 75%), `c` dias em `statusC` (padrão não iniciado). Desvio =
+ * −(b·25 + c·100) / 100 quando statusB = EM_CURSO_75.
+ */
+function cenario(
+  a: number,
+  b: number,
+  c: number,
+  statusC: 'NAO_INICIADO' | 'EM_CURSO_25' = 'NAO_INICIADO',
+  statusB: 'EM_CURSO_75' | 'EM_CURSO_50' = 'EM_CURSO_75',
+): EntradaFlash {
+  const inicio = d(2026, 3, 2)
+  const partes: [number, AcaoDoRelatorio['status']][] = [[a, 'CONCLUIDO'], [b, statusB], [c, statusC]]
+  const acoes = partes
+    .filter(([n]) => n > 0)
+    .map(([n, status], i) => {
+      const x = acao({ numero: i + 1, macroetapaId: 'm1', status, previstoInicio: inicio, previstoTermino: terminoComPeso(inicio, n) })
+      expect(pesoDaAcao(x)).toBe(n)
+      return x
+    })
+  return entrada({ macroetapas: [{ id: 'm1', nome: 'Integrações', ordem: 1 }], acoes, semana: semanaDe(new Date(Math.max(...acoes.map((x) => x.previstoTermino!.getTime())))) })
+}
+
 describe('alertas', () => {
   const base = () => {
     const acoes = [
@@ -184,16 +222,27 @@ describe('alertas', () => {
       riscos: [risco({ id: 'a', prazo: d(2026, 1, 1) }), risco({ id: 'b', prazo: d(2026, 1, 1), tipo: 'BLOQUEIO' })],
     }))
     const textos = r.alertas.map((a) => a.texto)
-    expect(r.alertas.filter((a) => a.tipo === 'MACROETAPA_DESVIO').length).toBeLessThanOrEqual(1)
-    expect(textos).toContain('2 ações atrasadas (a mais antiga: #1, há 8 dias)')
-    expect(textos).toContain('2 riscos abertos com prazo vencido')
-    expect(textos).toContain('2 ações bloqueadas por dependência')
+    expect(textos).toEqual([
+      'Sem macroetapa com desvio de −100 p.p.',
+      '2 ações atrasadas (a mais antiga: #1, há 8 dias)',
+      '2 riscos abertos com prazo vencido',
+      '2 ações bloqueadas por dependência',
+    ])
     expect(montarFlashReport(entrada()).alertas.filter((a) => a.tipo !== 'MACROETAPA_DESVIO')).toEqual([])
   })
 
-  it('nunca escreve -0', () => {
-    const r = montarFlashReport(entrada())
-    expect(JSON.stringify(r.alertas)).not.toMatch(/-0|−0 /)
+  it('texto do desvio: menos de verdade, vírgula decimal, inteiro sem vírgula', () => {
+    const inteiro = montarFlashReport(cenario(90, 0, 10)).alertas[0].texto
+    expect(inteiro).toBe('Integrações com desvio de −10 p.p.')
+    const decimal = montarFlashReport(cenario(75, 25, 0, 'NAO_INICIADO', 'EM_CURSO_50')).alertas[0].texto
+    expect(decimal).toBe('Integrações com desvio de −12,5 p.p.')
+    for (const t of [inteiro, decimal]) expect(t).not.toContain('-')
+  })
+
+  it('limite do alerta de macroetapa: −10 alerta, −9,5 não, zero não', () => {
+    expect(montarFlashReport(cenario(90, 0, 10)).alertas.map((a) => a.tipo)).toEqual(['MACROETAPA_DESVIO'])
+    expect(montarFlashReport(cenario(62, 38, 0)).alertas).toEqual([]) // 38 de peso a 75% = −9,5
+    expect(montarFlashReport(cenario(100, 0, 0)).alertas).toEqual([])
   })
 })
 
@@ -252,5 +301,105 @@ describe('normalizarSemana', () => {
   it('janelaDoProjeto', () => {
     expect(janelaDoProjeto(entrada().acoes)).toEqual(janela)
     expect(janelaDoProjeto([])).toBeNull()
+  })
+})
+
+describe('limite da célula ATENCAO', () => {
+  const celulaEscolhida = (e: EntradaFlash) => {
+    const r = montarFlashReport(e)
+    return r.macroetapas[0].celulas[r.semanaDoProjeto - 1]
+  }
+  it('desvio exatamente −3 → ATENCAO; −2,5 → REALIZADO', () => {
+    const tres = cenario(88, 12, 0)
+    expect(montarFlashReport(tres).macroetapas[0].avanco!.desvio).toBe(-3)
+    expect(celulaEscolhida(tres)).toBe('ATENCAO')
+    const doisEMeio = cenario(90, 10, 0)
+    expect(montarFlashReport(doisEMeio).macroetapas[0].avanco!.desvio).toBe(-2.5)
+    expect(celulaEscolhida(doisEMeio)).toBe('REALIZADO')
+  })
+})
+
+describe('semana passada: estado da semana, não de hoje', () => {
+  const comFoto = () => {
+    const acoes = entrada().acoes.map((a) => ({ ...a, status: 'CONCLUIDO' as const }))
+    const foto = new Map([[chaveSemana(semanaN(7)), acoes.map((a) => ({
+      id: a.id, status: 'NAO_INICIADO' as const, previstoInicio: a.previstoInicio, previstoTermino: a.previstoTermino,
+    }))]])
+    return entrada({ acoes, acoesNoFimDeCada: foto })
+  }
+
+  it('macroetapa, alerta e célula usam a foto da semana', () => {
+    const r = montarFlashReport(comFoto())
+    const m2 = r.macroetapas[1]
+    expect(m2.avanco!.realizado).toBe(0)
+    expect(m2.celulas[6]).toBe('ATENCAO')
+    expect(r.alertas.map((a) => a.tipo)).toContain('MACROETAPA_DESVIO')
+    expect(r.avisos.join(' ')).not.toMatch(/sem foto/i)
+  })
+
+  it('sem foto: usa o estado atual e avisa', () => {
+    const r = montarFlashReport(entrada())
+    expect(r.avisos.join(' ')).toMatch(/semana passada sem foto do histórico: valores calculados com o estado atual/i)
+  })
+
+  it('semana passada avisa que alertas, riscos e próximas mostram hoje; semana atual não', () => {
+    expect(montarFlashReport(entrada()).avisos.join(' ')).toMatch(/alertas, riscos e próximas atividades mostram a situação de hoje/i)
+    const atual = montarFlashReport(entrada({ hoje: new Date(inicioN(7).getTime() + DIA) }))
+    expect(atual.avisos.join(' ')).not.toMatch(/situação de hoje|sem foto/)
+  })
+
+  it('foto sem ids não agrupa por macroetapa: cai no estado atual com aviso', () => {
+    const foto = new Map([[chaveSemana(semanaN(7)), [
+      { status: 'NAO_INICIADO' as const, previstoInicio: inicioN(1), previstoTermino: fimN(5) },
+    ]]])
+    const r = montarFlashReport(entrada({ acoesNoFimDeCada: foto }))
+    expect(r.avisos.join(' ')).toMatch(/foto da semana sem identificação das ações/i)
+  })
+})
+
+describe('janelas e dados incomuns', () => {
+  it('janela que cruza 2026 → 2027', () => {
+    const acoes = [acao({ numero: 1, previstoInicio: d(2026, 12, 14), previstoTermino: d(2027, 1, 18) })]
+    const e = entrada({ acoes, macroetapas: [], semana: semanaDe(d(2027, 1, 4)), hoje: d(2027, 2, 1) })
+    expect(janelaDoProjeto(acoes)).toEqual({ primeira: { ano: 2026, semana: 51 }, ultima: { ano: 2027, semana: 4 } })
+    const r = montarFlashReport(e)
+    expect(r.totalSemanas).toBe(6)
+    expect(r.semanaDoProjeto).toBe(4)
+    expect(r.curva.map((p) => p.rotulo)).toEqual(['S01', 'S02', 'S03', 'S04', 'S05', 'S06'])
+    expect(r.curva.slice(4).every((p) => p.realizado === null)).toBe(true)
+  })
+
+  it('ano de 53 semanas (2028)', () => {
+    expect(totalDeSemanas(2028)).toBe(53)
+    const acoes = [acao({ numero: 1, previstoInicio: d(2028, 12, 18), previstoTermino: d(2029, 1, 3) })]
+    expect(janelaDoProjeto(acoes)).toEqual({ primeira: { ano: 2028, semana: 52 }, ultima: { ano: 2029, semana: 1 } })
+    const r = montarFlashReport(entrada({ acoes, macroetapas: [], semana: { ano: 2028, semana: 53 }, hoje: d(2029, 1, 10) }))
+    expect(r.totalSemanas).toBe(3)
+    expect(r.semanaDoProjeto).toBe(2)
+    const hoje = d(2029, 1, 10)
+    expect(normalizarSemana('2028-53', { primeira: { ano: 2028, semana: 52 }, ultima: { ano: 2029, semana: 1 } }, hoje)).toEqual({ ano: 2028, semana: 53 })
+    expect(normalizarSemana('2027-53', null, hoje)).toEqual(semanaDe(hoje))
+  })
+
+  it('só uma ponta de data: a janela é essa semana e a ação fica sem peso', () => {
+    const acoes = [acao({ numero: 1, previstoTermino: fimN(3) })]
+    const r = montarFlashReport(entrada({ acoes, macroetapas: [], semana: semanaN(3) }))
+    expect(r.totalSemanas).toBe(1)
+    expect(r.semanaDoProjeto).toBe(1)
+    expect(r.consolidado).toBeNull()
+  })
+
+  it('término antes do início e nenhuma ação com peso: sem curva e com aviso', () => {
+    const acoes = [acao({ numero: 1, previstoInicio: fimN(5), previstoTermino: inicioN(2) })]
+    const r = montarFlashReport(entrada({ acoes, macroetapas: [], semana: semanaN(3) }))
+    expect(r.curva).toEqual([])
+    expect(r.consolidado).toBeNull()
+    expect(r.avisos.join(' ')).toMatch(/nenhuma ação com peso/i)
+  })
+
+  it('macroetapaId desconhecido cai em "Sem macroetapa"', () => {
+    const acoes = [...entrada().acoes, acao({ numero: 3, macroetapaId: 'fantasma', previstoInicio: inicioN(2), previstoTermino: fimN(3) })]
+    const r = montarFlashReport(entrada({ acoes }))
+    expect(r.macroetapas.map((m) => m.nome)).toEqual(['Integrações', 'Entrega', 'Sem macroetapa'])
   })
 })

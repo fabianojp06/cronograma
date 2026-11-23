@@ -7,7 +7,7 @@
  * Semana = a semana CTCEA (domingo a sábado). O "fim" da semana é o sábado.
  */
 
-import { avancoEm, type AcaoParaAvanco, type Avanco } from './avanco-fisico'
+import { avancoEm, pesoDaAcao, type AcaoParaAvanco, type Avanco } from './avanco-fisico'
 import { LIMITE_ATENCAO, LIMITE_ATRASADO, sinalDoProjeto, type Farol } from './farol-projeto'
 import { classificarAcao } from './resumo-semanal'
 import { ordenarPorAtencao, prazoVencido, riscoAberto } from './risco-projeto'
@@ -53,8 +53,12 @@ export type EntradaFlash = {
   projeto: { nome: string; cliente: string | null; objetivo: string | null; lider: string | null }
   macroetapas: { id: string; nome: string; ordem: number }[]
   acoes: readonly AcaoDoRelatorio[]
-  /** Ações como estavam no fim de cada semana; chave = `chaveSemana`. */
-  acoesNoFimDeCada: ReadonlyMap<string, readonly AcaoParaAvanco[]>
+  /**
+   * Ações como estavam no fim de cada semana; chave = `chaveSemana`. Para o
+   * relatório de uma semana passada agrupar por macroetapa, cada item precisa
+   * levar o `id` da ação; sem ele a foto só serve ao consolidado e ao farol.
+   */
+  acoesNoFimDeCada: ReadonlyMap<string, readonly (AcaoParaAvanco & { id?: string })[]>
   riscos: readonly RiscoDoRelatorio[]
   semana: SemanaCtcea
   hoje: Date
@@ -110,12 +114,8 @@ function somarSemanas(base: SemanaCtcea, n: number): SemanaCtcea {
   return s
 }
 
-function semanaDaData(d: Date): SemanaCtcea {
-  return semanaDe(d)
-}
-
 /** Menor semana de início e maior de término entre as ações com datas. */
-function intervaloDeSemanas(
+export function janelaDoProjeto(
   acoes: readonly AcaoParaAvanco[],
 ): { primeira: SemanaCtcea; ultima: SemanaCtcea } | null {
   let menor: Date | null = null
@@ -127,8 +127,8 @@ function intervaloDeSemanas(
   if (!menor && !maior) return null
   const m = menor ?? maior!
   const M = maior ?? menor!
-  const primeira = semanaDaData(m)
-  const ultima = semanaDaData(M)
+  const primeira = semanaDe(m)
+  const ultima = semanaDe(M)
   // Término antes do início (dado ruim): a janela nunca fica invertida.
   return distanciaEmSemanas(primeira, ultima) < 0
     ? { primeira: ultima, ultima: primeira }
@@ -169,7 +169,7 @@ function celulasDaMacro(
   escolhida: number,
   desvioNaSemana: number | null,
 ): CelulaMacro[] {
-  const faixa = intervaloDeSemanas(acoes)
+  const faixa = janelaDoProjeto(acoes)
   const de = faixa ? distanciaEmSemanas(primeira, faixa.primeira) : 0
   const ate = faixa ? distanciaEmSemanas(primeira, faixa.ultima) : -1
   return Array.from({ length: total }, (_, i) => {
@@ -187,24 +187,40 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
   const periodo = periodoDaSemana(e.semana)
   const fim = periodo.fim
   const avisos: string[] = []
-  const janela = intervaloDeSemanas(e.acoes)
+  const janela = janelaDoProjeto(e.acoes)
   const totalSemanas = janela ? distanciaEmSemanas(janela.primeira, janela.ultima) + 1 : 0
   const semanaDoProjeto = janela ? distanciaEmSemanas(janela.primeira, e.semana) + 1 : 0
   const fotoDaSemana = e.acoesNoFimDeCada.get(chaveSemana(e.semana))
   const semanaPassada = fim.getTime() < e.hoje.getTime()
 
-  // Avanço consolidado: previsto das datas atuais; realizado da foto da semana, se houver.
-  const atual = avancoEm(e.acoes, fim)
-  let consolidado = atual
-  if (atual && fotoDaSemana) {
-    const foto = avancoEm(fotoDaSemana, fim)
-    if (foto) consolidado = { ...atual, realizado: foto.realizado, desvio: umaCasa(foto.realizado - atual.previsto) + 0 }
+  // Estado "da semana": a foto, se houver. Semana passada sem foto cai no
+  // estado atual (aproximação) e o relatório avisa.
+  const idsDasAcoes = new Map(e.acoes.map((a) => [a.id, a]))
+  const fotoComIds =
+    fotoDaSemana !== undefined && fotoDaSemana.every((f) => f.id !== undefined)
+  type AcaoComMacro = AcaoParaAvanco & { macroetapaId: string | null }
+  let baseDaSemana: readonly AcaoComMacro[] = e.acoes
+  if (semanaPassada && !fotoDaSemana) {
+    avisos.push('Semana passada sem foto do histórico: valores calculados com o estado atual.')
+  } else if (fotoDaSemana && !fotoComIds) {
+    avisos.push('Foto da semana sem identificação das ações: avanço por macroetapa calculado com o estado atual.')
+  } else if (fotoDaSemana && fotoComIds) {
+    baseDaSemana = fotoDaSemana.map((f) => ({
+      ...f,
+      macroetapaId: idsDasAcoes.get(f.id!)?.macroetapaId ?? null,
+    }))
   }
+  if (semanaPassada) {
+    avisos.push('Alertas, riscos e próximas atividades mostram a situação de hoje, não a da semana escolhida.')
+  }
+
+  const consolidado = avancoEm(fotoDaSemana ?? e.acoes, fim)
+  if (consolidado) consolidado.desvio = consolidado.desvio + 0 // troca -0 por 0
   if (consolidado === null) {
     avisos.push('Nenhuma ação com datas previstas: não há avanço físico para calcular. Preencha início e término previstos das ações.')
   }
 
-  // Farol: semana passada → no sábado dela (com a foto, se houver); atual → hoje.
+  // Farol: semana passada → no sábado dela, com a foto; atual → hoje.
   const riscosAbertos = e.riscos.filter((r) => riscoAberto(r.status))
   const farol = sinalDoProjeto(
     semanaPassada
@@ -214,7 +230,11 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
 
   // Curva S.
   const curva: PontoCurva[] = []
-  if (janela) {
+  const comPeso = e.acoes.some((a) => pesoDaAcao(a) > 0)
+  if (janela && !comPeso) {
+    avisos.push('Nenhuma ação com peso (datas previstas válidas): a curva de avanço não foi desenhada.')
+  }
+  if (janela && comPeso) {
     for (let i = 0; i < totalSemanas; i++) {
       const s = somarSemanas(janela.primeira, i)
       const sabado = periodoDaSemana(s).fim
@@ -231,10 +251,10 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
 
   // Macroetapas.
   const ids = new Set(e.macroetapas.map((m) => m.id))
-  const grupos: { nome: string; acoes: AcaoDoRelatorio[] }[] = [...e.macroetapas]
+  const grupos: { nome: string; acoes: AcaoComMacro[] }[] = [...e.macroetapas]
     .sort((a, b) => a.ordem - b.ordem)
-    .map((m) => ({ nome: m.nome, acoes: e.acoes.filter((a) => a.macroetapaId === m.id) }))
-  const soltas = e.acoes.filter((a) => a.macroetapaId === null || !ids.has(a.macroetapaId))
+    .map((m) => ({ nome: m.nome, acoes: baseDaSemana.filter((a) => a.macroetapaId === m.id) }))
+  const soltas = baseDaSemana.filter((a) => a.macroetapaId === null || !ids.has(a.macroetapaId))
   if (soltas.length > 0) grupos.push({ nome: 'Sem macroetapa', acoes: soltas })
   if (e.macroetapas.length === 0 && e.acoes.length > 0) {
     avisos.push('O projeto não tem macroetapas: cadastre macroetapas para ver o avanço por etapa.')
@@ -287,7 +307,8 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
     })
   }
 
-  // Realizadas: concluídas dentro da semana escolhida (relativo ao sábado dela).
+  // Realizadas: concluídas (sem `realizadoTermino`, vale só o que `classificarAcao`
+  // sabe — sem data de conclusão a ação não entra, de propósito: não inventamos data) dentro da semana escolhida (relativo ao sábado dela).
   const concluidas = e.acoes
     .map((a) => ({
       a,
@@ -342,4 +363,3 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
 }
 
 
-export { intervaloDeSemanas as janelaDoProjeto }
