@@ -150,7 +150,7 @@ export const GUIA_RELATORIOS: Record<string, GuiaRelatorio> = {
       'A lista vai da ação mais atrasada para a menos. As colunas dizem a ação, o projeto, o responsável, o término previsto e o atraso em dias úteis.',
       'Cada linha leva ao projeto.',
     ],
-    deOndeVem: 'Ações atrasadas (término previsto já passou e não concluídas). O atraso é contado em dias úteis, sem fins de semana nem feriados nacionais fixos.',
+    deOndeVem: 'Ações atrasadas (término previsto já passou e não concluídas). O atraso é contado em dias úteis, sem fins de semana, feriados nacionais fixos nem os móveis (Carnaval, Sexta-feira Santa e Corpus Christi).',
     alerta: 'Ações com atraso de meses: ou ninguém atualizou o status, ou o trabalho parou de fato.',
   },
   'idade-do-atraso': {

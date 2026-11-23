@@ -55,8 +55,11 @@ PLA-DEP) e um **drill-down por projeto** (modelo CRO-DEP).
 - Toda mutação de status/data de uma `Acao` deve gravar uma linha em `HistoricoAlteracao`
   (campo, valor antigo, valor novo, timestamp). Isso é o que a planilha não tem hoje e é
   um requisito central do sistema — não pule isso.
-- Datas de negócio calculadas em **dias úteis** (excluir sábados, domingos e feriados
-  nacionais fixos — sem necessidade de calendário de feriados variável no MVP).
+- Datas de negócio calculadas em **dias úteis** (excluir sábados, domingos, feriados
+  nacionais fixos e os móveis ligados à Páscoa: Carnaval — segunda e terça —, Sexta-feira
+  Santa e Corpus Christi, **calculados** em `dias-uteis.ts`, sem tabela nem biblioteca;
+  Quarta-feira de Cinzas conta como dia útil). Estaduais e municipais ficam de fora. Para
+  a CTCEA trabalhar um deles, tire a linha em `MOVEIS_POR_DESLOCAMENTO_DA_PASCOA`.
 - Cores de status na UI: Previsto = azul, Realizado = verde, Atraso (Realizado ausente e
   Previsto < hoje, status != Concluído) = vermelho.
 
@@ -767,7 +770,7 @@ aviso de somente leitura; quem recusa de verdade são as Server Actions).
   já medida); sem data prevista não há o que deslocar; responsável igual ao
   atual não é mudança. Cada caso aparece como observação na linha da prévia.
 - **Deslocar é em DIAS ÚTEIS** (`deslocarDiasUteis`: pula fim de semana e
-  feriado nacional fixo; adiar ou adiantar). Início e término andam juntos
+  feriado, fixo ou móvel; adiar ou adiantar). Início e término andam juntos
   pela mesma quantidade, então a ordem entre eles se mantém.
 - **Limite de 100 ações por operação** (`LIMITE_LOTE`) e de 250 dias úteis.
   A seleção vale por projeto, não entre projetos.

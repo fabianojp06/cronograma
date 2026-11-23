@@ -52,7 +52,7 @@ Três regras de negócio valem em todo o sistema:
 | Regra | Como funciona |
 |---|---|
 | **Trilha de auditoria** | Toda mudança de status ou de data de uma ação grava uma linha em `HistoricoAlteracao`, com o campo, o valor antigo, o valor novo e o momento da mudança. |
-| **Dias úteis** | Os prazos são contados em dias úteis: sem sábados, domingos e feriados nacionais de data fixa. |
+| **Dias úteis** | Os prazos são contados em dias úteis: sem sábados, domingos, feriados nacionais de data fixa e os móveis (Carnaval, Sexta-feira Santa e Corpus Christi). |
 | **Cores de status** | Previsto em azul, Realizado em verde e Atraso em vermelho. Atraso é quando o Realizado está vazio, o Previsto já passou e o status não é Concluído. |
 
 ## Funcionalidades

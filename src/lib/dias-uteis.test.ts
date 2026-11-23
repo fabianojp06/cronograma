@@ -5,8 +5,12 @@ import {
   diasUteisEntre,
   ehDiaUtil,
   ehFimDeSemana,
+  feriadoDoDia,
+  feriadoMovel,
   feriadoNacionalFixo,
   FERIADOS_NACIONAIS_FIXOS,
+  feriadosMoveis,
+  pascoa,
   somarDiasUteis,
 } from './dias-uteis'
 
@@ -23,10 +27,73 @@ describe('feriadoNacionalFixo', () => {
     expect(feriadoNacionalFixo(data('2026-12-25'))).toBe('Natal')
   })
 
-  it('ignora feriados móveis — fora do escopo do MVP', () => {
-    // Carnaval de 2026 (17/02) e Corpus Christi (04/06) são dias úteis aqui.
-    expect(feriadoNacionalFixo(data('2026-02-17'))).toBeNull()
-    expect(ehDiaUtil(data('2026-06-04'))).toBe(true)
+  it('não inclui os móveis: quem pergunta pelos fixos só recebe os fixos', () => {
+    expect(feriadoNacionalFixo(data('2026-02-17'))).toBeNull() // Carnaval
+    expect(feriadoNacionalFixo(data('2026-06-04'))).toBeNull() // Corpus Christi
+  })
+})
+
+describe('pascoa', () => {
+  it('calcula o domingo de Páscoa (algoritmo de Meeus/Jones/Butcher), em UTC', () => {
+    const esperado: Record<number, string> = {
+      2024: '2024-03-31',
+      2025: '2025-04-20',
+      2026: '2026-04-05',
+      2027: '2027-03-28',
+      2028: '2028-04-16', // bissexto
+      2029: '2029-04-01',
+      2030: '2030-04-21',
+    }
+    for (const [ano, iso] of Object.entries(esperado)) {
+      expect(pascoa(Number(ano)).toISOString().slice(0, 10)).toBe(iso)
+    }
+  })
+
+  it('cai sempre num domingo', () => {
+    for (let ano = 2020; ano <= 2060; ano += 1) {
+      expect(pascoa(ano).getUTCDay()).toBe(0)
+    }
+  })
+})
+
+describe('feriadosMoveis', () => {
+  const nomes = (ano: number) =>
+    [...feriadosMoveis(ano).entries()].sort(([a], [b]) => a.localeCompare(b))
+
+  it('2026: Carnaval (segunda e terça), Sexta-feira Santa e Corpus Christi', () => {
+    expect(nomes(2026)).toEqual([
+      ['02-16', 'Carnaval'],
+      ['02-17', 'Carnaval'],
+      ['04-03', 'Sexta-feira Santa'],
+      ['06-04', 'Corpus Christi'],
+    ])
+  })
+
+  it('2025 e 2027: as datas mudam com a Páscoa', () => {
+    expect(nomes(2025).map(([k]) => k)).toEqual(['03-03', '03-04', '04-18', '06-19'])
+    expect(nomes(2027).map(([k]) => k)).toEqual(['02-08', '02-09', '03-26', '05-27'])
+  })
+
+  it('2028 (bissexto): o Carnaval atravessa o 29 de fevereiro', () => {
+    expect(nomes(2028).map(([k]) => k)).toEqual(['02-28', '02-29', '04-14', '06-15'])
+  })
+})
+
+describe('feriadoMovel e feriadoDoDia', () => {
+  it('reconhece o móvel pelo ano da própria data', () => {
+    expect(feriadoMovel(data('2026-06-04'))).toBe('Corpus Christi')
+    // 04/06 de 2027 não é feriado: a Páscoa de 2027 é outra.
+    expect(feriadoMovel(data('2027-06-04'))).toBeNull()
+  })
+
+  it('a Quarta-feira de Cinzas não é feriado (meio expediente)', () => {
+    expect(feriadoMovel(data('2026-02-18'))).toBeNull()
+  })
+
+  it('feriadoDoDia junta fixos e móveis; o fixo prevalece se coincidirem', () => {
+    expect(feriadoDoDia(data('2026-04-21'))).toBe('Tiradentes')
+    expect(feriadoDoDia(data('2026-04-03'))).toBe('Sexta-feira Santa')
+    expect(feriadoDoDia(data('2026-04-22'))).toBeNull()
   })
 })
 
@@ -45,6 +112,39 @@ describe('ehDiaUtil', () => {
 
   it('aceita dia de semana comum', () => {
     expect(ehDiaUtil(data('2026-03-02'))).toBe(true)
+  })
+})
+
+describe('feriados móveis contam como dia não útil', () => {
+  it('exclui Carnaval, Sexta-feira Santa e Corpus Christi', () => {
+    expect(ehDiaUtil(data('2026-02-16'))).toBe(false) // segunda de Carnaval
+    expect(ehDiaUtil(data('2026-02-17'))).toBe(false) // terça de Carnaval
+    expect(ehDiaUtil(data('2026-04-03'))).toBe(false) // Sexta-feira Santa
+    expect(ehDiaUtil(data('2026-06-04'))).toBe(false) // Corpus Christi
+    expect(ehDiaUtil(data('2026-02-18'))).toBe(true) // Quarta de Cinzas trabalha
+  })
+
+  it('diasUteisEntre desconta cada um na sua semana', () => {
+    expect(diasUteisEntre(data('2026-02-16'), data('2026-02-20'))).toBe(3) // semana do Carnaval
+    expect(diasUteisEntre(data('2026-03-30'), data('2026-04-03'))).toBe(4) // Semana Santa
+    expect(diasUteisEntre(data('2026-06-01'), data('2026-06-05'))).toBe(4) // Corpus Christi
+  })
+
+  it('anda por cima do feriado móvel ao deslocar e ao somar', () => {
+    // Quinta 02/04 + 1 dia útil: pula a Sexta-feira Santa e o fim de semana.
+    expect(deslocarDiasUteis(data('2026-04-02'), 1).toISOString().slice(0, 10)).toBe('2026-04-06')
+    expect(deslocarDiasUteis(data('2026-04-06'), -1).toISOString().slice(0, 10)).toBe('2026-04-02')
+    // Quinta 12/02 é o dia 1, sexta 13/02 o dia 2; segunda 16 e terça 17 são Carnaval,
+    // então o dia 3 é a quarta 18/02.
+    expect(data('2026-02-12').getUTCDay()).toBe(4)
+    expect(somarDiasUteis(data('2026-02-12'), 3).toISOString().slice(0, 10)).toBe('2026-02-18')
+  })
+
+  it('o ano de 2026 tem 249 dias úteis', () => {
+    // 261 segundas a sextas. Fixos em dia útil: 01/01, 21/04, 01/05, 07/09, 12/10, 02/11,
+    // 20/11 e 25/12 = 8 (o 15/11 cai num domingo) → 253. Móveis em dia útil: 16/02, 17/02,
+    // 03/04 e 04/06 = 4 → 249. Total conferido por cálculo independente.
+    expect(diasUteisEntre(data('2026-01-01'), data('2026-12-31'))).toBe(249)
   })
 })
 
