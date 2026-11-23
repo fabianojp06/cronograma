@@ -889,6 +889,8 @@ em duas linhas e misturava tudo. Agora (`menu.ts` é a fonte única):
 - **Item novo no menu** vai no grupo em que a pessoa o procuraria (e em `MENU`, que
   é derivado dos grupos, para o teste do manual cobrar a seção). Grupo novo exige
   passo no tour (`tour.test.ts` cobra). Se um grupo passar de ~6 itens, repense.
+- **Botão de tema** (`BotaoTema`, sol/lua ao lado do sino): um clique alterna claro/escuro a partir
+  do tema que vale agora e grava a preferência explícita; "Sistema" volta pelo menu abaixo.
 - **"Ajuda e preferências"** (`MenuAjuda`, ícone de interrogação ao lado do sino):
   Manual, "Fazer o tour" (`iniciarTour`) e o seletor de tema. O avatar continua o
   `UserButton` do Clerk (conta e sair): o menu dele NÃO é personalizado porque o

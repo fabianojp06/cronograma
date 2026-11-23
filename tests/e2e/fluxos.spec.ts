@@ -1642,6 +1642,14 @@ test.describe('cabeçalho em grupos', () => {
     await expect(page.locator('html')).not.toHaveClass(/dark/)
   })
 
+  test('o botão de tema no cabeçalho alterna claro e escuro com um clique', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Mudar para o tema escuro' }).click()
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await page.getByRole('button', { name: 'Mudar para o tema claro' }).click()
+    await expect(page.locator('html')).not.toHaveClass(/dark/)
+  })
+
   test('no celular o menu em botão traz os grupos, com o item da página destacado', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/dashboards')
