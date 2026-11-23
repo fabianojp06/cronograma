@@ -146,6 +146,20 @@ export function fotoDoProjeto(
   return {
     acoes: reconstruidas.sort((a, b) => a.numero - b.numero),
     criadasDepois,
-    anteriorAoRegistro: inicioDoRegistro !== null && corte.getTime() <= inicioDoRegistro.getTime(),
+    anteriorAoRegistro: corteAnteriorAoRegistro(corte, inicioDoRegistro),
   }
+}
+
+/** Regra única: o corte cai antes (ou no instante) do início do registro no sistema. */
+function corteAnteriorAoRegistro(corte: Date, inicioDoRegistro: Date | null): boolean {
+  return inicioDoRegistro !== null && corte.getTime() <= inicioDoRegistro.getTime()
+}
+
+/**
+ * A semana cujo último dia (sábado) é `fimDaSemana` termina antes do início do
+ * registro? Se sim, o sistema não viu nada dela: o realizado não é confiável.
+ * É a mesma regra do campo `anteriorAoRegistro` da foto.
+ */
+export function semanaAnteriorAoRegistro(fimDaSemana: Date, inicioDoRegistro: Date | null): boolean {
+  return corteAnteriorAoRegistro(corteDaFoto(fimDaSemana.toISOString().slice(0, 10)), inicioDoRegistro)
 }

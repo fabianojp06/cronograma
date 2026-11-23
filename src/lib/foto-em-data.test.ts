@@ -6,6 +6,7 @@ import {
   fotoDoProjeto,
   lerDataDaFoto,
   reconstruirAcao,
+  semanaAnteriorAoRegistro,
   type AcaoComHistorico,
 } from './foto-em-data'
 
@@ -137,5 +138,34 @@ describe('fotoDoProjeto', () => {
 
     expect(fotoDoProjeto([], corteDaFoto('2025-12-01'), d('2026-01-10')).anteriorAoRegistro).toBe(true)
     expect(fotoDoProjeto([], corte, null).anteriorAoRegistro).toBe(false)
+  })
+})
+
+describe('semanaAnteriorAoRegistro', () => {
+  // Registro começou às 09h (Brasília) de 10/01/2026: a criação da primeira ação.
+  const REGISTRO = new Date('2026-01-10T12:00:00Z')
+
+  it('é verdadeira quando o sábado da semana cai antes (ou no dia) do início do registro', () => {
+    expect(semanaAnteriorAoRegistro(d('2026-01-03'), REGISTRO)).toBe(true)
+    // O corte é o começo do dia SEGUINTE em Brasília: o dia 09/01 inteiro é anterior ao registro...
+    expect(semanaAnteriorAoRegistro(d('2026-01-09'), REGISTRO)).toBe(true)
+    // ...mas o dia 10/01 já contém o registro, então a semana que termina nele não é anterior.
+    expect(semanaAnteriorAoRegistro(d('2026-01-10'), REGISTRO)).toBe(false)
+  })
+
+  it('é falsa quando a semana termina depois do início do registro, inclusive a semana de hoje', () => {
+    expect(semanaAnteriorAoRegistro(d('2026-01-17'), REGISTRO)).toBe(false)
+    expect(semanaAnteriorAoRegistro(d('2026-11-21'), REGISTRO)).toBe(false)
+  })
+
+  it('é falsa quando não há registro nenhum (nada para comparar)', () => {
+    expect(semanaAnteriorAoRegistro(d('2026-01-03'), null)).toBe(false)
+  })
+
+  it('concorda com o campo anteriorAoRegistro da foto, que usa a mesma regra', () => {
+    for (const fim of ['2026-01-03', '2026-01-09', '2026-01-10', '2026-01-17']) {
+      const foto = fotoDoProjeto([], corteDaFoto(fim), REGISTRO)
+      expect(semanaAnteriorAoRegistro(d(fim), REGISTRO)).toBe(foto.anteriorAoRegistro)
+    }
   })
 })
