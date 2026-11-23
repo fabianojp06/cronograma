@@ -17,6 +17,7 @@ export type LinhaProjeto = {
   responsavel: string | null
   prioridade: number | null
   resumo: ResumoProjeto
+  /** Só vale se quem montou a linha passou `riscos` e `previstoInicio` das ações; sem eles sai SEM_DADOS. */
   sinal: Farol
 }
 
@@ -87,12 +88,7 @@ export function ListaProjetos({
             <th className="px-3 py-2 font-semibold">Categoria</th>
             <th className="px-3 py-2 font-semibold">Responsável</th>
             <th className="px-3 py-2 font-semibold">Status</th>
-            <th className="px-3 py-2 font-semibold">
-              Sinal
-              <span className="block text-xs font-normal text-textFaint">
-                Status: ações atrasadas. Sinal: avanço realizado contra o previsto.
-              </span>
-            </th>
+            <th className="px-3 py-2 font-semibold">Sinal</th>
             <th className="px-3 py-2 font-semibold">Progresso</th>
             <th className="px-3 py-2 text-right font-semibold">Concluídas</th>
           </tr>

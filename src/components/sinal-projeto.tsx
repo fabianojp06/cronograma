@@ -3,6 +3,8 @@ import { ROTULO_SINAL, type Farol, type SinalProjeto as Sinal } from '@/lib/faro
 /**
  * Sinal (farol) do projeto: bolinha + ícone + palavra + desvio. A cor nunca
  * está sozinha: cada estado tem um ícone de forma própria e a palavra escrita.
+ * A palavra e o desvio usam a cor de texto normal (4,5:1); só a bolinha e o
+ * ícone, que são gráficos (3:1), levam a cor do estado.
  */
 
 const COR: Record<Sinal, string> = {
@@ -43,13 +45,13 @@ export function SinalProjeto({ farol }: { farol: Farol }) {
   const preenchido = sinal === 'ATRASADO' || sinal === 'ATENCAO'
   return (
     <span
-      className={`inline-flex items-center gap-1.5 font-medium ${COR[sinal]}`}
+      className="inline-flex items-center gap-1.5 font-medium text-text"
       title={farol.motivo}
     >
       <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${FUNDO[sinal]}`} />
       <svg
         aria-hidden="true"
-        className="size-4 shrink-0"
+        className={`size-4 shrink-0 ${COR[sinal]}`}
         fill={preenchido ? 'currentColor' : 'none'}
         stroke="currentColor"
         strokeLinecap="round"
