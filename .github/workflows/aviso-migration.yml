@@ -1,0 +1,40 @@
+# Avisa, na promoção para a `main`, quando o PR traz migration nova.
+#
+# A produção aplica a migration no build, ANTES do código entrar no ar, direto no
+# banco real. Por isso uma migration que chega à `main` merece um olhar a mais de
+# quem aprova. O aviso não bloqueia o PR: aparece como anotação e no resumo do job.
+name: Aviso de migration
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  migration:
+    name: Migrations novas neste PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Listar migrations novas
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          novas=$(git diff --name-only --diff-filter=A "$BASE" "$HEAD" -- 'prisma/migrations/*/migration.sql')
+          if [ -z "$novas" ]; then
+            echo "Nenhuma migration nova neste PR." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Atenção: este PR traz migration nova"
+            echo
+            echo "A produção aplica a migration no build, antes do código no ar, no banco real. Confirme que ela é aditiva e que já rodou na homologação."
+            echo
+            echo "$novas" | sed 's/^/- `/; s/$/`/'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::warning title=Migration nova na promoção::Este PR traz migration. A produção a aplica no build, no banco real. Confirme que é aditiva e que já rodou na homologação."
