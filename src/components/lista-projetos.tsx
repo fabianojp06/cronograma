@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { SinalProjeto } from '@/components/sinal-projeto'
+import type { Farol } from '@/lib/farol-projeto'
 import {
   ROTULO_STATUS_AGREGADO,
   type ResumoProjeto,
@@ -15,6 +17,7 @@ export type LinhaProjeto = {
   responsavel: string | null
   prioridade: number | null
   resumo: ResumoProjeto
+  sinal: Farol
 }
 
 /** Traço lateral colorido por status — o painel não usa card com sombra. */
@@ -84,6 +87,12 @@ export function ListaProjetos({
             <th className="px-3 py-2 font-semibold">Categoria</th>
             <th className="px-3 py-2 font-semibold">Responsável</th>
             <th className="px-3 py-2 font-semibold">Status</th>
+            <th className="px-3 py-2 font-semibold">
+              Sinal
+              <span className="block text-xs font-normal text-textFaint">
+                Status: ações atrasadas. Sinal: avanço realizado contra o previsto.
+              </span>
+            </th>
             <th className="px-3 py-2 font-semibold">Progresso</th>
             <th className="px-3 py-2 text-right font-semibold">Concluídas</th>
           </tr>
@@ -125,6 +134,9 @@ export function ListaProjetos({
                     {linha.resumo.acoesAtrasadas} em atraso
                   </span>
                 ) : null}
+              </td>
+              <td className="px-3 py-3">
+                <SinalProjeto farol={linha.sinal} />
               </td>
               <td className="px-3 py-3">
                 <BarraProgresso resumo={linha.resumo} />

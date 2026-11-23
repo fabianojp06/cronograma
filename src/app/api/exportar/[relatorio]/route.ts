@@ -12,7 +12,14 @@ import {
 } from '@/lib/exportacao'
 import { gerarXlsx } from '@/lib/exportacao-xlsx'
 import { prisma } from '@/lib/prisma'
-import { filtrarPorBusca, filtrarPorStatus, lerFiltros, whereProjetoAtivo } from '@/lib/projeto-filtros'
+import {
+  filtrarPorBusca,
+  filtrarPorSinal,
+  filtrarPorStatus,
+  lerFiltros,
+  ordenarLinhas,
+  whereProjetoAtivo,
+} from '@/lib/projeto-filtros'
 import { montarLinhas } from '@/lib/projetos-listagem'
 import { registrarFalha } from '@/lib/registrar-erro'
 
@@ -39,11 +46,23 @@ async function montarTabela(
         categoria: true,
         responsavel: true,
         prioridade: true,
-        acoes: { select: { status: true, previstoTermino: true, realizadoTermino: true } },
+        acoes: {
+          select: { status: true, previstoInicio: true, previstoTermino: true, realizadoTermino: true },
+        },
+        riscos: {
+          where: { status: { in: ['ABERTO', 'EM_TRATAMENTO'] } },
+          select: { impacto: true, status: true, prazo: true },
+        },
       },
     })
     return tabelaDeProjetos(
-      filtrarPorBusca(filtrarPorStatus(montarLinhas(projetos, hoje), filtros), filtros),
+      ordenarLinhas(
+        filtrarPorBusca(
+          filtrarPorSinal(filtrarPorStatus(montarLinhas(projetos, hoje), filtros), filtros),
+          filtros,
+        ),
+        filtros,
+      ),
     )
   }
 

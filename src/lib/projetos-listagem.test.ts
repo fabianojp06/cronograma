@@ -16,6 +16,7 @@ function projeto(parcial: Partial<ProjetoComAcoes> = {}): ProjetoComAcoes {
     responsavel: 'Fabiano',
     prioridade: 1,
     acoes: [],
+    riscos: [],
     ...parcial,
   }
 }
@@ -60,5 +61,49 @@ describe('opcoesDistintas', () => {
 
   it('devolve lista vazia quando não há valor útil', () => {
     expect(opcoesDistintas([null, ''])).toEqual([])
+  })
+})
+
+describe('sinal do projeto em montarLinhas', () => {
+  const d = (t: string) => new Date(`${t}T00:00:00.000Z`)
+  // 9 ações no mesmo intervalo (previsto de 40% em HOJE): 4 a 50% e 5 a 25%
+  // dão realizado de ~36% (desvio de -3,9 p.p.). A décima não tem início
+  // previsto (sem peso no avanço) mas vence no passado: o status agregado
+  // do projeto é ATRASADO.
+  const base = { previstoInicio: d('2026-09-14'), previstoTermino: d('2026-09-25'), realizadoTermino: null }
+  const acoes = [
+    ...Array.from({ length: 4 }, () => ({ ...base, status: StatusAcao.EM_CURSO_50 })),
+    ...Array.from({ length: 5 }, () => ({ ...base, status: StatusAcao.EM_CURSO_25 })),
+    { status: StatusAcao.NAO_INICIADO, previstoInicio: null, previstoTermino: PASSADO, realizadoTermino: null },
+  ]
+
+  it('convive com o status agregado: ATENCAO no sinal e ATRASADO no status', () => {
+    const [linha] = montarLinhas([projeto({ acoes })], HOJE)
+    expect(linha.resumo.status).toBe('ATRASADO')
+    expect(linha.sinal.sinal).toBe('ATENCAO')
+    expect(linha.sinal.desvio).toBe(-3.9)
+    expect('riscos' in linha).toBe(false)
+  })
+
+  it('usa os riscos abertos recebidos: risco alto vencido sobe um nível', () => {
+    const [linha] = montarLinhas(
+      [projeto({ acoes, riscos: [{ impacto: 'ALTO', status: 'ABERTO', prazo: PASSADO }] })],
+      HOJE,
+    )
+    expect(linha.sinal.sinal).toBe('ATRASADO')
+    expect(linha.sinal.subiuPorRisco).toBe(true)
+  })
+
+  it('projeto sem ações com datas fica SEM_DADOS', () => {
+    const [linha] = montarLinhas([projeto()], HOJE)
+    expect(linha.sinal.sinal).toBe('SEM_DADOS')
+  })
+
+  it('quem não informa riscos nem início previsto não quebra', () => {
+    const [linha] = montarLinhas(
+      [{ ...projeto(), riscos: undefined, acoes: [{ status: StatusAcao.NAO_INICIADO, previstoTermino: PASSADO, realizadoTermino: null }] }],
+      HOJE,
+    )
+    expect(linha.sinal.sinal).toBe('SEM_DADOS')
   })
 })

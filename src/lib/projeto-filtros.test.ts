@@ -5,9 +5,13 @@ import {
   filtrarPorBusca,
   filtrarPorStatus,
   FILTROS_VAZIOS,
+  filtrosComoParametros,
   lerFiltros,
+  filtrarPorSinal,
+  ordenarLinhas,
   whereProjetoAtivo,
 } from './projeto-filtros'
+import type { SinalProjeto } from './farol-projeto'
 import type { StatusAgregado } from './projeto-resumo'
 
 describe('lerFiltros', () => {
@@ -24,6 +28,8 @@ describe('lerFiltros', () => {
       categoria: 'Rede',
       status: 'ATRASADO',
       busca: null,
+      sinal: null,
+      ordem: null,
     })
   })
 
@@ -64,6 +70,8 @@ describe('whereProjetoAtivo', () => {
         categoria: null,
         status: 'CONCLUIDO',
         busca: 'x',
+        sinal: null,
+        ordem: null,
       }),
     ).toEqual({ ativo: true, equipe: 'STI' })
   })
@@ -114,5 +122,48 @@ describe('busca', () => {
     expect(filtrarPorBusca(linhas, { ...FILTROS_VAZIOS, busca: 'migracao' })).toHaveLength(1)
     expect(filtrarPorBusca(linhas, { ...FILTROS_VAZIOS, busca: 'bruno' })).toHaveLength(1)
     expect(filtrarPorBusca(linhas, FILTROS_VAZIOS)).toHaveLength(2)
+  })
+})
+
+describe('sinal e ordenação', () => {
+  const farol = (sinal: SinalProjeto) => ({ sinal, desvio: null, motivo: '', subiuPorRisco: false })
+  const l = (id: string, sinal: SinalProjeto) => ({ id, sinal: farol(sinal) })
+  const linhas = [
+    l('a', 'SEM_DADOS'),
+    l('b', 'EM_DIA'),
+    l('c', 'ATENCAO'),
+    l('d', 'ATRASADO'),
+    l('e', 'ATENCAO'),
+    l('f', 'ADIANTADO'),
+  ]
+
+  it('lê ?sinal e ?ordem; valor desconhecido vira sem filtro', () => {
+    expect(lerFiltros(new URLSearchParams('sinal=ATENCAO&ordem=sinal'))).toMatchObject({
+      sinal: 'ATENCAO',
+      ordem: 'sinal',
+    })
+    expect(lerFiltros(new URLSearchParams('sinal=ROXO&ordem=x'))).toMatchObject({
+      sinal: null,
+      ordem: null,
+    })
+  })
+
+  it('filtra pelo estado e ignora sem filtro', () => {
+    const f = { ...FILTROS_VAZIOS, sinal: 'ATENCAO' as const }
+    expect(filtrarPorSinal(linhas, f).map((x) => x.id)).toEqual(['c', 'e'])
+    expect(filtrarPorSinal(linhas, FILTROS_VAZIOS)).toBe(linhas)
+    expect(algumFiltroAtivo(f)).toBe(true)
+  })
+
+  it('ordena do pior ao melhor, SEM_DADOS por último, empate pela ordem de entrada', () => {
+    const f = { ...FILTROS_VAZIOS, ordem: 'sinal' as const }
+    expect(ordenarLinhas(linhas, f).map((x) => x.id)).toEqual(['d', 'c', 'e', 'b', 'f', 'a'])
+    expect(ordenarLinhas(linhas, FILTROS_VAZIOS)).toBe(linhas)
+  })
+
+  it('sinal e ordem seguem nos parâmetros de paginação', () => {
+    expect(
+      filtrosComoParametros({ ...FILTROS_VAZIOS, sinal: 'EM_DIA', ordem: 'sinal' }),
+    ).toEqual({ sinal: 'EM_DIA', ordem: 'sinal' })
   })
 })

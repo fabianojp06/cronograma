@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { StatusAcao } from '../generated/prisma/enums'
+import { montarLinhas } from './projetos-listagem'
 import { resumirPainel } from './painel-consolidado'
 import type { ResumoProjeto, StatusAgregado } from './projeto-resumo'
 
@@ -86,5 +88,22 @@ describe('resumirPainel', () => {
 
     expect(painel.projetosAtrasados).toBe(0)
     expect(painel.acoesAtrasadas).toBe(0)
+  })
+})
+
+describe('painel e /projetos partem da mesma montarLinhas', () => {
+  it('o mesmo projeto recebe o mesmo sinal nas duas telas', () => {
+    const hoje = new Date('2026-09-17T00:00:00.000Z')
+    const projeto = {
+      id: 'p', referencia: null, nome: 'P', equipe: null, categoria: null,
+      responsavel: null, prioridade: null, riscos: [],
+      acoes: [{ status: StatusAcao.EM_CURSO_25, previstoInicio: new Date('2026-09-14T00:00:00.000Z'), previstoTermino: new Date('2026-09-25T00:00:00.000Z'), realizadoTermino: null }],
+    }
+    const painel = montarLinhas([projeto], hoje)
+    const lista = montarLinhas([projeto], hoje)
+    expect(painel[0].sinal).toEqual(lista[0].sinal)
+    expect(painel[0].sinal.sinal).toBe('ATRASADO')
+    // O painel soma o resumo; o sinal é por projeto e não entra na soma.
+    expect(resumirPainel(painel).totalProjetos).toBe(1)
   })
 })

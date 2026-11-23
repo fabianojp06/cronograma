@@ -5,20 +5,36 @@
  * teste.
  */
 
+import { sinalDoProjeto, type RiscoParaSinal } from './farol-projeto'
 import { resumirAcoes, type AcaoResumivel } from './projeto-resumo'
 import type { LinhaProjeto } from '@/components/lista-projetos'
 
-export type ProjetoComAcoes = Omit<LinhaProjeto, 'resumo'> & {
-  acoes: AcaoResumivel[]
+export type ProjetoComAcoes = Omit<LinhaProjeto, 'resumo' | 'sinal'> & {
+  /**
+   * `previstoInicio` entra no avanço físico do sinal; quem não o lê (os
+   * Dashboards, que não mostram o sinal) fica com `SEM_DADOS`.
+   */
+  acoes: (AcaoResumivel & { previstoInicio?: Date | null })[]
+  /** Só riscos ABERTOS (ABERTO / EM_TRATAMENTO), com o mínimo de campos. */
+  riscos?: RiscoParaSinal[]
 }
 
 export function montarLinhas(
   projetos: ProjetoComAcoes[],
   hoje: Date,
 ): LinhaProjeto[] {
-  return projetos.map(({ acoes, ...projeto }) => ({
+  return projetos.map(({ acoes, riscos, ...projeto }) => ({
     ...projeto,
     resumo: resumirAcoes(acoes, hoje),
+    sinal: sinalDoProjeto({
+      acoes: acoes.map((a) => ({
+        status: a.status,
+        previstoInicio: a.previstoInicio ?? null,
+        previstoTermino: a.previstoTermino,
+      })),
+      riscos: riscos ?? [],
+      hoje,
+    }),
   }))
 }
 
