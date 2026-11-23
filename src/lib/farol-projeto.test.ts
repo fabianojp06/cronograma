@@ -79,6 +79,18 @@ describe('sinalDoProjeto', () => {
     expect(farol(0, semEfeito).subiuPorRisco).toBe(false)
   })
 
+  it('prazo igual a hoje não sobe', () => {
+    const f = farol(0, [{ impacto: 'ALTO', status: 'ABERTO', prazo: hoje }])
+    expect(f.sinal).toBe('EM_DIA')
+    expect(f.subiuPorRisco).toBe(false)
+  })
+
+  it('desvio negativo minúsculo não vira -0', () => {
+    const f = farol(-0.04)
+    expect(Object.is(f.desvio, -0)).toBe(false)
+    expect(f.motivo).not.toContain('−0')
+  })
+
   it('desvio nunca é -0 e o motivo usa menos de verdade e vírgula', () => {
     expect(Object.is(farol(-0).desvio, -0)).toBe(false)
     expect(farol(-0).motivo).toContain('0 p.p.')
