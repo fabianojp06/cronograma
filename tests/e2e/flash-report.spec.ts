@@ -139,6 +139,41 @@ test('navega para a semana anterior e volta', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Semana seguinte/ })).toBeVisible()
 })
 
+// As ações do cenário foram criadas agora, mas o projeto começa 3 semanas antes: é o caso de um
+// projeto vindo da planilha. A semana de hoje é confiável; só as anteriores ao registro não são.
+const AVISO_REGISTRO = /anterior ao início do registro/
+
+test('projeto importado: a semana atual não traz aviso de registro, uma semana antiga traz', async ({ page }) => {
+  await page.goto(`/projetos/${projetoId}/flash-report`)
+  await expect(page.locator('[data-selo-semana]')).toBeVisible()
+  await expect(page.getByText(AVISO_REGISTRO)).toHaveCount(0)
+
+  // Volta até a primeira semana da janela do projeto, esperando cada navegação terminar
+  // pela posição "S03 / 08" do cabeçalho (nunca pela existência do link, que corre com a página).
+  const posicao = async () => {
+    const m = /S(\d{2}) \/ (\d{2})/.exec(await page.locator('body').innerText())
+    return Number(m?.[1] ?? 0)
+  }
+  let atual = await posicao()
+  expect(atual).toBeGreaterThan(1)
+  while (atual > 1) {
+    await page.getByRole('link', { name: /Semana anterior/ }).click()
+    atual -= 1
+    await expect(page.getByText(new RegExp(`S${String(atual).padStart(2, '0')} / \\d{2}`)).first()).toBeVisible()
+  }
+  await expect(page.getByText(AVISO_REGISTRO)).toBeVisible()
+})
+
+test('semana anterior ao registro mantém o previsto da curva (o plano), sem zerar', async ({ page }) => {
+  await page.goto(`/projetos/${projetoId}/flash-report`)
+  const previsto = page.getByTestId('curva-avanco').getByRole('row', { name: /^Previsto/ }).getByRole('cell')
+  // A 2ª semana da janela é anterior ao registro e já tem ação planejada em andamento.
+  await expect(previsto.nth(1)).not.toHaveText('0%')
+  const realizado = page.getByTestId('curva-avanco').getByRole('row', { name: /^Realizado/ }).getByRole('cell')
+  // Do realizado dessas semanas o sistema não sabe nada: sem dado, não zero.
+  await expect(realizado.nth(1)).toHaveText('—')
+})
+
 test('projeto sem ações mostra o aviso e não dá erro', async ({ page }) => {
   const resposta = await page.goto(`/projetos/${projetoVazioId}/flash-report`)
   expect(resposta?.status()).toBe(200)

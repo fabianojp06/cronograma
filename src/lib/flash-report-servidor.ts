@@ -14,7 +14,7 @@ import {
   type FlashReport,
 } from './flash-report'
 import { inicioDeHojeUTC } from './data-hoje'
-import { corteDaFoto, fotoDoProjeto } from './foto-em-data'
+import { corteDaFoto, fotoDoProjeto, semanaAnteriorAoRegistro } from './foto-em-data'
 import { prisma } from './prisma'
 import { acaoEstaAtrasada } from './projeto-resumo'
 import {
@@ -143,26 +143,28 @@ export async function carregarFlashReport(
       const fim = periodoDaSemana(s).fim
       if (fim.getTime() < hoje.getTime()) {
         const foto = fotoDoProjeto(comHistorico, corteDaFoto(fim.toISOString().slice(0, 10)), inicioDoRegistro)
-        acoesNoFimDeCada.set(
-          chaveSemana(s),
-          foto.acoes.map((f) => ({
-            id: f.id,
-            status: f.status,
-            previstoInicio: f.previstoInicio,
-            previstoTermino: f.previstoTermino,
-          })),
-        )
+        // Semana anterior ao registro: o sistema não viu nada dela, e uma foto vazia faria o
+        // previsto virar 0% na curva. Sem foto, o relatório usa o plano atual para o previsto
+        // e deixa o realizado sem dado.
+        if (!foto.anteriorAoRegistro) {
+          acoesNoFimDeCada.set(
+            chaveSemana(s),
+            foto.acoes.map((f) => ({
+              id: f.id,
+              status: f.status,
+              previstoInicio: f.previstoInicio,
+              previstoTermino: f.previstoTermino,
+            })),
+          )
+        }
       }
       s = semanaSeguinte(s)
     }
-    if (
-      inicioDoRegistro !== null &&
-      corteDaFoto(periodoDaSemana(janela.primeira).fim.toISOString().slice(0, 10)).getTime() <=
-        inicioDoRegistro.getTime() &&
-      distanciaEmSemanas(janela.primeira, semanaAtual) > 0
-    ) {
+    // O aviso é da semana que se está olhando: só quando ela termina antes do início do
+    // registro. Semana atual e posteriores ao registro são confiáveis, mesmo em projeto importado.
+    if (semanaAnteriorAoRegistro(periodoDaSemana(semana).fim, inicioDoRegistro)) {
       avisosExtras.push(
-        'O projeto começa antes do início do registro no sistema: as semanas antigas vieram da planilha e não são confiáveis.',
+        'Esta semana é anterior ao início do registro no sistema: o realizado dela não é confiável.',
       )
     }
   }

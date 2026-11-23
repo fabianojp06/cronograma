@@ -1373,9 +1373,18 @@ telas em `src/components/flash-report/`.
   avanço"). Semana passada sem foto é `DECORRIDO`; depois da escolhida, `PLANEJADO`.
   Verde sempre significa realizado, nunca "o tempo passou".
 - **Ação sem datas previstas pesa 0**, fica fora das médias e é contada num aviso do relatório.
-- **Semanas passadas dependem do histórico** (`foto-em-data`). Antes do primeiro registro
-  do sistema a foto não é confiável e a tela avisa. `acoesNoFimDeCada` precisa do `id` da
-  ação para casar a foto com a macroetapa; sem ele o aviso cai para "estado atual".
+- **Semanas passadas dependem do histórico** (`foto-em-data`). `acoesNoFimDeCada` precisa do
+  `id` da ação para casar a foto com a macroetapa; sem ele o aviso cai para "estado atual".
+- **O aviso de "anterior ao registro" é da SEMANA ESCOLHIDA**, não do projeto
+  (`semanaAnteriorAoRegistro`, a mesma regra de `anteriorAoRegistro` da foto). Projeto vindo da
+  planilha tem ações com `createdAt` = dia da importação: a semana de hoje e as seguintes à
+  importação são confiáveis e não avisam; só semanas que terminam antes do primeiro registro
+  do sistema avisam. Para essas semanas NÃO se grava foto (uma foto vazia zerava o previsto da
+  curva): o previsto vem do plano atual e o realizado fica sem dado ("—"). Não dá para
+  recuperar o passado anterior ao sistema (o percentual de ação em curso não existe em lugar
+  nenhum) — decisão do negócio: só vale de agora em diante.
+- **Reimportar a planilha de um projeto já em uso** não gera histórico e corrompe a
+  reconstrução das semanas passadas dele, sem aviso: evitar.
 - **`umaCasa` nunca devolve −0** (aparecia "−0,0 p.p."); teste de borda cobre.
 - O cabeçalho mostra `Projeto.responsavel`/líder, cliente e objetivo (`Projeto.cliente`,
   `Projeto.objetivo`, opcionais).
