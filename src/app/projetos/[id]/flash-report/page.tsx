@@ -16,11 +16,31 @@ import { GanttMacro } from '@/components/flash-report/gantt-macro'
 import { carregarFlashReport } from '@/lib/flash-report-servidor'
 import { chaveSemana, rotuloSemana } from '@/lib/semana-ctcea'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
+import { formatarDataBR } from '@/lib/formatacao'
 
 export const metadata = { title: 'Flash Report — Cronograma CTCEA' }
 
 /** A4 paisagem, numa folha só quando der; o resto (cabeçalho global, controles) some por `print:hidden`. */
-const ESTILO_IMPRESSAO = '@page { size: A4 landscape; margin: 8mm } @media print { .flash-impressao { zoom: 0.7 } }'
+const ESTILO_IMPRESSAO = `
+@page { size: A4 landscape; margin: 8mm }
+@media print {
+  .flash-impressao { zoom: 0.6; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+  .flash-impressao section, .flash-impressao dl > div { break-inside: avoid }
+  .flash-impressao .mt-8 { margin-top: 0.875rem }
+  .flash-impressao .mt-6 { margin-top: 0.625rem }
+  .flash-impressao .gap-8 { gap: 0.875rem 1.5rem }
+  .flash-impressao h2 { break-after: avoid }
+  .flash-impressao [data-testid="gantt-macro"], .flash-impressao [data-testid="curva-avanco"] > div { overflow: visible }
+  .flash-impressao [data-testid="gantt-macro"] [role="table"] { min-width: 0 !important }
+  .flash-impressao [data-testid="gantt-macro"] [role="row"] {
+    grid-template-columns: minmax(9rem, 1.4fr) 4.25rem 4.5rem 5rem repeat(var(--semanas), minmax(0, 1fr)) !important
+  }
+  .flash-impressao [data-testid="gantt-macro"] [role="rowheader"] { white-space: normal; overflow: visible; text-overflow: clip }
+  .flash-impressao svg[role="img"], .flash-impressao table { min-width: 0 !important }
+}`
+
+/** Acima disto a grade semanal não cabe ao lado da curva: na impressão, uma embaixo da outra. */
+const SEMANAS_LADO_A_LADO = 20
 
 export default async function FlashReportPage({
   params,
@@ -74,7 +94,7 @@ export default async function FlashReportPage({
       <AvisosFlash avisos={relatorio.avisos} />
 
       {relatorio.totalSemanas > 0 ? (
-        <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] print:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className={`mt-6 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] ${relatorio.totalSemanas > SEMANAS_LADO_A_LADO ? 'print:grid-cols-[minmax(0,1fr)]' : 'print:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]'}`}>
           <GanttMacro projetoId={cabecalho.id} relatorio={relatorio} temMacroetapas={temMacroetapas} />
           <CurvaAvanco curva={relatorio.curva} escolhida={relatorio.semanaDoProjeto} />
         </div>
@@ -90,6 +110,10 @@ export default async function FlashReportPage({
       <div className="mt-8">
         <PedidoDeAjuda pedidos={relatorio.pedidosDeAjuda} />
       </div>
+
+      <p className="mt-6 hidden border-t border-border pt-2 text-xs text-textMuted print:block" data-testid="rodape-impressao">
+        Flash Report · {cabecalho.nome} · {rotuloSemana(semana)} · emitido em {formatarDataBR(hoje)} · Sistema Cronograma CTCEA
+      </p>
 
       <details className="mt-8 text-sm print:hidden">
         <summary className="cursor-pointer font-medium text-accent">Como ler este relatório</summary>

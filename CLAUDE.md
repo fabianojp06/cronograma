@@ -1390,6 +1390,7 @@ telas em `src/components/flash-report/`.
   distintos por `chaveDoNome`, ordem de aparição, descrição das fases DMAIC) e vincula as ações, na mesma
   transação do projeto. O modelo inicial "Projeto de melhoria de processo (DMAIC)" exige rodar
   `npm run carregar:modelos -- --gravar` em cada banco.
+- **Impressão** (`ESTILO_IMPRESSAO` em `flash-report/page.tsx`): A4 paisagem, `zoom: 0.6` (0,62 ainda cabe numa folha no caso de teste, 0,64 não; a folga é de propósito), cores preservadas (`print-color-adjust`), blocos sem quebra no meio, Gantt macro sem rolagem (colunas semanais em `1fr` por `--semanas`) e empilhado com a curva acima de 20 semanas, descrições das macroetapas em lista (o `<details>` não imprime fechado) e rodapé com projeto, semana e emissão. O e2e `impressão` confere que nada fica cortado; `PDF_SAIDA=arquivo.pdf` grava PDF e captura para olhar.
 - **Ação sem datas previstas pesa 0**, fica fora das médias e é contada num aviso do relatório.
 - **Semanas passadas dependem do histórico** (`foto-em-data`). `acoesNoFimDeCada` precisa do
   `id` da ação para casar a foto com a macroetapa; sem ele o aviso cai para "estado atual".
