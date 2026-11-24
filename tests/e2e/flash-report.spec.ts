@@ -150,6 +150,29 @@ test('modelo DMAIC: botão cria as fases, e o relatório mostra fase atual e des
   await expect(page.getByTestId('descricoes-macro')).toContainText('Mede como o processo está hoje')
 })
 
+test('Gantt do projeto: período por mês, trimestre, semestre e ano', async ({ page }) => {
+  await page.goto(`/projetos/${projetoId}`)
+  const seletor = page.getByLabel('Exibir por')
+  await expect(seletor.locator('option')).toHaveText(['Mês', 'Trimestre', 'Semestre', 'Ano'])
+  const rotulo = page.locator('section span.font-display').first()
+  const ano = String(new Date().getUTCFullYear())
+
+  await seletor.selectOption({ label: 'Ano' })
+  await expect(rotulo).toHaveText(new RegExp(`^(${ano}|${Number(ano) - 1}|${Number(ano) + 1})$`))
+  await seletor.selectOption({ label: 'Semestre' })
+  await expect(rotulo).toHaveText(/^[12]º sem\/\d{2}$/)
+  await seletor.selectOption({ label: 'Trimestre' })
+  await expect(rotulo).toHaveText(/^[1-4]º tri\/\d{2}$/)
+  await seletor.selectOption({ label: 'Mês' })
+  await expect(rotulo).toHaveText(/^[a-z]{3}\/\d{2}$/)
+
+  // O ano é a grade mais larga: rola dentro do quadro, nunca a página inteira.
+  await page.setViewportSize({ width: 390, height: 900 })
+  await seletor.selectOption({ label: 'Ano' })
+  const { scroll, janela } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, janela: window.innerWidth }))
+  expect(scroll).toBeLessThanOrEqual(janela)
+})
+
 test('semana inválida abre a semana corrente', async ({ page }) => {
   const resposta = await page.goto(`/projetos/${projetoId}/flash-report?semana=2026-99`)
   expect(resposta?.status()).toBe(200)
