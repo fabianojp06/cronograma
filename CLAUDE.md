@@ -1169,6 +1169,7 @@ usam a mesma conta, em `gantt-geometria.ts` (puro, com teste).
 - **Losango de risco**: prazo de risco/bloqueio ABERTO com ação afetada; laranja e
   cheio se vencido, maior se impacto alto. Risco sem ação ou sem prazo não aparece
   (fica na seção de riscos). Na foto em uma data não há losangos (risco é de hoje).
+- **Período por janela** (`gantt-periodo.ts`, puro): o seletor "Exibir por" tem Mês, Trimestre (padrão), Semestre e Ano, janelas de CALENDÁRIO ("set/26", "3º tri/26", "2º sem/26", "2026"). Trocar de granularidade reabre a janela que contém o início da atual. A grade é sempre semanal: Semestre (~26 colunas) e Ano (~52) rolam de lado dentro do quadro, nunca a página.
 - `faixaDaBarra`/`colunaDeHoje` (em semanas) seguem em `gantt.ts` mas o Gantt não os usa mais.
 
 ## Tela da ação em duas colunas (`AbasAcao`)
