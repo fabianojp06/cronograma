@@ -16,6 +16,7 @@ import { GanttMacro } from '@/components/flash-report/gantt-macro'
 import { carregarFlashReport } from '@/lib/flash-report-servidor'
 import { chaveSemana, rotuloSemana } from '@/lib/semana-ctcea'
 import { inicioDeHojeUTC } from '@/lib/data-hoje'
+import { SEMANAS_LADO_A_LADO, zoomDeImpressao } from '@/lib/flash-impressao'
 import { formatarDataBR } from '@/lib/formatacao'
 
 export const metadata = { title: 'Flash Report — Cronograma CTCEA' }
@@ -24,7 +25,7 @@ export const metadata = { title: 'Flash Report — Cronograma CTCEA' }
 const ESTILO_IMPRESSAO = `
 @page { size: A4 landscape; margin: 8mm }
 @media print {
-  .flash-impressao { zoom: 0.6; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+  .flash-impressao { zoom: var(--zoom-impressao, 0.6); -webkit-print-color-adjust: exact; print-color-adjust: exact }
   .flash-impressao section, .flash-impressao dl > div { break-inside: avoid }
   .flash-impressao .mt-8 { margin-top: 0.875rem }
   .flash-impressao .mt-6 { margin-top: 0.625rem }
@@ -38,9 +39,6 @@ const ESTILO_IMPRESSAO = `
   .flash-impressao [data-testid="gantt-macro"] [role="rowheader"] { white-space: normal; overflow: visible; text-overflow: clip }
   .flash-impressao svg[role="img"], .flash-impressao table { min-width: 0 !important }
 }`
-
-/** Acima disto a grade semanal não cabe ao lado da curva: na impressão, uma embaixo da outra. */
-const SEMANAS_LADO_A_LADO = 20
 
 export default async function FlashReportPage({
   params,
@@ -57,9 +55,23 @@ export default async function FlashReportPage({
   const hoje = inicioDeHojeUTC(agora)
   const rota = `/projetos/${cabecalho.id}/flash-report`
   const link = 'text-accent hover:underline'
+  const zoom = zoomDeImpressao({
+    totalSemanas: relatorio.totalSemanas,
+    macroetapas: relatorio.macroetapas.length,
+    realizadas: relatorio.realizadas.length,
+    proximas: relatorio.proximas.length,
+    riscos: relatorio.riscos.length,
+    alertas: relatorio.alertas.length,
+    pedidosDeAjuda: relatorio.pedidosDeAjuda.length,
+    avisos: relatorio.avisos.length,
+  })
 
   return (
-    <main className="flash-impressao mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+    <main
+      className="flash-impressao mx-auto w-full max-w-7xl px-4 py-8 sm:px-6"
+      data-zoom-impressao={zoom}
+      style={{ ['--zoom-impressao' as string]: zoom }}
+    >
       <style>{ESTILO_IMPRESSAO}</style>
 
       <nav aria-label="Navegação do relatório" className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm print:hidden">

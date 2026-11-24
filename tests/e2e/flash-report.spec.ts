@@ -269,6 +269,9 @@ test('impressão: sem cortes laterais, controles escondidos, rodapé e descriç�
     janela: window.innerWidth,
   }))
   expect(scroll).toBeLessThanOrEqual(janela)
+  // O relatório de teste (3 macroetapas, poucos riscos) tem de caber numa folha só.
+  const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true })
+  expect(/\/Count (\d+)/.exec(pdf.toString('latin1'))?.[1]).toBe('1')
   if (process.env.PDF_SAIDA) await page.screenshot({ path: process.env.PDF_SAIDA + '.png', fullPage: true })
   if (process.env.PDF_SAIDA) await page.pdf({ path: process.env.PDF_SAIDA, preferCSSPageSize: true, printBackground: true })
 })
