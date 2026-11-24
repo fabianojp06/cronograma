@@ -25,7 +25,7 @@ export default async function UsarModeloPage({ params }: { params: Promise<{ id:
       setorEnvolvido: true,
       acoes: {
         orderBy: { ordem: 'asc' },
-        select: { ordem: true, descricao: true, inicioDiasUteis: true, duracaoDiasUteis: true },
+        select: { ordem: true, descricao: true, inicioDiasUteis: true, duracaoDiasUteis: true, macroetapa: true },
       },
     },
   })

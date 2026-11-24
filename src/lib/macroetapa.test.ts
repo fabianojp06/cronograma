@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { MAXIMO_MACROETAPAS, editorAberto, podeCriarMais, validarNomeMacroetapa } from './macroetapa'
+import { MAXIMO_MACROETAPAS, editorAberto, podeCriarMais, validarDescricaoMacroetapa, validarNomeMacroetapa } from './macroetapa'
 
 const existentes = [
   { id: 'a', nome: 'Homologação' },
@@ -51,5 +51,24 @@ describe('editorAberto', () => {
     const salvo = { ok: true }
     expect(editorAberto(salvo, salvo)).toBe(true)
     expect(editorAberto(salvo, { ok: true })).toBe(false)
+  })
+})
+
+describe('validarDescricaoMacroetapa', () => {
+  it('campo ausente (null) não muda nada', () => {
+    expect(validarDescricaoMacroetapa(null)).toEqual({ ok: true, descricao: undefined })
+  })
+  it('vazio ou só espaços remove (null)', () => {
+    expect(validarDescricaoMacroetapa('')).toEqual({ ok: true, descricao: null })
+    expect(validarDescricaoMacroetapa('  \n ')).toEqual({ ok: true, descricao: null })
+  })
+  it('apara e preserva quebras de linha internas', () => {
+    expect(validarDescricaoMacroetapa('  linha 1\nlinha 2 ')).toEqual({ ok: true, descricao: 'linha 1\nlinha 2' })
+  })
+  it('aceita 500 caracteres e recusa 501', () => {
+    expect(validarDescricaoMacroetapa('x'.repeat(500)).ok).toBe(true)
+    const r = validarDescricaoMacroetapa('x'.repeat(501))
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.erro).toMatch(/500/)
   })
 })

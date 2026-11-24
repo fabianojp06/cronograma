@@ -125,6 +125,31 @@ test('mostra cabeçalho, macroetapas, riscos, alertas e pedido de ajuda', async 
   await expect(page.getByTestId('curva-avanco')).toBeVisible()
 })
 
+test('modelo DMAIC: botão cria as fases, e o relatório mostra fase atual e descrição', async ({ page }) => {
+  await page.goto(`/projetos/${projetoVazioId}`)
+  await page.getByRole('button', { name: 'Usar modelo DMAIC' }).click()
+  await expect(page.getByText('Fases do DMAIC criadas.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Usar modelo DMAIC' })).toHaveCount(0)
+  await expect(page.getByText('Formaliza o problema, o escopo').first()).toBeVisible()
+
+  // Projeto do cenário: vincula as ações às fases pelo banco e confere o relatório.
+  await page.goto(`/projetos/${projetoId}`)
+  await page.getByRole('button', { name: 'Usar modelo DMAIC' }).click()
+  await expect(page.getByText(/criadas|criada\./).first()).toBeVisible()
+  const fases = await consultar<{ id: string; nome: string }>(`SELECT "id","nome" FROM "Macroetapa" WHERE "projetoId"=$1 AND "nome" LIKE '_ – %'`, [projetoId])
+  const idDe = (letra: string) => fases.find((f) => f.nome.startsWith(letra))!.id
+  await consultar(`UPDATE "Acao" SET "macroetapaId"=$1 WHERE "projetoId"=$2 AND "numero" IN (1,2)`, [idDe('D'), projetoId])
+  await consultar(`UPDATE "Acao" SET "macroetapaId"=$1 WHERE "projetoId"=$2 AND "numero" IN (3,4)`, [idDe('M'), projetoId])
+  await consultar(`UPDATE "Acao" SET "macroetapaId"=$1 WHERE "projetoId"=$2 AND "numero" = 5`, [idDe('I'), projetoId])
+
+  await page.goto(`/projetos/${projetoId}/flash-report`)
+  await expect(page.getByTestId('fase-atual')).toContainText('M – Medir')
+  const gantt = page.getByTestId('gantt-macro')
+  await expect(gantt.getByRole('row').filter({ hasText: 'I – Melhorar' })).toContainText(/\d+,\d%/)
+  await page.getByText('O que é cada macroetapa').click()
+  await expect(page.getByTestId('descricoes-macro')).toContainText('Mede como o processo está hoje')
+})
+
 test('semana inválida abre a semana corrente', async ({ page }) => {
   const resposta = await page.goto(`/projetos/${projetoId}/flash-report?semana=2026-99`)
   expect(resposta?.status()).toBe(200)

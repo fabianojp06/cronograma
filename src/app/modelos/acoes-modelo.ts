@@ -14,12 +14,14 @@ import {
   lerClassificacaoDoModelo,
   lerDadosDoModelo,
   lerItensDoFormulario,
+  macroetapasDoModelo,
   podeAlterarModelo,
   podeExcluirModelo,
   type ClassificacaoModelo,
   type ErroLinhaModelo,
   type ItemDoModelo,
 } from '@/lib/modelo-projeto'
+import { chaveDoNome } from '@/lib/colaborador-validacao'
 import { lerIdProjeto } from '@/lib/projeto-edicao'
 import { validarDadosProjeto, type ErrosProjeto } from '@/lib/projeto-validacao'
 import { prisma } from '@/lib/prisma'
@@ -53,7 +55,10 @@ export async function salvarComoModelo(
         setorEnvolvido: true,
         acoes: {
           orderBy: { numero: 'asc' },
-          select: { numero: true, descricao: true, previstoInicio: true, previstoTermino: true },
+          select: {
+            numero: true, descricao: true, previstoInicio: true, previstoTermino: true,
+            macroetapa: { select: { nome: true } },
+          },
         },
       },
     })
@@ -71,7 +76,7 @@ export async function salvarComoModelo(
     })
     if (existente) return { erro: 'Já existe um modelo com esse nome. Escolha outro.' }
 
-    const itens = construirItensDoModelo(projeto.acoes)
+    const itens = construirItensDoModelo(projeto.acoes.map((a) => ({ ...a, macroetapa: a.macroetapa?.nome ?? null })))
     const modelo = await prisma.modeloProjeto.create({
       data: {
         nome: dados.nome,
@@ -127,21 +132,33 @@ export async function criarProjetoDeModelo(
       select: {
         acoes: {
           orderBy: { ordem: 'asc' },
-          select: { ordem: true, descricao: true, inicioDiasUteis: true, duracaoDiasUteis: true },
+          select: { ordem: true, descricao: true, inicioDiasUteis: true, duracaoDiasUteis: true, macroetapa: true },
         },
       },
     })
     if (!modelo) return { erroGeral: 'Modelo não encontrado. Ele pode ter sido excluído.' }
 
     const acoes = instanciarModelo(modelo.acoes, inicio)
-    const projeto = await prisma.projeto.create({
-      data: {
-        ...validacao.dados,
-        acoes: { create: acoes },
-      },
-      select: { id: true },
+    const macros = macroetapasDoModelo(acoes)
+    // Projeto, macroetapas e ações nascem juntos: ou tudo, ou nada.
+    projetoId = await prisma.$transaction(async (tx) => {
+      const projeto = await tx.projeto.create({
+        data: {
+          ...validacao.dados,
+          macroetapas: { create: macros.map((m, i) => ({ nome: m.nome, descricao: m.descricao, ordem: i + 1 })) },
+        },
+        select: { id: true, macroetapas: { select: { id: true, nome: true } } },
+      })
+      const idPorChave = new Map(projeto.macroetapas.map((m) => [chaveDoNome(m.nome), m.id]))
+      await tx.acao.createMany({
+        data: acoes.map(({ macroetapa, ...resto }) => ({
+          ...resto,
+          projetoId: projeto.id,
+          macroetapaId: macroetapa ? (idPorChave.get(chaveDoNome(macroetapa)) ?? null) : null,
+        })),
+      })
+      return projeto.id
     })
-    projetoId = projeto.id
   } catch (erro) {
     await registrarFalha('Falha ao criar projeto a partir do modelo', erro)
     return { erroGeral: 'Não foi possível criar o projeto. Nada foi salvo. Tente novamente.' }

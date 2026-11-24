@@ -8,6 +8,7 @@ import { chaveDoNome } from '@/lib/colaborador-validacao'
 
 export const MAXIMO_MACROETAPAS = 12
 export const TAMANHO_NOME_MACROETAPA = 80
+export const TAMANHO_DESCRICAO_MACROETAPA = 500
 
 export type ResultadoNomeMacroetapa = { ok: true; nome: string } | { ok: false; erro: string }
 
@@ -30,6 +31,24 @@ export function validarNomeMacroetapa(
     return { ok: false, erro: 'Já existe uma macroetapa com esse nome neste projeto.' }
   }
   return { ok: true, nome: aparado }
+}
+
+export type ResultadoDescricaoMacroetapa =
+  | { ok: true; descricao: string | null | undefined }
+  | { ok: false; erro: string }
+
+/**
+ * `null` = o formulário não trouxe o campo (aba antiga): não mexe (`undefined`).
+ * Vazio remove (`null`); texto é aparado e mantém as quebras de linha.
+ */
+export function validarDescricaoMacroetapa(valor: string | null): ResultadoDescricaoMacroetapa {
+  if (valor === null) return { ok: true, descricao: undefined }
+  const aparado = valor.trim()
+  if (aparado === '') return { ok: true, descricao: null }
+  if (aparado.length > TAMANHO_DESCRICAO_MACROETAPA) {
+    return { ok: false, erro: `A descrição pode ter no máximo ${TAMANHO_DESCRICAO_MACROETAPA} caracteres.` }
+  }
+  return { ok: true, descricao: aparado }
 }
 
 /**

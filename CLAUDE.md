@@ -1375,6 +1375,20 @@ telas em `src/components/flash-report/`.
   avanço (realizado > 0); senão `DECORRIDO` (contorno neutro, texto "Decorrido, sem
   avanço"). Semana passada sem foto é `DECORRIDO`; depois da escolhida, `PLANEJADO`.
   Verde sempre significa realizado, nunca "o tempo passou".
+- **Modelo DMAIC é OPCIONAL** (`dmaic.ts`, puro). `FASES_DMAIC` (D – Definir, M – Medir, A – Analisar,
+  I – Melhorar, C – Controlar) tem a descrição de cada fase, resumida dos artigos da Nomus e da Sults.
+  O botão "Usar modelo DMAIC" (`aplicarModeloDmaic`, mesma trava advisory) cria só as fases que faltam, ao fim
+  da lista; se não couberem todas nas 12 vagas, não cria nenhuma. **A fase é reconhecida pelo NOME**
+  (`chaveDoNome`): renomear para outro texto tira a macroetapa do DMAIC. `Macroetapa.descricao` (até 500) é
+  opcional, aparece na tela do projeto, na dica da linha do Gantt macro e em "O que é cada macroetapa".
+  `faseAtual` = primeira fase, na ordem D-M-A-I-C, com ações e realizado < 100 (só aparece com fases DMAIC).
+  Alerta `FASE_FORA_DE_ORDEM`: fase posterior com avanço enquanto uma anterior COM AÇÕES está em 0% (parcial
+  não alerta: sobreposição é normal). Marco de aprovação por fase (tollgate) ficou de fora de propósito.
+- **Modelos de projeto levam a macroetapa** (`ModeloAcao.macroetapa`, NOME em texto): "salvar como modelo" a
+  copia, o editor tem o campo por ação (sugere as fases DMAIC), e "usar o modelo" cria as macroetapas (nomes
+  distintos por `chaveDoNome`, ordem de aparição, descrição das fases DMAIC) e vincula as ações, na mesma
+  transação do projeto. O modelo inicial "Projeto de melhoria de processo (DMAIC)" exige rodar
+  `npm run carregar:modelos -- --gravar` em cada banco.
 - **Ação sem datas previstas pesa 0**, fica fora das médias e é contada num aviso do relatório.
 - **Semanas passadas dependem do histórico** (`foto-em-data`). `acoesNoFimDeCada` precisa do
   `id` da ação para casar a foto com a macroetapa; sem ele o aviso cai para "estado atual".

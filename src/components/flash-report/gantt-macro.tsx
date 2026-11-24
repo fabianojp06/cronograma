@@ -91,7 +91,7 @@ export function GanttMacro({
             </div>
             {macroetapas.map((m) => (
               <div className="grid items-center border-b border-borderSoft text-sm" key={m.id} role="row" style={{ gridTemplateColumns: colunas }}>
-                <span className="truncate py-2 pr-2 font-medium" role="rowheader" title={m.nome}>{m.nome}</span>
+                <span className="truncate py-2 pr-2 font-medium" role="rowheader" title={m.descricao ? `${m.nome}: ${m.descricao}` : m.nome}>{m.nome}</span>
                 <span className="pr-2 text-right tabular-nums text-textMuted" role="cell">{m.avanco ? percentualEscrito(m.avanco.previsto) : '—'}</span>
                 <span className="pr-2 text-right tabular-nums" role="cell">{m.avanco ? percentualEscrito(m.avanco.realizado) : '—'}</span>
                 <span className="pr-3 text-right tabular-nums whitespace-nowrap" role="cell">{m.avanco ? desvioEscritoFlash(m.avanco.desvio) : '—'}</span>
@@ -122,6 +122,19 @@ export function GanttMacro({
         <span><Amostra tipo="PLANEJADO" /> Planejado (semana futura)</span>
         <span className="text-accent">Coluna em destaque: semana escolhida</span>
       </p>
+      {macroetapas.some((m) => m.descricao) ? (
+        <details className="mt-2 text-sm" data-testid="descricoes-macro">
+          <summary className="cursor-pointer text-textMuted hover:text-accent">O que é cada macroetapa</summary>
+          <dl className="mt-2 space-y-2">
+            {macroetapas.filter((m) => m.descricao).map((m) => (
+              <div className="border-l-2 border-border pl-3" key={m.id}>
+                <dt className="font-medium">{m.nome}</dt>
+                <dd className="text-textMuted">{m.descricao}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      ) : null}
       {!temMacroetapas ? (
         <p className="mt-2 text-sm text-textMuted print:hidden">
           Este projeto não tem macroetapas.{' '}

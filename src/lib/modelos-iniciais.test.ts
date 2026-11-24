@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { LIMITE_ACOES_MODELO, instanciarModelo } from './modelo-projeto'
+import { FASES_DMAIC } from './dmaic'
+import { LIMITE_ACOES_MODELO, instanciarModelo, macroetapasDoModelo } from './modelo-projeto'
 import { ehDiaUtil } from './dias-uteis'
 import { MODELOS_INICIAIS, diasUteisDoModelo } from './modelos-iniciais'
 
 describe('modelos iniciais', () => {
-  it('são os quatro aprovados, com nomes únicos', () => {
-    expect(MODELOS_INICIAIS).toHaveLength(4)
+  it('são os cinco modelos iniciais, com nomes únicos', () => {
+    expect(MODELOS_INICIAIS).toHaveLength(5)
     const nomes = MODELOS_INICIAIS.map((m) => m.nome.toLowerCase())
-    expect(new Set(nomes).size).toBe(4)
+    expect(new Set(nomes).size).toBe(5)
     for (const m of MODELOS_INICIAIS) {
       expect(m.nome.length).toBeLessThanOrEqual(120)
       expect(m.descricao.length).toBeLessThanOrEqual(1000)
@@ -32,7 +33,7 @@ describe('modelos iniciais', () => {
       expect(Math.min(...m.itens.map((i) => i.inicioDiasUteis!)), m.nome).toBe(0)
       expect(diasUteisDoModelo(m), m.nome).toBe(m.diasUteisTotais)
     }
-    expect(MODELOS_INICIAIS.map((m) => m.diasUteisTotais)).toEqual([41, 46, 74, 65])
+    expect(MODELOS_INICIAIS.map((m) => m.diasUteisTotais)).toEqual([41, 46, 74, 65, 70])
   })
 
   it('criar a partir deles dá datas em dias úteis, na ordem das ações', () => {
@@ -45,5 +46,18 @@ describe('modelos iniciais', () => {
         expect(a.previstoTermino!.getTime()).toBeGreaterThanOrEqual(a.previstoInicio!.getTime())
       }
     }
+  })
+
+  it('o modelo DMAIC tem as cinco fases na ordem, cada uma com ao menos duas ações, e cabe em 12 macroetapas', () => {
+    const dmaic = MODELOS_INICIAIS.find((m) => m.nome.includes('DMAIC'))!
+    const macros = macroetapasDoModelo(dmaic.itens)
+    expect(macros.map((m) => m.nome)).toEqual(FASES_DMAIC.map((f) => f.nome))
+    expect(macros.every((m) => (m.descricao ?? '').length > 40)).toBe(true)
+    for (const f of FASES_DMAIC) {
+      expect(dmaic.itens.filter((i) => i.macroetapa === f.nome).length, f.nome).toBeGreaterThanOrEqual(2)
+    }
+    // As ações de cada fase não começam antes da fase anterior ter começado.
+    const inicios = FASES_DMAIC.map((f) => Math.min(...dmaic.itens.filter((i) => i.macroetapa === f.nome).map((i) => i.inicioDiasUteis!)))
+    expect([...inicios].sort((a, b) => a - b)).toEqual(inicios)
   })
 })
