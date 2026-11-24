@@ -247,3 +247,28 @@ for (const largura of [390, 768]) {
     expect(scroll).toBeLessThanOrEqual(janela)
   })
 }
+
+test('impressão: sem cortes laterais, controles escondidos, rodapé e descrições visíveis', async ({ page }) => {
+  await page.setViewportSize({ width: 1123, height: 794 })
+  await page.goto(`/projetos/${projetoId}/flash-report`)
+  await expect(page.getByTestId('gantt-macro')).toBeVisible()
+  await page.emulateMedia({ media: 'print' })
+
+  await expect(page.getByTestId('rodape-impressao')).toContainText('Plataforma Digital E2E')
+  await expect(page.getByRole('navigation', { name: 'Navegação do relatório' })).toBeHidden()
+  await expect(page.getByTestId('descricoes-macro')).toBeHidden()
+  // Nenhuma área rolável (gantt, curva) fica cortada no papel.
+  const cortes = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('[data-testid="gantt-macro"], [data-testid="curva-avanco"] > div')].map(
+      (e) => e.scrollWidth - e.clientWidth,
+    ),
+  )
+  for (const c of cortes) expect(c).toBeLessThanOrEqual(1)
+  const { scroll, janela } = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    janela: window.innerWidth,
+  }))
+  expect(scroll).toBeLessThanOrEqual(janela)
+  if (process.env.PDF_SAIDA) await page.screenshot({ path: process.env.PDF_SAIDA + '.png', fullPage: true })
+  if (process.env.PDF_SAIDA) await page.pdf({ path: process.env.PDF_SAIDA, preferCSSPageSize: true, printBackground: true })
+})

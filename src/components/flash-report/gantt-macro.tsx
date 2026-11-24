@@ -72,7 +72,7 @@ export function GanttMacro({
         <p className="mt-3 text-sm text-textMuted">Sem ações para mostrar por macroetapa.</p>
       ) : (
         <div className="relative mt-2 overflow-x-auto" data-testid="gantt-macro">
-          <div role="table" aria-label="Avanço por macroetapa" style={{ minWidth: largura }}>
+          <div role="table" aria-label="Avanço por macroetapa" style={{ minWidth: largura, ['--semanas' as string]: totalSemanas }}>
             <div className="grid items-end border-b border-border text-xs font-semibold text-textMuted" role="row" style={{ gridTemplateColumns: colunas }}>
               <span className="py-1.5 pr-2" role="columnheader">Macroetapa</span>
               <span className="py-1.5 pr-2 text-right tabular-nums" role="columnheader">Previsto</span>
@@ -123,7 +123,17 @@ export function GanttMacro({
         <span className="text-accent">Coluna em destaque: semana escolhida</span>
       </p>
       {macroetapas.some((m) => m.descricao) ? (
-        <details className="mt-2 text-sm" data-testid="descricoes-macro">
+        <dl className="mt-2 hidden space-y-1 text-xs print:block" data-testid="descricoes-macro-impressao">
+          {macroetapas.filter((m) => m.descricao).map((m) => (
+            <div key={m.id}>
+              <dt className="inline font-semibold">{m.nome}: </dt>
+              <dd className="inline text-textMuted">{m.descricao}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {macroetapas.some((m) => m.descricao) ? (
+        <details className="mt-2 text-sm print:hidden" data-testid="descricoes-macro">
           <summary className="cursor-pointer text-textMuted hover:text-accent">O que é cada macroetapa</summary>
           <dl className="mt-2 space-y-2">
             {macroetapas.filter((m) => m.descricao).map((m) => (
