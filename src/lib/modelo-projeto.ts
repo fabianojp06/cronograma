@@ -11,7 +11,10 @@
  * volta como o dia útil anterior, porque o deslocamento é contado em dias úteis.
  */
 
+import { chaveDoNome } from './colaborador-validacao'
 import { deslocarDiasUteis, diasUteisEntre, ehDiaUtil, somarDiasUteis } from './dias-uteis'
+import { faseDmaicDoNome } from './dmaic'
+import { MAXIMO_MACROETAPAS, TAMANHO_NOME_MACROETAPA } from './macroetapa'
 
 export const LIMITE_ACOES_MODELO = 200
 const TAMANHO_MAXIMO_NOME = 120
@@ -22,6 +25,8 @@ export type AcaoDeOrigem = {
   descricao: string
   previstoInicio: Date | null
   previstoTermino: Date | null
+  /** Nome da macroetapa da ação; ausente/nulo = sem macroetapa. */
+  macroetapa?: string | null
 }
 
 export type ItemDoModelo = {
@@ -29,6 +34,8 @@ export type ItemDoModelo = {
   descricao: string
   inicioDiasUteis: number | null
   duracaoDiasUteis: number | null
+  /** Nome da macroetapa em que a ação entra no projeto criado; omitido = nenhuma. */
+  macroetapa?: string | null
 }
 
 /**
@@ -68,6 +75,7 @@ export function construirItensDoModelo(acoes: readonly AcaoDeOrigem[]): ItemDoMo
       descricao: acao.descricao,
       inicioDiasUteis: inicio,
       duracaoDiasUteis: duracao,
+      ...(acao.macroetapa ? { macroetapa: acao.macroetapa } : {}),
     }
   })
 }
@@ -77,6 +85,27 @@ export type AcaoInstanciada = {
   descricao: string
   previstoInicio: Date | null
   previstoTermino: Date | null
+  macroetapa: string | null
+}
+
+/**
+ * As macroetapas que o modelo cria: nomes distintos (sem acento nem caixa), na ordem
+ * em que aparecem, com a descrição quando o nome é uma fase do DMAIC.
+ */
+export function macroetapasDoModelo(
+  itens: readonly { macroetapa?: string | null }[],
+): { nome: string; descricao: string | null }[] {
+  const vistas = new Set<string>()
+  const lista: { nome: string; descricao: string | null }[] = []
+  for (const item of itens) {
+    const nome = item.macroetapa?.trim()
+    if (!nome) continue
+    const chave = chaveDoNome(nome)
+    if (vistas.has(chave)) continue
+    vistas.add(chave)
+    lista.push({ nome, descricao: faseDmaicDoNome(nome)?.descricao ?? null })
+  }
+  return lista
 }
 
 /** A própria data se for dia útil; senão, o próximo dia útil. */
@@ -100,17 +129,22 @@ export function instanciarModelo(
     .sort((a, b) => a.ordem - b.ordem)
     .map((item, indice) => {
       if (item.inicioDiasUteis === null) {
-        return { numero: indice + 1, descricao: item.descricao, previstoInicio: null, previstoTermino: null }
+        return { numero: indice + 1, descricao: item.descricao, previstoInicio: null, previstoTermino: null, macroetapa: item.macroetapa ?? null }
       }
       const inicio = deslocarDiasUteis(inicioEfetivo, item.inicioDiasUteis)
       const termino =
         item.duracaoDiasUteis === null ? null : somarDiasUteis(inicio, item.duracaoDiasUteis)
-      return { numero: indice + 1, descricao: item.descricao, previstoInicio: inicio, previstoTermino: termino }
+      return { numero: indice + 1, descricao: item.descricao, previstoInicio: inicio, previstoTermino: termino, macroetapa: item.macroetapa ?? null }
     })
 }
 
 /** "começa no dia útil 6, dura 5 dias úteis", para a tela mostrar o que o modelo guarda. */
 export function descreverItem(item: ItemDoModelo): string {
+  const macro = item.macroetapa ? `macroetapa ${item.macroetapa}; ` : ''
+  return macro + descreverDatas(item)
+}
+
+function descreverDatas(item: ItemDoModelo): string {
   if (item.inicioDiasUteis === null) return 'sem datas'
   const comeca =
     item.inicioDiasUteis === 0 ? 'começa no dia do início' : `começa ${item.inicioDiasUteis} dia(s) útil(eis) depois do início`
@@ -188,6 +222,7 @@ export function lerItensDoFormulario(formData: FormData): ResultadoItensModelo {
   const descricoes = formData.getAll('acaoDescricao').map(String)
   const inicios = formData.getAll('acaoInicio').map(String)
   const duracoes = formData.getAll('acaoDuracao').map(String)
+  const macroetapas = formData.getAll('acaoMacroetapa').map(String)
 
   const erros: ErroLinhaModelo[] = []
   const itens: ItemDoModelo[] = []
@@ -205,6 +240,11 @@ export function lerItensDoFormulario(formData: FormData): ResultadoItensModelo {
     }
     if (descricao.length > TAMANHO_MAXIMO_ACAO) {
       erros.push({ linha, erro: `A descrição pode ter no máximo ${TAMANHO_MAXIMO_ACAO} caracteres.` })
+      return
+    }
+    const macroetapa = (macroetapas[i] ?? '').trim().replace(/\s+/g, ' ')
+    if (macroetapa.length > TAMANHO_NOME_MACROETAPA) {
+      erros.push({ linha, erro: `O nome da macroetapa pode ter no máximo ${TAMANHO_NOME_MACROETAPA} caracteres.` })
       return
     }
     const inicio = lerInteiro(inicioBruto)
@@ -227,7 +267,13 @@ export function lerItensDoFormulario(formData: FormData): ResultadoItensModelo {
         return
       }
     }
-    itens.push({ ordem: itens.length + 1, descricao, inicioDiasUteis: inicio, duracaoDiasUteis: duracao })
+    itens.push({
+      ordem: itens.length + 1,
+      descricao,
+      inicioDiasUteis: inicio,
+      duracaoDiasUteis: duracao,
+      ...(macroetapa !== '' ? { macroetapa } : {}),
+    })
   })
 
   if (erros.length > 0) return { ok: false, erros }
@@ -236,6 +282,9 @@ export function lerItensDoFormulario(formData: FormData): ResultadoItensModelo {
   }
   if (itens.length > LIMITE_ACOES_MODELO) {
     return { ok: false, erros: [], erroGeral: `O modelo guarda até ${LIMITE_ACOES_MODELO} ações.` }
+  }
+  if (macroetapasDoModelo(itens).length > MAXIMO_MACROETAPAS) {
+    return { ok: false, erros: [], erroGeral: `Um projeto tem no máximo ${MAXIMO_MACROETAPAS} macroetapas: use menos nomes distintos.` }
   }
   return { ok: true, itens }
 }

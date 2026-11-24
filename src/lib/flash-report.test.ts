@@ -505,3 +505,47 @@ describe('desvio nunca sai como -0', () => {
     expect(Object.is(r.consolidado!.desvio, -0)).toBe(false)
   })
 })
+
+describe('macroetapas DMAIC', () => {
+  const dm = (id: string, nome: string, ordem: number, descricao: string | null = null) => ({ id, nome, ordem, descricao })
+  // Janela de 10 semanas: cada fase ocupa duas semanas; semana escolhida = 7 (hoje = depois da janela).
+  const acoesFase = (id: string, n: number, de: number, ate: number, concluida: boolean) =>
+    acao({
+      numero: n, macroetapaId: id, previstoInicio: inicioN(de), previstoTermino: fimN(ate),
+      status: concluida ? 'CONCLUIDO' : 'NAO_INICIADO', realizadoTermino: concluida ? fimN(ate) : null,
+    })
+
+  it('a descrição da macroetapa chega à linha (e é null quando não há)', () => {
+    const r = montarFlashReport(entrada({
+      macroetapas: [dm('m1', 'D – Definir', 1, 'Texto da fase'), { id: 'm2', nome: 'Entrega', ordem: 2 }],
+    }))
+    expect(r.macroetapas.find((m) => m.id === 'm1')!.descricao).toBe('Texto da fase')
+    expect(r.macroetapas.find((m) => m.id === 'm2')!.descricao).toBeNull()
+    expect(r.macroetapas.find((m) => m.id === ID_SEM_MACROETAPA)?.descricao ?? null).toBeNull()
+  })
+
+  it('fase atual: a primeira fase DMAIC ainda não concluída', () => {
+    const r = montarFlashReport(entrada({
+      macroetapas: [dm('d', 'D – Definir', 1), dm('m', 'M – Medir', 2)],
+      acoes: [acoesFase('d', 1, 1, 3, true), acoesFase('m', 2, 4, 10, false)],
+    }))
+    expect(r.faseAtual).toEqual({ nome: 'M – Medir', concluidas: false })
+  })
+
+  it('sem macroetapas DMAIC: faseAtual é null e não há alerta de fase', () => {
+    const r = montarFlashReport(entrada())
+    expect(r.faseAtual).toBeNull()
+    expect(r.alertas.some((a) => a.tipo === 'FASE_FORA_DE_ORDEM')).toBe(false)
+  })
+
+  it('fase posterior com avanço e anterior em 0%: alerta FASE_FORA_DE_ORDEM', () => {
+    const r = montarFlashReport(entrada({
+      macroetapas: [dm('a', 'A – Analisar', 1), dm('i', 'I – Melhorar', 2)],
+      acoes: [acoesFase('a', 1, 1, 3, false), acoesFase('i', 2, 1, 3, true)],
+    }))
+    expect(r.alertas).toContainEqual({
+      tipo: 'FASE_FORA_DE_ORDEM',
+      texto: 'I – Melhorar já tem avanço, mas A – Analisar ainda está em 0%.',
+    })
+  })
+})

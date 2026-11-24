@@ -178,6 +178,30 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     palavras: ['etapa', 'macroetapa', 'agrupar', 'flash report', 'fase'],
   },
   {
+    id: 'macroetapas-dmaic',
+    grupo: 'Projetos e ações',
+    titulo: 'Macroetapas no modelo DMAIC',
+    resumo: 'Use as cinco fases do DMAIC como macroetapas, cada uma com uma breve explicação, em projetos de melhoria de processo.',
+    perfil: 'editor',
+    rotas: [],
+    passos: [
+      'Na tela do projeto, em "Macroetapas", clique em "Usar modelo DMAIC". O sistema cria Definir, Medir, Analisar, Melhorar e Controlar, nessa ordem, cada uma com a sua explicação.',
+      'Se o projeto já tem algumas das fases, o botão vira "Completar com as fases do DMAIC" e cria só as que faltam, depois das macroetapas que já existem.',
+      'Cada macroetapa pode ter uma descrição (opcional): digite ao criar ou clique em "Renomear" para editar. Apague o texto e salve para remover.',
+      'No Flash Report, passe o mouse sobre o nome da macroetapa ou abra "O que é cada macroetapa", embaixo do cronograma macro, para ler a explicação.',
+      'Com as fases no projeto, o cabeçalho do relatório mostra a "Fase atual (DMAIC)": a primeira fase, na ordem D-M-A-I-C, que ainda não chegou a 100%.',
+      'Para já começar com ações em cada fase, crie o projeto a partir do modelo "Projeto de melhoria de processo (DMAIC)", em "Modelos". No editor de modelos, cada ação tem o campo "Macroetapa".',
+    ],
+    dicas: [
+      'O DMAIC é opcional. Projetos que não são de melhoria de processo, como um desenvolvimento de sistema, continuam com macroetapas de nome livre.',
+      'O sistema reconhece as fases pelo nome ("D – Definir" etc.). Se você renomear uma fase para outro texto, ela deixa de contar como fase do DMAIC.',
+      'Alerta "já tem avanço, mas ... ainda está em 0%": uma fase posterior já avançou enquanto uma anterior, com ações, não saiu do zero. Vale conferir se a solução não foi implantada sem a causa-raiz confirmada. Fase parcial e fase sem ações não disparam o alerta.',
+      'O projeto aceita até 12 macroetapas. Se não couberem todas as fases que faltam, o sistema não cria nenhuma e explica quantas vagas há.',
+    ],
+    desde: '2026-11-24',
+    palavras: ['dmaic', 'seis sigma', 'six sigma', 'definir', 'medir', 'analisar', 'melhorar', 'controlar', 'fase', 'macroetapa', 'melhoria de processo'],
+  },
+  {
     id: 'sinal-projeto',
     grupo: 'Projetos e ações',
     titulo: 'Sinal do projeto (coluna, filtro e ordem)',
@@ -404,7 +428,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'Para usar, clique em "Usar este modelo", informe o nome do projeto e a data de início. O projeto e as ações nascem juntos, com as datas recalculadas em dias úteis. Use "Ver as ações" na lista para conferir o que o modelo contém antes.',
     ],
     dicas: [
-      'Só quem criou o modelo, ou um administrador, edita e exclui. Os quatro modelos iniciais do sistema (ciclo orçamentário, prestação de contas, desenvolvimento de sistema e onboarding) são rascunhos: só administradores os editam ou excluem, e vale conferir as ações e durações antes de usar.',
+      'Só quem criou o modelo, ou um administrador, edita e exclui. Os cinco modelos iniciais do sistema (ciclo orçamentário, prestação de contas, desenvolvimento de sistema, onboarding e melhoria de processo DMAIC) são rascunhos: só administradores os editam ou excluem, e vale conferir as ações e durações antes de usar.',
       'Se outra pessoa salvar o modelo enquanto você edita, o sistema avisa e não grava; recarregue e refaça.',
       'Início em fim de semana ou feriado vale o próximo dia útil.',
       'O modelo não leva responsáveis, status nem dependências: ajuste depois no projeto, com a edição em lote se precisar.',
@@ -679,6 +703,7 @@ export const GLOSSARIO: readonly TermoGlossario[] = [
   { termo: 'Avanço físico', definicao: 'Média do percentual de cada ação, ponderada pelos dias úteis previstos dela. Não é o percentual de ações concluídas.' },
   { termo: 'Desvio (p.p.)', definicao: 'Avanço realizado menos avanço previsto, em pontos percentuais. Negativo é atraso.' },
   { termo: 'Sinal', definicao: 'Farol do projeto: Atrasado, Atenção, Em dia, Adiantado ou Sem dados, pelo desvio de avanço físico e por riscos altos vencidos.' },
+  { termo: 'DMAIC', definicao: 'Roteiro de melhoria de processos em cinco fases: Definir, Medir, Analisar, Melhorar e Controlar. No sistema, pode ser aplicado como macroetapas do projeto.' },
   { termo: 'Macroetapa', definicao: 'Agrupamento opcional de ações dentro de um projeto, usado no cronograma macro do Flash Report.' },
   { termo: 'Leitor', definicao: 'Perfil que só consulta e exporta.' },
 ]

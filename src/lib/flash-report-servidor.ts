@@ -61,7 +61,7 @@ export async function carregarFlashReport(
       objetivo: true,
       responsavel: true,
       lider: { select: { nome: true } },
-      macroetapas: { orderBy: [{ ordem: 'asc' }, { createdAt: 'asc' }], select: { id: true, nome: true, ordem: true } },
+      macroetapas: { orderBy: [{ ordem: 'asc' }, { createdAt: 'asc' }], select: { id: true, nome: true, descricao: true, ordem: true } },
       acoes: {
         orderBy: { numero: 'asc' },
         select: {

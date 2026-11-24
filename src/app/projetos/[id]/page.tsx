@@ -52,10 +52,10 @@ export default async function ProjetoPage({
     ? await prisma.macroetapa.findMany({
         where: { projetoId: id },
         orderBy: [{ ordem: 'asc' }, { createdAt: 'asc' }],
-        select: { id: true, nome: true, ordem: true, _count: { select: { acoes: true } } },
+        select: { id: true, nome: true, descricao: true, ordem: true, _count: { select: { acoes: true } } },
       })
     : []
-  const macroetapas = macroetapasBrutas.map((m) => ({ id: m.id, nome: m.nome, ordem: m.ordem, acoes: m._count.acoes }))
+  const macroetapas = macroetapasBrutas.map((m) => ({ id: m.id, nome: m.nome, descricao: m.descricao, ordem: m.ordem, acoes: m._count.acoes }))
   // `?em=aaaa-mm-dd`: o projeto como estava no fim daquele dia, reconstruído do histórico.
   const parametros = await searchParams
   const em = lerDataDaFoto(parametros.em, agora)

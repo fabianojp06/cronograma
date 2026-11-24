@@ -5,6 +5,7 @@ import {
   descreverItem,
   instanciarModelo,
   lerDadosDoModelo,
+  macroetapasDoModelo,
   podeExcluirModelo,
   primeiroDiaUtilApartirDe,
   type AcaoDeOrigem,
@@ -100,6 +101,7 @@ describe('descreverItem', () => {
     expect(descreverItem({ ordem: 1, descricao: 'x', inicioDiasUteis: null, duracaoDiasUteis: null })).toBe('sem datas')
     expect(descreverItem({ ordem: 1, descricao: 'x', inicioDiasUteis: 0, duracaoDiasUteis: 5 })).toContain('no dia do início')
     expect(descreverItem({ ordem: 1, descricao: 'x', inicioDiasUteis: 3, duracaoDiasUteis: null })).toContain('3 dia(s) útil')
+    expect(descreverItem({ ordem: 1, descricao: 'x', inicioDiasUteis: null, duracaoDiasUteis: null, macroetapa: 'Obra' })).toBe('macroetapa Obra; sem datas')
   })
 })
 
@@ -216,5 +218,69 @@ describe('podeAlterarModelo e diaDeTerminoDoItem', () => {
     expect(diaDeTerminoDoItem({ inicioDiasUteis: 3, duracaoDiasUteis: 5 })).toBe(7)
     expect(diaDeTerminoDoItem({ inicioDiasUteis: 0, duracaoDiasUteis: 1 })).toBe(0)
     expect(diaDeTerminoDoItem({ inicioDiasUteis: null, duracaoDiasUteis: null })).toBeNull()
+  })
+})
+
+describe('macroetapa nos modelos', () => {
+  it('salvar como modelo leva o nome da macroetapa de cada ação (e omite quando não há)', () => {
+    const itens = construirItensDoModelo([
+      { ...acao(1, '2026-11-02', '2026-11-03'), macroetapa: 'D – Definir' },
+      acao(2, '2026-11-04', '2026-11-05'),
+    ])
+    expect(itens[0].macroetapa).toBe('D – Definir')
+    expect('macroetapa' in itens[1]).toBe(false)
+  })
+
+  it('instanciar repassa a macroetapa de cada item', () => {
+    const r = instanciarModelo(
+      [
+        { ordem: 1, descricao: 'A', inicioDiasUteis: 0, duracaoDiasUteis: 2, macroetapa: 'M – Medir' },
+        { ordem: 2, descricao: 'B', inicioDiasUteis: null, duracaoDiasUteis: null },
+      ],
+      d('2026-11-02'),
+    )
+    expect(r.map((a) => a.macroetapa ?? null)).toEqual(['M – Medir', null])
+  })
+
+  it('macroetapasDoModelo: nomes distintos na ordem de aparição, sem repetir por acento/caixa', () => {
+    const lista = macroetapasDoModelo([
+      { macroetapa: 'Obra' },
+      { macroetapa: null },
+      { macroetapa: 'Entrega' },
+      { macroetapa: 'obra' },
+    ])
+    expect(lista.map((m) => m.nome)).toEqual(['Obra', 'Entrega'])
+  })
+
+  it('macroetapasDoModelo: fase DMAIC leva a descrição; nome comum não', () => {
+    const lista = macroetapasDoModelo([{ macroetapa: 'i – melhorar' }, { macroetapa: 'Obra' }])
+    expect(lista[0].descricao).toMatch(/plano de ação/i)
+    expect(lista[1].descricao).toBeNull()
+  })
+
+  it('o editor lê a macroetapa por linha, apara e ignora vazio', () => {
+    const f = formulario([['A', '0', '3'], ['B', '3', '2'], ['C', '', '']])
+    f.append('acaoMacroetapa', '  D –  Definir ')
+    f.append('acaoMacroetapa', '')
+    f.append('acaoMacroetapa', 'Obra')
+    const r = lerItensDoFormulario(f)
+    expect(r.ok && r.itens.map((i) => i.macroetapa ?? null)).toEqual(['D – Definir', null, 'Obra'])
+  })
+
+  it('o editor recusa macroetapa com mais de 80 caracteres, na linha certa', () => {
+    const f = formulario([['A', '0', '3']])
+    f.append('acaoMacroetapa', 'x'.repeat(81))
+    expect(lerItensDoFormulario(f)).toMatchObject({ ok: false, erros: [{ linha: 1 }] })
+  })
+
+  it('o editor recusa mais de 12 macroetapas distintas', () => {
+    const f = formulario(Array.from({ length: 13 }, (_, i) => [`Ação ${i}`, '0', '1'] as [string, string, string]))
+    for (let i = 0; i < 13; i++) f.append('acaoMacroetapa', `Etapa ${i}`)
+    expect(lerItensDoFormulario(f)).toMatchObject({ ok: false, erroGeral: expect.stringContaining('12') })
+  })
+
+  it('formulário sem o campo (aba antiga) lê as ações sem macroetapa', () => {
+    const r = lerItensDoFormulario(formulario([['A', '0', '3']]))
+    expect(r.ok && 'macroetapa' in r.itens[0]).toBe(false)
   })
 })

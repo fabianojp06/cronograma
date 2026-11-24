@@ -7,6 +7,7 @@
  * Semana = a semana CTCEA (domingo a sábado). O "fim" da semana é o sábado.
  */
 
+import { alertasDeFaseForaDeOrdem, faseAtualDmaic } from './dmaic'
 import { avancoEm, pesoDaAcao, type AcaoParaAvanco, type Avanco } from './avanco-fisico'
 import { LIMITE_ATENCAO, LIMITE_ATRASADO, sinalDoProjeto, type Farol } from './farol-projeto'
 import { classificarAcao } from './resumo-semanal'
@@ -51,7 +52,7 @@ export type RiscoDoRelatorio = {
 
 export type EntradaFlash = {
   projeto: { nome: string; cliente: string | null; objetivo: string | null; lider: string | null }
-  macroetapas: { id: string; nome: string; ordem: number }[]
+  macroetapas: { id: string; nome: string; ordem: number; descricao?: string | null }[]
   acoes: readonly AcaoDoRelatorio[]
   /**
    * Ações como estavam no fim de cada semana; chave = `chaveSemana`. Para o
@@ -71,12 +72,19 @@ export type EntradaFlash = {
  */
 export type CelulaMacro = 'REALIZADO' | 'ATENCAO' | 'DECORRIDO' | 'PLANEJADO' | null
 /** `id` é o da macroetapa, ou `ID_SEM_MACROETAPA` no grupo das ações soltas. */
-export type LinhaMacro = { id: string; nome: string; avanco: Avanco | null; celulas: CelulaMacro[] }
+export type LinhaMacro = {
+  id: string
+  nome: string
+  /** Texto explicativo da macroetapa (ex.: o da fase DMAIC); `null` se não há. */
+  descricao: string | null
+  avanco: Avanco | null
+  celulas: CelulaMacro[]
+}
 export const ID_SEM_MACROETAPA = '__sem__'
 export type PontoCurva = { rotulo: string; previsto: number; realizado: number | null }
 export type ItemAtividade = { numero: number; descricao: string; data: Date | null }
 export type AlertaRelatorio = {
-  tipo: 'MACROETAPA_DESVIO' | 'ACOES_ATRASADAS' | 'RISCOS_VENCIDOS' | 'ACOES_BLOQUEADAS'
+  tipo: 'MACROETAPA_DESVIO' | 'FASE_FORA_DE_ORDEM' | 'ACOES_ATRASADAS' | 'RISCOS_VENCIDOS' | 'ACOES_BLOQUEADAS'
   texto: string
 }
 
@@ -88,6 +96,8 @@ export type FlashReport = {
   farol: Farol
   consolidado: Avanco | null
   macroetapas: LinhaMacro[]
+  /** Fase DMAIC em que o projeto está; `null` se não usa macroetapas DMAIC. */
+  faseAtual: { nome: string; concluidas: boolean } | null
   curva: PontoCurva[]
   /** No máximo 4, as mais recentes primeiro. */
   realizadas: ItemAtividade[]
@@ -274,18 +284,19 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
 
   // Macroetapas.
   const ids = new Set(e.macroetapas.map((m) => m.id))
-  type Grupo = { id: string; nome: string; acoes: AcaoComMacro[]; pertence: (macroId: string | null) => boolean }
+  type Grupo = { id: string; nome: string; descricao: string | null; acoes: AcaoComMacro[]; pertence: (macroId: string | null) => boolean }
   const grupos: Grupo[] = [...e.macroetapas]
     .sort((a, b) => a.ordem - b.ordem)
     .map((m) => ({
       id: m.id,
       nome: m.nome,
+      descricao: m.descricao ?? null,
       acoes: baseDaSemana.filter((a) => a.macroetapaId === m.id),
       pertence: (macroId) => macroId === m.id,
     }))
   const solta = (macroId: string | null) => macroId === null || !ids.has(macroId)
   const soltas = baseDaSemana.filter((a) => solta(a.macroetapaId))
-  if (soltas.length > 0) grupos.push({ id: ID_SEM_MACROETAPA, nome: 'Sem macroetapa', acoes: soltas, pertence: solta })
+  if (soltas.length > 0) grupos.push({ id: ID_SEM_MACROETAPA, nome: 'Sem macroetapa', descricao: null, acoes: soltas, pertence: solta })
   if (e.macroetapas.length === 0 && e.acoes.length > 0) {
     avisos.push('O projeto não tem macroetapas: cadastre macroetapas para ver o avanço por etapa.')
   }
@@ -307,6 +318,7 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
     macroetapas.push({
       id: g.id,
       nome: g.nome,
+      descricao: g.descricao,
       avanco,
       celulas: janela
         ? celulasDaMacro(g.acoes, janela.primeira, totalSemanas, semanaDoProjeto, avancoNaSemana)
@@ -319,6 +331,8 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
       })
     }
   }
+
+  for (const texto of alertasDeFaseForaDeOrdem(macroetapas)) alertas.push({ tipo: 'FASE_FORA_DE_ORDEM', texto })
 
   // Demais alertas.
   const atrasadas = e.acoes.filter((a) => a.atrasada)
@@ -391,6 +405,7 @@ export function montarFlashReport(e: EntradaFlash): FlashReport {
     farol,
     consolidado,
     macroetapas,
+    faseAtual: faseAtualDmaic(macroetapas),
     curva,
     realizadas,
     totalRealizadas: concluidas.length,

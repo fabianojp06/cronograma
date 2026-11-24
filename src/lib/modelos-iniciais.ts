@@ -9,6 +9,7 @@
  * natureza e categoria ficam em aberto de propósito (quem usa define no projeto).
  */
 
+import { FASES_DMAIC } from './dmaic'
 import type { ItemDoModelo } from './modelo-projeto'
 
 export type ModeloInicial = {
@@ -19,13 +20,14 @@ export type ModeloInicial = {
   itens: ItemDoModelo[]
 }
 
-/** `[descrição, início, duração]`, numerado na ordem. */
-function itens(linhas: readonly (readonly [string, number, number])[]): ItemDoModelo[] {
-  return linhas.map(([descricao, inicioDiasUteis, duracaoDiasUteis], i) => ({
+/** `[descrição, início, duração, macroetapa?]`, numerado na ordem. */
+function itens(linhas: readonly (readonly [string, number, number, string?])[]): ItemDoModelo[] {
+  return linhas.map(([descricao, inicioDiasUteis, duracaoDiasUteis, macroetapa], i) => ({
     ordem: i + 1,
     descricao,
     inicioDiasUteis,
     duracaoDiasUteis,
+    ...(macroetapa ? { macroetapa } : {}),
   }))
 }
 
@@ -102,6 +104,30 @@ export const MODELOS_INICIAIS: readonly ModeloInicial[] = [
       ['Feedback de 30 dias', 21, 1],
       ['Feedback de 60 dias', 42, 1],
       ['Avaliação de experiência de 90 dias', 63, 2],
+    ]),
+  },
+  {
+    nome: 'Projeto de melhoria de processo (DMAIC)',
+    descricao:
+      'As cinco fases do DMAIC (Definir, Medir, Analisar, Melhorar e Controlar), cada uma como macroetapa com as ações típicas. Rascunho inicial: ajuste as ações e as durações ao projeto.',
+    diasUteisTotais: 70,
+    itens: itens([
+      ['Elaborar e aprovar o contrato do projeto (Project Charter)', 0, 5, FASES_DMAIC[0].nome],
+      ['Mapear o processo em alto nível (SIPOC)', 3, 3, FASES_DMAIC[0].nome],
+      ['Levantar a voz do cliente e definir os CTQs', 3, 4, FASES_DMAIC[0].nome],
+      ['Mapear o processo atual', 7, 5, FASES_DMAIC[1].nome],
+      ['Validar o sistema de medição e coletar os dados', 12, 8, FASES_DMAIC[1].nome],
+      ['Estabelecer a linha de base do indicador', 20, 3, FASES_DMAIC[1].nome],
+      ['Levantar as causas potenciais (Ishikawa, 5 Porquês)', 23, 4, FASES_DMAIC[2].nome],
+      ['Priorizar as causas por risco (FMEA)', 27, 3, FASES_DMAIC[2].nome],
+      ['Validar as causas-raiz com dados', 30, 6, FASES_DMAIC[2].nome],
+      ['Gerar e priorizar as soluções', 36, 4, FASES_DMAIC[3].nome],
+      ['Elaborar o plano de ação (5W2H)', 40, 3, FASES_DMAIC[3].nome],
+      ['Executar o piloto das melhorias', 43, 10, FASES_DMAIC[3].nome],
+      ['Comparar o antes e o depois e ampliar a implantação', 53, 6, FASES_DMAIC[3].nome],
+      ['Elaborar o plano de controle', 59, 4, FASES_DMAIC[4].nome],
+      ['Atualizar os procedimentos (POP) e treinar a operação', 63, 5, FASES_DMAIC[4].nome],
+      ['Transferir o processo à operação e encerrar o projeto', 68, 2, FASES_DMAIC[4].nome],
     ]),
   },
 ]

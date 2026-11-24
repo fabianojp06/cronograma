@@ -28,7 +28,7 @@ export default async function EditarModeloPage({ params }: { params: Promise<{ i
       updatedAt: true,
       acoes: {
         orderBy: { ordem: 'asc' },
-        select: { descricao: true, inicioDiasUteis: true, duracaoDiasUteis: true },
+        select: { descricao: true, inicioDiasUteis: true, duracaoDiasUteis: true, macroetapa: true },
       },
     },
   })
@@ -71,6 +71,7 @@ export default async function EditarModeloPage({ params }: { params: Promise<{ i
               descricao: a.descricao,
               inicio: a.inicioDiasUteis === null ? '' : String(a.inicioDiasUteis),
               duracao: a.duracaoDiasUteis === null ? '' : String(a.duracaoDiasUteis),
+              macroetapa: a.macroetapa ?? '',
             })),
           }}
           modeloId={modelo.id}

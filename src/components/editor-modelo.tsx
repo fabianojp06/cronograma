@@ -9,6 +9,7 @@ import {
   type EstadoEditorModelo,
 } from '@/app/modelos/acoes-modelo'
 import { Spinner } from '@/components/indicador-envio'
+import { FASES_DMAIC } from '@/lib/dmaic'
 import { diaDeTerminoDoItem } from '@/lib/modelo-projeto'
 
 const campo =
@@ -17,7 +18,7 @@ const rotulo = 'block text-sm font-medium text-textMuted'
 const botaoFraco =
   'rounded-md border border-border px-2 py-1 text-xs text-textMuted hover:border-accent hover:text-accent disabled:opacity-40'
 
-export type LinhaEditor = { descricao: string; inicio: string; duracao: string }
+export type LinhaEditor = { descricao: string; inicio: string; duracao: string; macroetapa: string }
 
 export type ValoresEditorModelo = {
   nome: string
@@ -38,7 +39,7 @@ export const VALORES_EM_BRANCO: ValoresEditorModelo = {
   categoria: '',
   apoio: '',
   setorEnvolvido: '',
-  linhas: [{ descricao: '', inicio: '0', duracao: '5' }],
+  linhas: [{ descricao: '', inicio: '0', duracao: '5', macroetapa: '' }],
 }
 
 type LinhaComChave = LinhaEditor & { chave: number }
@@ -111,7 +112,7 @@ export function EditorModelo({
       : '0'
     setLinhas((ls) => [
       ...ls,
-      { chave: proximaChave.current++, descricao: '', inicio: inicioSugerido, duracao: '5' },
+      { chave: proximaChave.current++, descricao: '', inicio: inicioSugerido, duracao: '5', macroetapa: ultima?.macroetapa ?? '' },
     ])
   }
 
@@ -177,6 +178,16 @@ export function EditorModelo({
           último dia. Deixe início e duração em branco para uma ação sem datas.
         </p>
 
+        <datalist id="macroetapas-do-modelo">
+          {FASES_DMAIC.map((f) => (
+            <option key={f.sigla} value={f.nome} />
+          ))}
+        </datalist>
+        <p className="mt-1 text-xs text-textFaint">
+          A macroetapa agrupa a ação no Flash Report do projeto criado. Use o mesmo nome em várias ações para
+          agrupá-las; as fases do DMAIC vêm sugeridas e já levam a explicação de cada uma.
+        </p>
+
         <ol className="mt-4 space-y-3">
           {linhas.map((l, i) => {
             const fim = diaDeTerminoDoItem({ inicioDiasUteis: numero(l.inicio), duracaoDiasUteis: numero(l.duracao) })
@@ -223,6 +234,20 @@ export function EditorModelo({
                       name="acaoDuracao"
                       onChange={(e) => mudarLinha(l.chave, 'duracao', e.target.value)}
                       value={l.duracao}
+                    />
+                  </div>
+                  <div className="w-44">
+                    <label className="block text-xs text-textMuted" htmlFor={`acao-macro-${l.chave}`}>
+                      Macroetapa (opcional)
+                    </label>
+                    <input
+                      className={campo}
+                      id={`acao-macro-${l.chave}`}
+                      list="macroetapas-do-modelo"
+                      maxLength={80}
+                      name="acaoMacroetapa"
+                      onChange={(e) => mudarLinha(l.chave, 'macroetapa', e.target.value)}
+                      value={l.macroetapa}
                     />
                   </div>
                   <div className="flex gap-1 pb-1">

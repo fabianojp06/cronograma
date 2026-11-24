@@ -35,7 +35,7 @@ export function CabecalhoFlash({
   semana: SemanaCtcea
   relatorio: FlashReport
 }) {
-  const { periodo, farol, consolidado, semanaDoProjeto, totalSemanas } = relatorio
+  const { periodo, farol, consolidado, semanaDoProjeto, totalSemanas, faseAtual } = relatorio
   const segunda = new Date(periodo.inicio.getTime() + DIA_MS)
   const sexta = new Date(periodo.fim.getTime() - DIA_MS)
   const posicao =
@@ -85,6 +85,16 @@ export function CabecalhoFlash({
         </Indicador>
         <Indicador rotulo="Desvio">{consolidado ? desvioEscritoFlash(consolidado.desvio) : 'Sem dados'}</Indicador>
       </dl>
+
+      {faseAtual ? (
+        <div className="mt-4 border-l-2 border-accent pl-3" data-testid="fase-atual">
+          <p className="text-xs font-semibold text-textMuted">Fase atual (DMAIC)</p>
+          <p className="mt-0.5 text-sm font-medium text-text">
+            {faseAtual.nome}
+            {faseAtual.concluidas ? <span className="ml-2 font-normal text-textMuted">todas as fases concluídas</span> : null}
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-4 border-l-2 border-border pl-3">
         <p className="text-xs font-semibold text-textMuted">Objetivo do projeto</p>

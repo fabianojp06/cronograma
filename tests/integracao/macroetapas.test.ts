@@ -23,7 +23,8 @@ const { criarAcao, atualizarAcao } = await import('@/app/projetos/acoes-acao')
 const { duplicarAcao } = await import('@/app/projetos/acoes-duplicar')
 const { criarProjeto, atualizarProjeto } = await import('@/app/projetos/acoes-projeto')
 const { criarRisco, atualizarRisco } = await import('@/app/projetos/acoes-risco')
-const { criarMacroetapa, renomearMacroetapa, reordenarMacroetapa, excluirMacroetapa } = await import(
+const { salvarComoModelo, criarProjetoDeModelo, criarModelo, atualizarModelo } = await import('@/app/modelos/acoes-modelo')
+const { aplicarModeloDmaic, criarMacroetapa, renomearMacroetapa, reordenarMacroetapa, excluirMacroetapa } = await import(
   '@/app/projetos/acoes-macroetapa'
 )
 
@@ -39,6 +40,7 @@ let outroId: string
 async function limpar() {
   await prisma.riscoHistorico.deleteMany()
   await prisma.riscoProjeto.deleteMany()
+  await prisma.modeloProjeto.deleteMany()
   await prisma.historicoAlteracao.deleteMany()
   await prisma.acao.deleteMany()
   await prisma.macroetapa.deleteMany()
@@ -351,5 +353,113 @@ describe('risco que pede decisão da diretoria', () => {
   it('sem a caixa na criação o padrão é false', async () => {
     await seguir(() => criarRisco({}, fd({ id: projetoId, ...base, pedeAjudaCampo: '1' })))
     expect((await prisma.riscoProjeto.findFirstOrThrow({ where: { projetoId } })).pedeAjuda).toBe(false)
+  })
+})
+
+describe('modelo DMAIC e descrição da macroetapa', () => {
+  const nomes = async (id: string) =>
+    (await prisma.macroetapa.findMany({ where: { projetoId: id }, orderBy: { ordem: 'asc' } })).map((m) => m.nome)
+
+  it('projeto vazio: cria as cinco fases em ordem, com descrição', async () => {
+    const r = await aplicarModeloDmaic({}, fd({ projetoId }))
+    expect(r.ok).toBe(true)
+    expect(await nomes(projetoId)).toEqual(['D – Definir', 'M – Medir', 'A – Analisar', 'I – Melhorar', 'C – Controlar'])
+    const todas = await prisma.macroetapa.findMany({ where: { projetoId } })
+    expect(todas.every((m) => (m.descricao ?? '').length > 40)).toBe(true)
+  })
+
+  it('não mexe em outro projeto', async () => {
+    await aplicarModeloDmaic({}, fd({ projetoId }))
+    expect(await nomes(outroId)).toEqual([])
+  })
+
+  it('completa só o que falta, depois das existentes, e não repete', async () => {
+    await criarMacroetapa({}, fd({ projetoId, nome: 'Kick-off' }))
+    await criarMacroetapa({}, fd({ projetoId, nome: 'm – medir' }))
+    const r = await aplicarModeloDmaic({}, fd({ projetoId }))
+    expect(r.ok).toBe(true)
+    expect(await nomes(projetoId)).toEqual(['Kick-off', 'm – medir', 'D – Definir', 'A – Analisar', 'I – Melhorar', 'C – Controlar'])
+    const de_novo = await aplicarModeloDmaic({}, fd({ projetoId }))
+    expect(de_novo.ok).toBe(false)
+    expect(de_novo.mensagem).toMatch(/já tem as cinco fases/)
+  })
+
+  it('sem vaga para todas as fases que faltam: não cria nenhuma', async () => {
+    for (let i = 1; i <= 9; i++) await criarMacroetapa({}, fd({ projetoId, nome: `Etapa ${i}` }))
+    const r = await aplicarModeloDmaic({}, fd({ projetoId }))
+    expect(r.ok).toBe(false)
+    expect(r.mensagem).toMatch(/só há 3 vagas/)
+    expect((await nomes(projetoId))).toHaveLength(9)
+  })
+
+  it('duas aplicações simultâneas terminam com UM conjunto de fases', async () => {
+    await Promise.all([aplicarModeloDmaic({}, fd({ projetoId })), aplicarModeloDmaic({}, fd({ projetoId }))])
+    expect(await nomes(projetoId)).toHaveLength(5)
+  })
+
+  it('Leitor é recusado e nada é criado', async () => {
+    usuarioAtual.userId = 'user_leitor'
+    const r = await aplicarModeloDmaic({}, fd({ projetoId }))
+    expect(r).toEqual({ ok: false, mensagem: MENSAGEM_SOMENTE_LEITURA })
+    expect(await nomes(projetoId)).toEqual([])
+  })
+
+  it('criar e renomear gravam a descrição; renomear sem o campo não a apaga; vazio apaga', async () => {
+    await criarMacroetapa({}, fd({ projetoId, nome: 'Obra', descricao: '  Fase de obra  ' }))
+    const m = await prisma.macroetapa.findFirstOrThrow({ where: { projetoId } })
+    expect(m.descricao).toBe('Fase de obra')
+    await renomearMacroetapa({}, fd({ projetoId, id: m.id, nome: 'Obra civil' }))
+    expect((await prisma.macroetapa.findUniqueOrThrow({ where: { id: m.id } })).descricao).toBe('Fase de obra')
+    await renomearMacroetapa({}, fd({ projetoId, id: m.id, nome: 'Obra civil', descricao: '' }))
+    expect((await prisma.macroetapa.findUniqueOrThrow({ where: { id: m.id } })).descricao).toBeNull()
+  })
+
+  it('descrição acima de 500 caracteres é recusada', async () => {
+    const r = await criarMacroetapa({}, fd({ projetoId, nome: 'Longa', descricao: 'x'.repeat(501) }))
+    expect(r.ok).toBe(false)
+    expect(await nomes(projetoId)).toEqual([])
+  })
+})
+
+describe('macroetapas nos modelos de projeto', () => {
+  it('salvar como modelo e criar projeto: as macroetapas e os vínculos voltam', async () => {
+    await aplicarModeloDmaic({}, fd({ projetoId }))
+    const [d, m] = await prisma.macroetapa.findMany({ where: { projetoId }, orderBy: { ordem: 'asc' } })
+    await prisma.acao.create({ data: { projetoId, numero: 1, descricao: 'Charter', macroetapaId: d.id, previstoInicio: new Date('2027-01-04'), previstoTermino: new Date('2027-01-08') } })
+    await prisma.acao.create({ data: { projetoId, numero: 2, descricao: 'Linha de base', macroetapaId: m.id, previstoInicio: new Date('2027-01-11'), previstoTermino: new Date('2027-01-15') } })
+    await prisma.acao.create({ data: { projetoId, numero: 3, descricao: 'Solta', previstoInicio: new Date('2027-01-11'), previstoTermino: new Date('2027-01-12') } })
+
+    await seguir(() => salvarComoModelo({}, fd({ id: projetoId, nome: 'Melhoria', descricao: '' })))
+    const modelo = await prisma.modeloProjeto.findFirstOrThrow({ include: { acoes: { orderBy: { ordem: 'asc' } } } })
+    expect(modelo.acoes.map((a) => a.macroetapa)).toEqual(['D – Definir', 'M – Medir', null])
+
+    await seguir(() => criarProjetoDeModelo({}, fd({ modeloId: modelo.id, nome: 'Novo', inicio: '2027-03-01' })))
+    const novo = await prisma.projeto.findFirstOrThrow({
+      where: { nome: 'Novo' },
+      include: { macroetapas: { orderBy: { ordem: 'asc' } }, acoes: { orderBy: { numero: 'asc' } } },
+    })
+    expect(novo.macroetapas.map((x) => x.nome)).toEqual(['D – Definir', 'M – Medir'])
+    expect(novo.macroetapas.every((x) => (x.descricao ?? '').length > 40)).toBe(true)
+    expect(novo.acoes.map((a) => a.macroetapaId)).toEqual([novo.macroetapas[0].id, novo.macroetapas[1].id, null])
+  })
+
+  it('o editor cria e edita o modelo com macroetapa por linha; mesmo nome em linhas diferentes vira uma só', async () => {
+    const f = fd({ nome: 'Obra' })
+    for (const [desc, macro] of [['A', 'Fase 1'], ['B', 'fase 1'], ['C', '']]) {
+      f.append('acaoDescricao', desc); f.append('acaoInicio', '0'); f.append('acaoDuracao', '2'); f.append('acaoMacroetapa', macro)
+    }
+    await seguir(() => criarModelo({}, f))
+    const modelo = await prisma.modeloProjeto.findFirstOrThrow({ include: { acoes: { orderBy: { ordem: 'asc' } } } })
+    expect(modelo.acoes.map((a) => a.macroetapa)).toEqual(['Fase 1', 'fase 1', null])
+
+    await seguir(() => criarProjetoDeModelo({}, fd({ modeloId: modelo.id, nome: 'P', inicio: '2027-03-01' })))
+    const p = await prisma.projeto.findFirstOrThrow({ where: { nome: 'P' }, include: { macroetapas: true, acoes: { orderBy: { numero: 'asc' } } } })
+    expect(p.macroetapas).toHaveLength(1)
+    expect(p.acoes.map((a) => a.macroetapaId)).toEqual([p.macroetapas[0].id, p.macroetapas[0].id, null])
+
+    const g = fd({ modeloId: modelo.id, nome: 'Obra' })
+    g.append('acaoDescricao', 'A'); g.append('acaoInicio', '0'); g.append('acaoDuracao', '2'); g.append('acaoMacroetapa', 'Nova')
+    await seguir(() => atualizarModelo({}, g))
+    expect((await prisma.modeloAcao.findMany({ where: { modeloId: modelo.id } })).map((a) => a.macroetapa)).toEqual(['Nova'])
   })
 })
