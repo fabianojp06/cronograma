@@ -71,7 +71,7 @@ beforeEach(async () => {
   await prisma.projeto.deleteMany()
   await prisma.colaborador.deleteMany()
   await prisma.colaborador.create({
-    data: { nome: 'Fabiano', area: 'AGP', clerkUserId: 'user_prova' },
+    data: { nome: 'Mariana', area: 'AGP', clerkUserId: 'user_prova' },
   })
 })
 

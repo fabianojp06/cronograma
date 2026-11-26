@@ -43,16 +43,16 @@ afterAll(async () => {
 describe('renomear e o plano de ação', () => {
   it('leva o nome novo para os projetos quando pedido', async () => {
     const c = await prisma.colaborador.create({
-      data: { nome: 'Fabiano Jose', clerkUserId: 'user_admin' },
+      data: { nome: 'Mariana Jose', clerkUserId: 'user_admin' },
       select: { id: true },
     })
-    await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Fabiano Jose' } })
-    await prisma.projeto.create({ data: { nome: 'P2', responsavel: 'Fabiano Jose' } })
+    await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Mariana Jose' } })
+    await prisma.projeto.create({ data: { nome: 'P2', responsavel: 'Mariana Jose' } })
     await prisma.projeto.create({ data: { nome: 'P3', responsavel: 'Outra Pessoa' } })
 
     const r = await salvarColaborador(
       {},
-      fd({ colaboradorId: c.id, nome: 'Fabiano José', propagar: 'sim' }),
+      fd({ colaboradorId: c.id, nome: 'Mariana José', propagar: 'sim' }),
     )
     expect(r.aviso).toContain('2 projeto(s)')
 
@@ -61,8 +61,8 @@ describe('renomear e o plano de ação', () => {
       select: { responsavel: true },
     })
     expect(responsaveis.map((p) => p.responsavel)).toEqual([
-      'Fabiano José',
-      'Fabiano José',
+      'Mariana José',
+      'Mariana José',
       'Outra Pessoa',
     ])
   })
@@ -104,7 +104,7 @@ describe('renomear e o plano de ação', () => {
 
   it('recusa nome que colide com outro, mesmo sem acento', async () => {
     const a = await prisma.colaborador.create({
-      data: { nome: 'Fabiano José' },
+      data: { nome: 'Mariana José' },
       select: { id: true },
     })
     await prisma.colaborador.create({ data: { nome: 'Márcia Gonçalves' } })
@@ -118,19 +118,19 @@ describe('renomear e o plano de ação', () => {
       where: { id: a.id },
       select: { nome: true },
     })
-    expect(depois.nome).toBe('Fabiano José')
+    expect(depois.nome).toBe('Mariana José')
   })
 
   it('não escreve nada quando o nome e os projetos já estão certos', async () => {
     const c = await prisma.colaborador.create({
-      data: { nome: 'Fabiano José' },
+      data: { nome: 'Mariana José' },
       select: { id: true },
     })
-    await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Fabiano José' } })
+    await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Mariana José' } })
 
     const r = await salvarColaborador(
       {},
-      fd({ colaboradorId: c.id, nome: '  Fabiano   José ', propagar: 'sim' }),
+      fd({ colaboradorId: c.id, nome: '  Mariana   José ', propagar: 'sim' }),
     )
     expect(r.aviso).toContain('Nada a alterar')
   })
@@ -229,19 +229,19 @@ describe('propagar não depende de renomear', () => {
     // Antes, a propagação só andava de carona numa mudança de nome, e a
     // divergência ficava sem conserto pela tela.
     const c = await prisma.colaborador.create({
-      data: { nome: 'Fabiano José' },
+      data: { nome: 'Mariana José' },
       select: { id: true },
     })
-    await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Fabiano Jose' } })
+    await prisma.projeto.create({ data: { nome: 'P1', responsavel: 'Mariana Jose' } })
 
     const r = await salvarColaborador(
       {},
-      fd({ colaboradorId: c.id, nome: 'Fabiano José', propagar: 'sim' }),
+      fd({ colaboradorId: c.id, nome: 'Mariana José', propagar: 'sim' }),
     )
     expect(r.aviso).toContain('1 projeto(s)')
 
     const p = await prisma.projeto.findFirstOrThrow({ select: { responsavel: true } })
-    expect(p.responsavel).toBe('Fabiano José')
+    expect(p.responsavel).toBe('Mariana José')
   })
 
   it('acha a divergência de acento, que um where exato não enxerga', async () => {
@@ -273,19 +273,19 @@ describe('propagar não depende de renomear', () => {
   it('alcança projeto excluído logicamente', async () => {
     // Ele pode ser restaurado, e voltaria com a grafia velha.
     const c = await prisma.colaborador.create({
-      data: { nome: 'Fabiano José' },
+      data: { nome: 'Mariana José' },
       select: { id: true },
     })
     await prisma.projeto.create({
-      data: { nome: 'Arquivado', responsavel: 'Fabiano Jose', ativo: false },
+      data: { nome: 'Arquivado', responsavel: 'Mariana Jose', ativo: false },
     })
 
     await salvarColaborador(
       {},
-      fd({ colaboradorId: c.id, nome: 'Fabiano José', propagar: 'sim' }),
+      fd({ colaboradorId: c.id, nome: 'Mariana José', propagar: 'sim' }),
     )
     const p = await prisma.projeto.findFirstOrThrow({ select: { responsavel: true } })
-    expect(p.responsavel).toBe('Fabiano José')
+    expect(p.responsavel).toBe('Mariana José')
   })
 
   it('avisa quando não há nada a fazer', async () => {
@@ -359,21 +359,21 @@ describe('a intenção clicada manda, não o estado lido', () => {
 describe('área do colaborador', () => {
   it('grava a área de quem se cadastrou pela tela e nasceu sem ela', async () => {
     const c = await prisma.colaborador.create({
-      data: { nome: 'Fabiano Santos Garcia', clerkUserId: 'user_admin' },
+      data: { nome: 'Mariana Santos Garcia', clerkUserId: 'user_admin' },
       select: { id: true, area: true },
     })
     expect(c.area).toBeNull()
 
     const r = await salvarColaborador(
       {},
-      fd({ colaboradorId: c.id, nome: 'Fabiano Santos Garcia', area: 'AGP' }),
+      fd({ colaboradorId: c.id, nome: 'Mariana Santos Garcia', area: 'AGP' }),
     )
     expect(r.erroGeral).toBeUndefined()
     expect(r.aviso).toContain('AGP')
 
     const depois = await prisma.colaborador.findUniqueOrThrow({ where: { id: c.id } })
     expect(depois.area).toBe('AGP')
-    expect(depois.nome).toBe('Fabiano Santos Garcia')
+    expect(depois.nome).toBe('Mariana Santos Garcia')
   })
 
   it('campo vazio remove a área, em vez de recusar', async () => {

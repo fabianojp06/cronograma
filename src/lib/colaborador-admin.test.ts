@@ -11,15 +11,15 @@ import {
 } from './colaborador-admin'
 
 const cadastrados = [
-  { id: 'a', nome: 'Fabiano José' },
+  { id: 'a', nome: 'Mariana José' },
   { id: 'b', nome: 'Márcia Gonçalves' },
 ]
 
 describe('validarRenomear', () => {
   it('aceita um nome novo e livre', () => {
-    expect(validarRenomear(cadastrados, 'a', 'Fabiano J. Pereira')).toEqual({
+    expect(validarRenomear(cadastrados, 'a', 'Mariana J. Pereira')).toEqual({
       ok: true,
-      nome: 'Fabiano J. Pereira',
+      nome: 'Mariana J. Pereira',
       mudou: true,
     })
   })
@@ -27,16 +27,16 @@ describe('validarRenomear', () => {
   it('permite corrigir acento e caixa do próprio nome', () => {
     // É a correção que esta tela existe para fazer: quem se cadastrou sem
     // acento precisa poder arrumar.
-    expect(validarRenomear(cadastrados, 'a', 'fabiano jose')).toEqual({
+    expect(validarRenomear(cadastrados, 'a', 'mariana jose')).toEqual({
       ok: true,
-      nome: 'fabiano jose',
+      nome: 'mariana jose',
       mudou: true,
     })
   })
 
   it('avisa quando o nome não mudou de fato', () => {
-    const r = validarRenomear(cadastrados, 'a', '  Fabiano   José ')
-    expect(r).toEqual({ ok: true, nome: 'Fabiano José', mudou: false })
+    const r = validarRenomear(cadastrados, 'a', '  Mariana   José ')
+    expect(r).toEqual({ ok: true, nome: 'Mariana José', mudou: false })
   })
 
   it('recusa nome que colide com outro, mesmo com acento diferente', () => {
@@ -83,9 +83,9 @@ describe('podeDesativar', () => {
 
 describe('projetosDaPessoa e projetosADivergir', () => {
   const projetos = [
-    { id: '1', responsavel: 'Fabiano José' },
-    { id: '2', responsavel: 'Fabiano Jose' },
-    { id: '3', responsavel: 'fabiano  josé' },
+    { id: '1', responsavel: 'Mariana José' },
+    { id: '2', responsavel: 'Mariana Jose' },
+    { id: '3', responsavel: 'mariana  josé' },
     { id: '4', responsavel: 'Márcia Gonçalves' },
     { id: '5', responsavel: null },
   ]
@@ -93,7 +93,7 @@ describe('projetosDaPessoa e projetosADivergir', () => {
   it('acha todas as grafias da mesma pessoa', () => {
     // É o ponto da tela: a divergência que ela existe para curar é justamente
     // a que um `where` exato não enxerga.
-    expect(projetosDaPessoa(projetos, 'Fabiano José').map((p) => p.id)).toEqual([
+    expect(projetosDaPessoa(projetos, 'Mariana José').map((p) => p.id)).toEqual([
       '1',
       '2',
       '3',
@@ -105,7 +105,7 @@ describe('projetosDaPessoa e projetosADivergir', () => {
   })
 
   it('divergir exclui quem já está com a grafia certa', () => {
-    expect(projetosADivergir(projetos, 'Fabiano José').map((p) => p.id)).toEqual([
+    expect(projetosADivergir(projetos, 'Mariana José').map((p) => p.id)).toEqual([
       '2',
       '3',
     ])

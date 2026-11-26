@@ -4,7 +4,7 @@
  * Vive aqui, puro e coberto por teste, por um motivo concreto: a primeira
  * versão de `--colaborador` só aceitava a forma `--colaborador=Nome`, enquanto
  * `--semana` e `--ano`, logo acima dela no mesmo laço, aceitavam a forma com
- * espaço. Quem escrevesse `--colaborador "Fabiano Santos Garcia"` — a forma que
+ * espaço. Quem escrevesse `--colaborador "Mariana Santos Garcia"` — a forma que
  * os vizinhos ensinam — tinha o sinalizador descartado em silêncio: o token
  * `--colaborador` caía no `continue` dos sinalizadores desconhecidos e o nome
  * era engolido pelo `arquivo ??=`, que já estava preenchido.
@@ -21,7 +21,7 @@
 const COM_VALOR = {
   '--semana': { tipo: 'inteiro', exemplo: '39' },
   '--ano': { tipo: 'inteiro', exemplo: '2026' },
-  '--colaborador': { tipo: 'texto', exemplo: '"Fabiano Santos Garcia"' },
+  '--colaborador': { tipo: 'texto', exemplo: '"Mariana Santos Garcia"' },
 } as const
 
 type Sinalizador = keyof typeof COM_VALOR

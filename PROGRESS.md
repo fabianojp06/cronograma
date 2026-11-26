@@ -66,14 +66,14 @@ no Log de decisões.
       (models Projeto, Acao, HistoricoAlteracao, enum StatusAcao)
 - [x] Rodar a primeira migration e criar seed com 3 projetos de exemplo e 5 ações
       cada, com datas Previsto variadas (algumas no passado, algumas futuras)
-- [x] Integrar Clerk (Instance ID `ins_3JTS4qDnU1wKm8mPloItwq6KxYJ`) como autenticação,
+- [x] Integrar Clerk (Instance ID `<id-instancia-clerk>`) como autenticação,
       habilitando login social via Microsoft/Outlook (Azure AD OAuth) — usar
       `clerk_sdk_snippet` do MCP do Clerk para o código de integração correto do
       Next.js App Router; a chave secreta e a publishable key vão em variáveis de
       ambiente (`.env.local`, nunca commitadas)
-- [x] Conectar o repositório GitHub ao projeto Vercel `prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO`
+- [x] Conectar o repositório GitHub ao projeto Vercel `<id-projeto-vercel>`
       (deploy automático a cada push) e ao projeto Railway
-      `28445ef3-95ee-44bd-bfba-b5af383d8057` (banco PostgreSQL) — registrar no
+      `<id-projeto-railway>` (banco PostgreSQL) — registrar no
       Log de decisões o domínio gerado pela Vercel e a connection string (via
       variável de ambiente, nunca em texto plano no repositório) assim que
       existirem
@@ -251,7 +251,7 @@ no Log de decisões.
 - **Migration inicial aplicada e versionada:** `prisma/migrations/20260917231112_inicial/`
   — cria o enum `StatusAcao`, as tabelas `Projeto`, `Acao` e `HistoricoAlteracao`, os 4
   índices e a unique `Acao_projetoId_numero_key`, exatamente como o schema descreve.
-- **Banco usado:** o projeto Railway `28445ef3-...` **ainda não tem serviço PostgreSQL**
+- **Banco usado:** o projeto Railway `<id-projeto-railway>` **ainda não tem serviço PostgreSQL**
   (só um serviço de app `cronograma` em estado *staged-create*, não commitado). Para não
   provisionar infraestrutura fora do escopo deste item, a migration foi gerada e validada
   contra um **PostgreSQL 16 local em Docker** (`cronograma-pg`, porta 55432). O `.env.example`
@@ -305,7 +305,7 @@ no Log de decisões.
   repositório — nenhuma chave foi commitada.
 - **Pendência manual (não automatizável daqui):** habilitar o **login social Microsoft/Outlook
   (Azure AD OAuth)** no dashboard do Clerk (User & Authentication → SSO Connections →
-  Microsoft) da instância `ins_3JTS4qDnU1wKm8mPloItwq6KxYJ`, e cadastrar Client ID/Secret de
+  Microsoft) da instância `<id-instancia-clerk>`, e cadastrar Client ID/Secret de
   um app registrado no Azure AD para produção. Isso é configuração de instância, não de
   código: o SDK já renderiza o botão assim que a conexão for ligada. Requer as chaves de API
   da instância, que ainda não estão disponíveis nesta máquina.
@@ -316,7 +316,7 @@ no Log de decisões.
   do Bloco 1).
 
 ### 2026-09-17 — Bloco 1: Railway (PostgreSQL) + Vercel (deploy automático)
-- **PostgreSQL provisionado no Railway** (projeto `28445ef3-...`, ambiente `production`):
+- **PostgreSQL provisionado no Railway** (projeto `<id-projeto-railway>`, ambiente `production`):
   serviço **`Postgres`** (`39b6e75a-3875-4287-b0b5-f215ea9fc4c7`), criado a partir do
   template verificado `postgres`. Foi criado **ao vivo**, deliberadamente fora do patch
   staged que já existia no ambiente (o serviço de app `cronograma`, em `staged-create`,
@@ -327,19 +327,19 @@ no Log de decisões.
   da rede do Railway — a Vercel e a máquina de desenvolvimento precisam do endpoint
   público. Host/porta ficam em `RAILWAY_TCP_PROXY_DOMAIN` / `RAILWAY_TCP_PROXY_PORT`.
 - **Connection string NÃO está registrada aqui nem no repositório** (regra do CLAUDE.md).
-  Ela se obtém com `railway link -p 28445ef3-... -e production -s Postgres` seguido de
+  Ela se obtém com `railway link -p <id-projeto-railway> -e production -s Postgres` seguido de
   `railway variables -s Postgres --kv`. O `.env.example` foi reescrito com esse
   procedimento, mantendo o Docker local como alternativa offline.
 - **Migration e seed aplicados no banco do Railway:** `prisma migrate deploy` aplicou
   `20260917231112_inicial` (a mesma migration versionada, sem regerar nada) e o
   `db:seed` criou os 3 projetos de exemplo com 5 ações cada. O banco de produção já
   responde com dados.
-- **Vercel:** o projeto `prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO` (**`cronograma-lktu`**) já
+- **Vercel:** o projeto `<id-projeto-vercel>` (**`cronograma-lktu`**) já
   estava conectado ao repositório `fabianojp06/cronograma` — existe o domínio de branch
-  `cronograma-lktu-git-main-fabianojp06s-projects.vercel.app`, ou seja, **push na `main`
+  `cronograma-lktu-git-main-<equipe>.vercel.app`, ou seja, **push na `main`
   já dispara deploy automático**. Domínios gerados:
-  - Produção: `https://cronograma-lktu-fabianojp06s-projects.vercel.app`
-  - Branch `main`: `https://cronograma-lktu-git-main-fabianojp06s-projects.vercel.app`
+  - Produção: `https://cronograma-lktu-<equipe>.vercel.app`
+  - Branch `main`: `https://cronograma-lktu-git-main-<equipe>.vercel.app`
 - **Bug de build encontrado e corrigido:** o último deploy estava em `ERROR`. Causa real
   (dos build logs): `prisma.config.ts` usava `env('DATABASE_URL')` do `prisma/config`,
   que **lança** quando a variável não existe. Como `prisma generate` roda no `postinstall`,
@@ -371,7 +371,7 @@ no Log de decisões.
   `https://claude.ai/artifact/WPxn8dThgUAmMPJHAPJzhs` foi aberto pelo conector de
   documentos (não por web fetch, conforme a regra) e a resposta foi `access: deny`
   — o documento não está compartilhado com a conta desta sessão. **Ação necessária
-  do usuário:** compartilhar o artifact com a conta `fabianojp06@gmail.com` (ou
+  do usuário:** compartilhar o artifact com a conta do autor (ou
   colar o conteúdo do artboard aqui) para que as telas dos Blocos 2 a 5 sejam
   conferidas contra o desenho aprovado.
   Sem ele, a tela foi construída a partir da especificação textual do CLAUDE.md
@@ -501,7 +501,7 @@ no Log de decisões.
   `WPxn8dThgUAmMPJHAPJzhs` foi lido de novo pelo conector de documentos (não por
   web fetch) e a resposta voltou `verdict: deny`, `reason: access` — mesma
   situação dos Blocos 2 e 5. **Ação necessária do usuário:** compartilhar o
-  artifact com `fabianojp06@gmail.com` ou colar o conteúdo do artboard. A tela
+  artifact com a conta do autor ou colar o conteúdo do artboard. A tela
   foi construída a partir do CLAUDE.md (traço lateral por seção, tokens de tema,
   Manrope nos títulos) e **a fidelidade visual segue pendente de revisão**.
   O **painel de histórico ao lado do formulário não foi implementado nesta
@@ -637,7 +637,7 @@ no Log de decisões.
   `WPxn8dThgUAmMPJHAPJzhs` foi lido pelo conector de documentos (não por web
   fetch) e voltou `verdict: deny`, `reason: access` — 4ª tentativa, mesma
   situação dos Blocos 2, 3 e 5. **Ação necessária do usuário:** compartilhar o
-  artifact com `fabianojp06@gmail.com` ou colar o conteúdo do artboard. A grade
+  artifact com a conta do autor ou colar o conteúdo do artboard. A grade
   foi construída a partir do CLAUDE.md (tokens de tema, Previsto azul /
   Realizado verde, linha do "hoje") e **a fidelidade visual segue pendente de
   revisão**.
@@ -732,7 +732,7 @@ no Log de decisões.
 - **Protótipo `C-PainelOperacional` continua inacessível.** Nova leitura do artifact
   `WPxn8dThgUAmMPJHAPJzhs` pelo conector de documentos (não web fetch) voltou
   `verdict: deny`, `reason: access` — 5ª tentativa, mesmo resultado dos Blocos 2 a 4.
-  **Ação necessária do usuário:** compartilhar o artifact com `fabianojp06@gmail.com`
+  **Ação necessária do usuário:** compartilhar o artifact com a conta do autor
   ou colar o conteúdo do artboard. A tela foi construída a partir do CLAUDE.md
   (indicadores por traço lateral, tokens de tema, Manrope nos títulos) e a
   **fidelidade visual segue pendente de revisão**.
@@ -915,7 +915,7 @@ no Log de decisões.
   Development) via `vercel env add`, sem expor valores no terminal nem no repositório:
   `DATABASE_URL` (montada a partir do TCP proxy público do Postgres no Railway),
   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` e `CLERK_SECRET_KEY` (obtidas com `clerk env pull`
-  da app `cronograma`, instância **development** `ins_3JTS4...`), além das 4
+  da app `cronograma`, instância **development** `<id-instancia-clerk>`), além das 4
   `NEXT_PUBLIC_CLERK_SIGN_*`. Pendência 1 do registro de Railway/Vercel: **resolvida**.
 - Produção reimplantada (`vercel redeploy`): build ok, mas **todas as rotas respondem 404**
   (`X-Vercel-Error: NOT_FOUND`). Causa: o projeto na Vercel está com
@@ -1038,7 +1038,7 @@ alternador for implementado. Candidato a Bloco 8.
   → `npm ci` do zero), com o env exato do workflow — lint limpo, **288 testes
   passando**, build completo com as 10 rotas. O YAML foi validado por parser.
 - Observação registrada no mesmo dia: o repositório está ligado a **dois projetos
-  Vercel** (`cronograma` / `prj_xVigz...` e `cronograma-lktu` / `prj_HxI1VBY...`,
+  Vercel** (`cronograma` / `<id-projeto-vercel-duplicado>` e `cronograma-lktu` / `<id-projeto-vercel>`,
   este último o do CLAUDE.md). Cada push gera dois deploys — decidir qual manter.
 
 ### 2026-09-18 — Bloco 8: modo escuro
@@ -1202,7 +1202,7 @@ conclusivo, não suposição: com `VERCEL_ENV=production`, uma falha do
 `ERROR`. As tabelas `AvaliacaoProjeto` e `PesoCriterio` existem no Railway.
 
 **O projeto duplicado quebrou — e foi esta mudança que o quebrou.** O mesmo commit
-falhou no projeto **`cronograma`** (`prj_xVigz...`), com a mensagem da guarda:
+falhou no projeto **`cronograma`** (`<id-projeto-vercel-duplicado>`), com a mensagem da guarda:
 
 ```
 [migração] VERCEL_ENV=production mas DATABASE_URL está vazia.
@@ -1218,7 +1218,7 @@ produção sem banco que passava despercebido desde o início.
 **Decisão do usuário: desconectar o duplicado** (Vercel → `cronograma` → Settings →
 Git → Disconnect). A guarda fica como está — foi ela que flagrou o problema, e
 afrouxá-la devolveria a cegueira. Registrado no CLAUDE.md que
-`prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO` é o único alvo de deploy.
+`<id-projeto-vercel>` é o único alvo de deploy.
 
 **Erro meu que vale registrar:** ao confirmar o deploy eu conferi apenas o
 `cronograma-lktu` e relatei o resultado como se fosse geral. Com dois projetos
@@ -1226,7 +1226,7 @@ ligados ao mesmo repositório, conferir um só não basta.
 
 ### 2026-09-25 — Bloco 10: Card WIN Semanal (fase 1)
 
-Integração da planilha `CARD WIN Semanal - Fabiano` enviada pelo usuário.
+Integração da planilha `CARD WIN Semanal - Mariana` enviada pelo usuário.
 
 **O achado que orientou tudo.** A planilha não é concorrente do plano de ação —
 é o funil de entrada dele, e ela mesma diz isso no rodapé de toda aba: "Caso um
@@ -1498,8 +1498,8 @@ esconde exatamente a pergunta "como esses dados aparecem pela primeira vez?".
 - `cadastrarColaborador` cria o colaborador e vincula a conta na mesma ação.
   Seguro aqui porque o Clerk já decide quem entra e o cadastro é restrito.
 - **Reconhece quem o importador já criou.** `nome` é `@unique`; sem comparar por
-  chave sem acento/caixa (`chaveDoNome`), digitar "fabiano jose" esbarraria no
-  índice único do "Fabiano José" existente e devolveria erro de banco em vez de
+  chave sem acento/caixa (`chaveDoNome`), digitar "mariana jose" esbarraria no
+  índice único do "Mariana José" existente e devolveria erro de banco em vez de
   vincular. Vincula o cadastro que existe, preservando a `area` da planilha.
 - **Sugere os `Projeto.responsavel` já usados.** Não é conveniência: é o mesmo
   nome que volta para o plano de ação na promoção, e duas grafias partem a
@@ -1535,16 +1535,16 @@ cadastrar), porque os dois tinham o mesmo atalho.
 
 **2. A proteção contra grafias divergentes era unidirecional.** A tela
 reconhecia quem o importador tinha criado, mas `scripts/importar-card-win.ts`
-fazia `upsert` por igualdade exata de `nome`. Quem se cadastrasse como "Fabiano
+fazia `upsert` por igualdade exata de `nome`. Quem se cadastrasse como "Mariana
 Jose" num banco zerado — onde não há `Projeto`, logo nenhuma sugestão de grafia
-— ganhava uma segunda linha `Colaborador` quando a planilha com "Fabiano José"
+— ganhava uma segunda linha `Colaborador` quando a planilha com "Mariana José"
 fosse importada.
 
 Provado nos dois sentidos, com o importador **real** rodando contra Postgres e
 uma planilha mínima construída para o teste:
 
-- código **antigo**: `2 colaboradores` — "Fabiano Jose [clerk=user_clerk]" e
-  "Fabiano José [clerk=null]", com o card importado sob o segundo. A conta do
+- código **antigo**: `2 colaboradores` — "Mariana Jose [clerk=user_clerk]" e
+  "Mariana José [clerk=null]", com o card importado sob o segundo. A conta do
   usuário ficava órfã e o relatório por responsável passava a contar dois.
 - código **novo**: `1 colaborador`, card sob a conta certa, `area` atualizada
   pela planilha, e a divergência de grafia avisada na saída do script.
@@ -1690,7 +1690,7 @@ aconteceu na época.
 Outras decisões:
 
 - **Conflito de nome usa `chaveDoNome`**, a mesma regra do cadastro e do
-  importador. Igualdade exata deixaria criar "Fabiano Jose" ao lado de "Fabiano
+  importador. Igualdade exata deixaria criar "Mariana Jose" ao lado de "Mariana
   José". Corrigir só acento ou caixa do próprio nome é permitido — é o caso de
   uso principal.
 - **Desativar não apaga nada e não solta o `clerkUserId`.** Soltar deixaria a
@@ -1729,8 +1729,8 @@ estado já mudou — mesmo padrão de `vincularColaborador`.
 
 **3. A propagação casava `Projeto.responsavel` por igualdade exata**, enquanto a
 identidade em todo o resto passa por `chaveDoNome`. A tela ficava cega
-justamente para a divergência que existe para curar: "Fabiano Jose" no projeto
-contra "Fabiano José" no cadastro não era contado nem atualizado, e propagar
+justamente para a divergência que existe para curar: "Mariana Jose" no projeto
+contra "Mariana José" no cadastro não era contado nem atualizado, e propagar
 podia deixar uma terceira grafia para trás.
 
 **4. A contagem filtrava `ativo: true`, a escrita não** — o rótulo prometia N e
@@ -1835,11 +1835,11 @@ reexecutá-lo sem empurrar código, e as alternativas eram commit vazio ou fecha
 e reabrir o PR, ambas descartadas.
 
 ### Ensaio da importação da planilha real do Card WIN (28/09/2026)
-- O usuário enviou a versão atual de `CARD_WIN_Semanal_-_Fabiano.xlsx` (agora com a
+- O usuário enviou a versão atual de `CARD_WIN_Semanal_-_Mariana.xlsx` (agora com a
   semana 40; a versão anterior ia até a 39). Arquivo em `dados/`, que é gitignored.
 - **Simulação + gravação ensaiadas contra um Postgres descartável local**, com as
   migrations aplicadas por `prisma migrate deploy` — o mesmo caminho que produção usa.
-  Resultado: 1 colaborador (`Fabiano Garcia`), 1 card (2026/S40), 3 WINs.
+  Resultado: 1 colaborador (`Mariana Garcia`), 1 card (2026/S40), 3 WINs.
 - **A regra das 3 semanas dispara no primeiro dia**, como o desenho previa: o WIN
   "Desenvolvimento do documento de elicitação de requisitos — relatórios orçamentários"
   entra com `aparicoesAnteriores = 3` (semanas 37, 38 e 39 da planilha) e o importador
@@ -1859,10 +1859,10 @@ e reabrir o PR, ambas descartadas.
 - **A gravação em produção continua pendente e é do usuário**: a leitura da credencial
   do Railway é barrada por classificador de segurança nesta sessão, e não se contorna.
   Comando, com a `DATABASE_URL` de produção no `.env` (ver `.env.example`):
-  `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --gravar`
+  `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Mariana.xlsx --ano 2026 --gravar`
   (sem `--gravar` primeiro, para conferir).
 - Depois da importação, a tela "Quem é você?" de `/wins` passa a oferecer
-  `Fabiano Garcia` para vincular — é o que resolve a mensagem "Não há colaborador
+  `Mariana Garcia` para vincular — é o que resolve a mensagem "Não há colaborador
   disponível para vincular" vista em produção. **Vincular ao nome existente**, sem
   redigitar outra grafia, senão nascem dois colaboradores para a mesma pessoa.
 
@@ -1885,7 +1885,7 @@ Veio de uma observação do usuário no print de `/colaboradores`: a linha dizia
   planilha. Agora ausente vira `undefined` (o Prisma pula a coluna). Verificado
   revertendo a correção: o teste falha com `expected null to be 'APD'`.
 - **A investigação revelou um bloqueio na importação pendente.** O cadastro de
-  produção diz "Fabiano Santos Garcia" e a planilha diz "Fabiano Garcia".
+  produção diz "Mariana Santos Garcia" e a planilha diz "Mariana Garcia".
   `chaveDoNome` cobre acento e caixa, não um nome do meio — não casa.
   **Reproduzido contra o banco**, com a planilha real e o cadastro de produção:
   sem correção, a importação cria duas pessoas, uma com o card e a área, outra
@@ -1903,7 +1903,7 @@ Veio de uma observação do usuário no print de `/colaboradores`: a linha dizia
 - Verde: 547 unitários (39 arquivos), 78 de integração (5 arquivos), `tsc`,
   `eslint` e `next build`.
 - **Ainda pendente, e é do usuário:** a gravação em produção. O comando agora é
-  `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador "Fabiano Santos Garcia" --gravar`
+  `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Mariana.xlsx --ano 2026 --colaborador "Mariana Santos Garcia" --gravar`
   (sem `--gravar` antes, para conferir). Esta versão precisa estar em produção
   antes, senão a flag não existe lá.
 
@@ -1912,7 +1912,7 @@ Veio de uma observação do usuário no print de `/colaboradores`: a linha dizia
 Três achados, todos legítimos e todos corrigidos. O primeiro era grave.
 
 - **`--colaborador` só aceitava a forma `=`.** `--semana` e `--ano`, no mesmo
-  laço logo acima, aceitavam espaço — então `--colaborador "Fabiano Santos
+  laço logo acima, aceitavam espaço — então `--colaborador "Mariana Santos
   Garcia"`, a forma que os vizinhos ensinam, caía no `continue` dos
   sinalizadores desconhecidos e o nome era engolido pelo `arquivo ??=`.
   **Reproduzido contra o banco**: a importação criava as duas pessoas e imprimia
@@ -1960,10 +1960,10 @@ pararam — é por isso que o build vinha sendo conferido por lá.
 1. **Importar a planilha real em produção** — ensaiada e validada em 28/09 contra
    um Postgres descartável; falta rodar com a `DATABASE_URL` de produção, o que
    só a máquina do usuário consegue fazer:
-   `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Fabiano.xlsx --ano 2026 --colaborador "Fabiano Santos Garcia" --gravar`
+   `npm run importar:card-win -- ./dados/CARD_WIN_Semanal_-_Mariana.xlsx --ano 2026 --colaborador "Mariana Santos Garcia" --gravar`
    (sem `--gravar` antes, para conferir). **A flag `--colaborador` não é
    opcional aqui**: sem ela a importação cria uma segunda pessoa, porque a
-   planilha diz "Fabiano Garcia" e o cadastro diz "Fabiano Santos Garcia".
+   planilha diz "Mariana Garcia" e o cadastro diz "Mariana Santos Garcia".
    Exige esta versão já publicada. Sem ela ninguém tem card, e o WIN que já
    bateu três semanas segue sem virar item do plano de ação. Importar **antes** de
    as pessoas se cadastrarem evita divergência de grafia — embora a proteção

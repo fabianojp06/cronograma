@@ -13,7 +13,7 @@ function projeto(parcial: Partial<ProjetoComAcoes> = {}): ProjetoComAcoes {
     nome: 'Modernização da rede',
     equipe: 'STI',
     categoria: 'Infraestrutura',
-    responsavel: 'Fabiano',
+    responsavel: 'Mariana',
     prioridade: 1,
     acoes: [],
     ...parcial,

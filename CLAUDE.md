@@ -19,20 +19,20 @@ PLA-DEP) e um **drill-down por projeto** (modelo CRO-DEP).
 ## Repositório
 
 - GitHub: https://github.com/fabianojp06/cronograma (privado)
-- `autoloop.sh` (bash) ou `autoloop.ps1` (PowerShell, para Windows sem WSL/Git
+- `scripts/autoloop.sh` (bash) ou `scripts/autoloop.ps1` (PowerShell, para Windows sem WSL/Git
   Bash) espera este repositório já clonado e com pelo menos um commit inicial na
   raiz antes da primeira rodada. Use o script correspondente ao seu terminal —
   a lógica é idêntica nos dois.
 
 ## Infraestrutura
 
-- Deploy: Vercel — Project ID `prj_HxI1VBYwefOAGBqyJXvEOCBAkHPO` (projeto
+- Deploy: Vercel — Project ID `<id-projeto-vercel>` (projeto
   `cronograma-lktu`). **É o único alvo de deploy.** Existiu um projeto duplicado
-  `cronograma` (`prj_xVigzFjO4V2v01bJG3KgESToQ0TV`) ligado ao mesmo repositório,
+  `cronograma` (`<id-projeto-vercel-duplicado>`) ligado ao mesmo repositório,
   sem variáveis de ambiente; foi desconectado em 21/09/2026. Se um segundo deploy
   voltar a aparecer por push, é ele de novo.
-- Banco de dados: Railway (PostgreSQL) — Project ID `28445ef3-95ee-44bd-bfba-b5af383d8057`
-- Autenticação: Clerk — Instance ID `ins_3JTS4qDnU1wKm8mPloItwq6KxYJ`, com login social via Microsoft/Outlook (Azure AD OAuth)
+- Banco de dados: Railway (PostgreSQL) — Project ID `<id-projeto-railway>`
+- Autenticação: Clerk — Instance ID `<id-instancia-clerk>`, com login social via Microsoft/Outlook (Azure AD OAuth)
 
 ## Contexto organizacional
 
@@ -402,21 +402,21 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
   ninguém passava da tela "Quem é você?" — nem para cadastrar o primeiro WIN.
   Auto-cadastro é seguro aqui porque o Clerk já decide quem entra.
   O cadastro **reconhece a pessoa que o importador já criou**, comparando sem
-  acento nem caixa (`chaveDoNome`): sem isso, digitar "fabiano jose" esbarraria
+  acento nem caixa (`chaveDoNome`): sem isso, digitar "mariana jose" esbarraria
   no índice único de `nome` e devolveria erro de banco em vez de vincular.
 - **A identidade por nome é uma regra só, nos dois sentidos** (`encontrarPorNome`),
   usada pela tela **e** por `scripts/importar-card-win.ts`. Enquanto o script
   casava por igualdade exata, a proteção era unidirecional: quem se cadastrasse
-  como "Fabiano Jose" num banco zerado — sem `Projeto`, logo sem sugestão de
-  grafia — ganhava uma segunda linha quando a planilha com "Fabiano José" fosse
+  como "Mariana Jose" num banco zerado — sem `Projeto`, logo sem sugestão de
+  grafia — ganhava uma segunda linha quando a planilha com "Mariana José" fosse
   importada. Os cards iam para a linha nova, a conta do Clerk ficava na antiga,
   e o relatório por responsável contava duas pessoas. O importador **não
   renomeia** o cadastro existente (o nome pode já ter ido para
   `Projeto.responsavel` numa promoção); avisa a divergência e deixa a decisão
   para quem roda.
 - **`chaveDoNome` cobre acento e caixa, e só isso** — um nome do meio a mais não
-  casa. Foi o caso real da primeira importação: planilha "Fabiano Garcia",
-  cadastro "Fabiano Santos Garcia", e o importador criaria uma SEGUNDA pessoa,
+  casa. Foi o caso real da primeira importação: planilha "Mariana Garcia",
+  cadastro "Mariana Santos Garcia", e o importador criaria uma SEGUNDA pessoa,
   com os cards de um lado e a conta do Clerk e os projetos do outro. Por isso
   `scripts/importar-card-win.ts` aceita `--colaborador="Nome no cadastro"`, que
   diz explicitamente em qual cadastro a planilha entra. Não é o script
@@ -426,7 +426,7 @@ Colaborador ──< CardSemanal ──< WinSemana >── Win ──> Projeto | 
 - **A leitura dos argumentos é pura e testada** (`src/lib/argumentos-importacao.ts`),
   e não um laço dentro do script. A primeira versão de `--colaborador` só aceitava
   a forma `=`, enquanto `--semana` e `--ano`, no mesmo laço, aceitavam espaço:
-  `--colaborador "Fabiano Santos Garcia"` era descartado em silêncio e a
+  `--colaborador "Mariana Santos Garcia"` era descartado em silêncio e a
   importação criava a pessoa duplicada **relatando "Gravado: 1 card, 3 WINs"**.
   Daí as duas regras: toda forma que um sinalizador aceita, todos aceitam; e
   valor faltando, valor vazio ou sinalizador desconhecido abortam com saída 1,
@@ -508,7 +508,7 @@ WIN (as de identidade — cadastrar e vincular o próprio nome — ficam abertas
   Amarrar as duas deixaria essa divergência sem conserto pela tela.
 - **A propagação casa por `chaveDoNome`, não por igualdade exata.** A
   divergência que a tela cura é justamente a que um `where` exato não enxerga:
-  "Fabiano Jose" no projeto contra "Fabiano José" no cadastro. Contar com uma
+  "Mariana Jose" no projeto contra "Mariana José" no cadastro. Contar com uma
   regra e escrever com outra faria o rótulo prometer N e o resultado relatar M,
   então tela e ação usam a MESMA função (`projetosDaPessoa`).
 - **A contagem não filtra `ativo`.** Projeto excluído logicamente pode ser
@@ -523,7 +523,7 @@ WIN (as de identidade — cadastrar e vincular o próprio nome — ficam abertas
   ("Promovido do Card WIN de Fulano…"), mas em prosa e como registro do que
   aconteceu na época.
 - **Conflito de nome usa `chaveDoNome`**, a mesma regra do cadastro e do
-  importador: igualdade exata deixaria criar "Fabiano Jose" ao lado de "Fabiano
+  importador: igualdade exata deixaria criar "Mariana Jose" ao lado de "Mariana
   José". Trocar só acento ou caixa do **próprio** nome é permitido — é a
   correção que a tela existe para fazer.
 - **Desativar não apaga nada.** Cards e WINs seguem no histórico e a tela de
@@ -1407,7 +1407,7 @@ Três peças, todas só para produção e todas puras onde dá (`monitoramento.t
 
 Fluxo: branch da etapa → PR contra `homologacao` (o autoloop mescla só lá, com o CI
 verde) → PR `homologacao` → `main`, aprovado por quem administra. A `main` é só a
-produção; o autoloop nunca abre PR nem mescla nela (`autoloop.sh`/`.ps1` recusam rodar
+produção; o autoloop nunca abre PR nem mescla nela (`scripts/autoloop.sh`/`.ps1` recusam rodar
 sem a branch `homologacao` no remoto).
 
 - **Banco próprio** (Postgres no Railway, serviço `Postgres-WZMG`, acesso por TCP proxy).
@@ -1446,7 +1446,7 @@ produção antes do merge, deixando o banco à frente do código no ar.
   frente do código, o que é seguro porque as migrations aqui são aditivas. O
   inverso não seria.
 
-## Regras para o loop autônomo (autoloop.sh)
+## Regras para o loop autônomo (scripts/autoloop.sh)
 
 - Antes de cada rodada, o `PROGRESS.md` deste projeto (não um genérico) deve estar na
   raiz do repositório. Verifique o cabeçalho `# PROGRESS — Cronograma CTCEA` antes de

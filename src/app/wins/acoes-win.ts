@@ -797,8 +797,8 @@ export async function cadastrarColaborador(
     if (vinculo) return vinculo
 
     // `nome` é único no banco, e o importador pode já ter criado esta pessoa.
-    // Comparar por chave (sem acento nem caixa) evita que "fabiano jose"
-    // esbarre no índice único do "Fabiano José" que já existe — o que daria
+    // Comparar por chave (sem acento nem caixa) evita que "mariana jose"
+    // esbarre no índice único do "Mariana José" que já existe — o que daria
     // um erro de banco no lugar de simplesmente reconhecer a pessoa.
     const existentes = await prisma.colaborador.findMany({
       select: { id: true, nome: true, clerkUserId: true, ativo: true },

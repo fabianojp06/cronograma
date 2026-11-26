@@ -3,8 +3,8 @@
 # autoloop.sh — Loop de execução autônoma para Claude Code (v1.1)
 #
 # Uso:
-#   ./autoloop.sh
-#   CHECK_CMD="npm test" MAX_ITERACOES=10 ./autoloop.sh
+#   ./scripts/autoloop.sh
+#   CHECK_CMD="npm test" MAX_ITERACOES=10 ./scripts/autoloop.sh
 #
 # Novidades desta versão (v1.1) em relação à original:
 #   - Checa `claude auth status` ANTES de iniciar o loop, não durante a 1ª iteração

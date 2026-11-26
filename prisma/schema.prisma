@@ -207,7 +207,7 @@ enum StatusWin {
 /// `nome` é a mesma grafia usada em `Projeto.responsavel`: é ele que será
 /// gravado lá quando um WIN virar item do plano de ação, e é o que mantém o
 /// relatório "por responsável" do dashboard somando certo. Por isso é único —
-/// a lista fechada existe justamente para "Fabiano Garcia" e "Fabiano" não
+/// a lista fechada existe justamente para "Mariana Garcia" e "Mariana" não
 /// virarem duas pessoas.
 ///
 /// `clerkUserId` é opcional de propósito: um colaborador pode ter card antes
