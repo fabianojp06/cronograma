@@ -30,7 +30,7 @@
     Modelo específico a usar (opcional), ex: "sonnet".
 
 .EXAMPLE
-    .\autoloop.ps1 -CheckCmd "npm test" -MaxIteracoes 5
+    .\scripts\autoloop.ps1 -CheckCmd "npm test" -MaxIteracoes 5
 #>
 
 param(

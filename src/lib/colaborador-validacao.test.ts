@@ -9,9 +9,9 @@ import {
 
 describe('validarNomeColaborador', () => {
   it('aceita um nome comum e devolve com os espaços normalizados', () => {
-    expect(validarNomeColaborador('  Fabiano   José  ')).toEqual({
+    expect(validarNomeColaborador('  Mariana   José  ')).toEqual({
       ok: true,
-      nome: 'Fabiano José',
+      nome: 'Mariana José',
     })
   })
 
@@ -50,27 +50,27 @@ describe('normalizarNome', () => {
 
 describe('chaveDoNome', () => {
   // A chave existe para reconhecer a pessoa que o importador já cadastrou.
-  // Sem ela, quem digitasse "fabiano jose" esbarraria no índice único de
+  // Sem ela, quem digitasse "mariana jose" esbarraria no índice único de
   // `nome` com uma mensagem que não explica nada.
   it('reconhece a mesma pessoa apesar de acento, caixa e espaço', () => {
-    expect(chaveDoNome('fabiano  jose')).toBe(chaveDoNome('Fabiano José'))
+    expect(chaveDoNome('mariana  jose')).toBe(chaveDoNome('Mariana José'))
   })
 
   it('não confunde pessoas diferentes', () => {
-    expect(chaveDoNome('Fabiano José')).not.toBe(chaveDoNome('Fabiano Júnior'))
+    expect(chaveDoNome('Mariana José')).not.toBe(chaveDoNome('Mariana Júnior'))
   })
 })
 
 describe('encontrarPorNome', () => {
   const cadastrados = [
-    { id: 'a', nome: 'Fabiano José' },
+    { id: 'a', nome: 'Mariana José' },
     { id: 'b', nome: 'Márcia Gonçalves' },
   ]
 
   it('acha a pessoa mesmo com grafia diferente', () => {
     // O cenário real: alguém se cadastra sem acento num banco zerado, e depois
     // a planilha chega com a grafia certa.
-    expect(encontrarPorNome(cadastrados, 'fabiano  jose')?.id).toBe('a')
+    expect(encontrarPorNome(cadastrados, 'mariana  jose')?.id).toBe('a')
     expect(encontrarPorNome(cadastrados, 'MARCIA GONCALVES')?.id).toBe('b')
   })
 
@@ -79,7 +79,7 @@ describe('encontrarPorNome', () => {
   })
 
   it('não confunde nomes parecidos', () => {
-    expect(encontrarPorNome(cadastrados, 'Fabiano Júnior')).toBeUndefined()
+    expect(encontrarPorNome(cadastrados, 'Mariana Júnior')).toBeUndefined()
   })
 
   it('aguenta lista vazia', () => {

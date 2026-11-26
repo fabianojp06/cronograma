@@ -15,7 +15,7 @@ function aba(nome: string, semana: number, wins: [string, string?][], extras = {
     AD4: String(semana),
     H6: 'AGP - Gerenciamento de Programa & Projetos',
     R6: 'Mapeamento de Processos',
-    AB6: 'Fabiano Garcia',
+    AB6: 'Mariana Garcia',
     ...extras,
   }
   const linhas = [20, 21, 22]
@@ -39,7 +39,7 @@ describe('lerAba', () => {
     expect(card).not.toBeNull()
     if (!card) return
     expect(card.semana).toBe(39)
-    expect(card.colaborador).toBe('Fabiano Garcia')
+    expect(card.colaborador).toBe('Mariana Garcia')
     expect(card.atividade).toBe('Mapeamento de Processos')
     expect(card.alertaRiscos).toContain('cancelamento')
     expect(card.pedidoAjuda).toContain('STI')

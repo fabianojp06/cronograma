@@ -5,7 +5,7 @@
  *
  * `--colaborador "Nome no cadastro"` manda a planilha para um cadastro que já
  * existe, quando a grafia dos dois lados difere além de acento e caixa (ex.:
- * planilha "Fabiano Garcia", cadastro "Fabiano Santos Garcia"). Sem ele, o
+ * planilha "Mariana Garcia", cadastro "Mariana Santos Garcia"). Sem ele, o
  * importador criaria uma segunda pessoa — ver `gravarNoBanco`.
  *
  * Sem `--gravar` é simulação: mostra o que faria e não toca no banco. O padrão
@@ -161,9 +161,9 @@ async function gravarNoBanco() {
   //
   // Com igualdade exata a proteção seria unidirecional: a tela reconheceria o
   // que o importador criou, mas não o contrário. Quem se cadastrasse como
-  // "Fabiano Jose" num banco zerado — onde não há `Projeto` ainda, logo nenhuma
+  // "Mariana Jose" num banco zerado — onde não há `Projeto` ainda, logo nenhuma
   // sugestão de grafia — ganharia uma SEGUNDA linha `Colaborador` quando a
-  // planilha com "Fabiano José" fosse importada: os cards iriam para a linha
+  // planilha com "Mariana José" fosse importada: os cards iriam para a linha
   // nova, a conta do Clerk ficaria na antiga, e o relatório por responsável
   // passaria a contar duas pessoas.
   const cadastrados = await prisma.colaborador.findMany({
@@ -173,7 +173,7 @@ async function gravarNoBanco() {
   // `--colaborador=` diz, explicitamente, em qual cadastro esta planilha entra.
   //
   // `chaveDoNome` cobre acento e caixa, e só isso. Um nome do meio a mais —
-  // planilha "Fabiano Garcia", cadastro "Fabiano Santos Garcia" — não casa, e
+  // planilha "Mariana Garcia", cadastro "Mariana Santos Garcia" — não casa, e
   // sem uma saída o importador criaria uma SEGUNDA pessoa: os cards novos num
   // lado, a conta do Clerk e os projetos no outro, e o relatório por
   // responsável contando dois. As duas alternativas custavam uma grafia (ou o

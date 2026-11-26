@@ -22,7 +22,7 @@ describe('lerArgumentos', () => {
   it.each(['--semana', '--ano', '--colaborador'])(
     '%s aceita as duas formas, com espaço e com igual',
     (sinalizador) => {
-      const valor = sinalizador === '--colaborador' ? 'Fabiano Santos Garcia' : '39'
+      const valor = sinalizador === '--colaborador' ? 'Mariana Santos Garcia' : '39'
       const comEspaco = ok(['./card.xlsx', sinalizador, valor])
       const comIgual = ok(['./card.xlsx', `${sinalizador}=${valor}`])
       expect(comEspaco).toEqual(comIgual)
@@ -35,8 +35,8 @@ describe('lerArgumentos', () => {
   })
 
   it('guarda o nome do colaborador com espaços internos', () => {
-    expect(ok(['./c.xlsx', '--colaborador', 'Fabiano Santos Garcia']).colaborador).toBe(
-      'Fabiano Santos Garcia',
+    expect(ok(['./c.xlsx', '--colaborador', 'Mariana Santos Garcia']).colaborador).toBe(
+      'Mariana Santos Garcia',
     )
   })
 

@@ -29,7 +29,7 @@ describe('pessoasDoCampo', () => {
 describe('campoCitaPessoa', () => {
   it('ignora acento, caixa e espaço repetido', () => {
     expect(campoCitaPessoa('ANA  SOUZA', 'Ana Souza')).toBe(true)
-    expect(campoCitaPessoa('Fabiano José', 'Fabiano Jose')).toBe(true)
+    expect(campoCitaPessoa('Mariana José', 'Mariana Jose')).toBe(true)
   })
   it('acha a pessoa numa lista', () => {
     expect(campoCitaPessoa('Bruno, Ana Souza e Carla', 'Ana Souza')).toBe(true)

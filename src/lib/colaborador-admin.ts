@@ -132,7 +132,7 @@ export type Cadastrado = { id: string; nome: string }
  *
  * O conflito é medido por `chaveDoNome` (sem acento, sem caixa), a MESMA regra
  * que o auto-cadastro e o importador usam. Comparar por igualdade exata deixaria
- * criar "Fabiano Jose" ao lado de "Fabiano José" — duas pessoas no relatório,
+ * criar "Mariana Jose" ao lado de "Mariana José" — duas pessoas no relatório,
  * sem erro nenhum aparecer.
  *
  * Trocar só acento ou caixa do próprio nome é permitido: é justamente a
@@ -177,7 +177,7 @@ export function podeDesativar(
  *
  * Comparar `Projeto.responsavel` por igualdade exata deixaria a tela cega
  * justamente para o problema que ela existe para curar: se a divergência é
- * "Fabiano Jose" no projeto e "Fabiano José" no cadastro, um `where` exato não
+ * "Mariana Jose" no projeto e "Mariana José" no cadastro, um `where` exato não
  * encontra nada, a contagem mostra zero, e propagar deixaria uma terceira
  * grafia para trás.
  */

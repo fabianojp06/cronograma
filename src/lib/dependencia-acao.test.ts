@@ -92,8 +92,8 @@ describe('ehLiderDoProjeto', () => {
   it('casa o responsável do projeto sem acento nem caixa', () => {
     expect(
       ehLiderDoProjeto({
-        nomeDoColaborador: 'Fabiano José',
-        responsavelDoProjeto: 'fabiano jose',
+        nomeDoColaborador: 'Mariana José',
+        responsavelDoProjeto: 'mariana jose',
         administrador: false,
       }),
     ).toBe(true)

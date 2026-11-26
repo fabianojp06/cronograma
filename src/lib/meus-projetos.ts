@@ -7,8 +7,8 @@
  * - APOIO (`Projeto.apoio`, texto livre, às vezes com várias pessoas).
  *
  * Os dois campos de texto são comparados com `chaveDoNome` (sem acento, caixa
- * nem espaço repetido), a mesma regra do cadastro e do importador: "Fabiano José"
- * no projeto casa com "Fabiano Jose" no cadastro. O que não casar fica de fora,
+ * nem espaço repetido), a mesma regra do cadastro e do importador: "Mariana José"
+ * no projeto casa com "Mariana Jose" no cadastro. O que não casar fica de fora,
  * sem erro — é texto livre, e adivinhar por sobrenome em comum juntaria
  * homônimos parciais ("Ana Silva" e "Ana Silva Costa").
  */

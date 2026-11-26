@@ -3,7 +3,7 @@
  *
  * O nome não é rótulo de tela: é ele que vai para `Projeto.responsavel` quando
  * um WIN é promovido, e é por ele que o relatório por responsável agrupa. Duas
- * grafias da mesma pessoa ("Fabiano" e "Fabiano P.") viram dois responsáveis
+ * grafias da mesma pessoa ("Mariana" e "Mariana P.") viram dois responsáveis
  * distintos no painel, e ninguém percebe — some metade dos projetos de alguém
  * de uma linha do relatório sem nenhum erro aparecer.
  *
@@ -53,7 +53,7 @@ export function validarNomeColaborador(
  * Chave para reconhecer que dois nomes são a mesma pessoa.
  *
  * Só serve para COMPARAR — nunca para gravar. Ignora acento, caixa e espaço
- * repetido, de modo que "fabiano  josé" reconheça o "Fabiano José" que o
+ * repetido, de modo que "mariana  josé" reconheça o "Mariana José" que o
  * importador já criou, em vez de esbarrar no índice único de `nome` com uma
  * mensagem que não ajuda ninguém.
  */
@@ -71,9 +71,9 @@ export function chaveDoNome(nome: string): string {
  * auto-cadastro da tela e o `scripts/importar-card-win.ts`. Enquanto o script
  * casava por igualdade exata de `nome`, a proteção era unidirecional — a tela
  * reconhecia o que o importador tinha criado, mas não o contrário. Quem se
- * cadastrasse como "Fabiano Jose" num banco zerado (sem `Projeto`, logo sem
+ * cadastrasse como "Mariana Jose" num banco zerado (sem `Projeto`, logo sem
  * sugestão de grafia) ganhava uma segunda linha quando a planilha com
- * "Fabiano José" fosse importada: os cards iam para a linha nova, a conta do
+ * "Mariana José" fosse importada: os cards iam para a linha nova, a conta do
  * Clerk ficava na antiga, e o relatório por responsável contava duas pessoas.
  */
 export function encontrarPorNome<T extends { nome: string }>(

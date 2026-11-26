@@ -73,11 +73,11 @@ describe('decidirMigracao', () => {
 })
 
 describe('homologação (branch homologacao, banco próprio)', () => {
-  const HOMOLOG = 'postgresql://u:s@roundhouse.proxy.rlwy.net:12382/railway'
+  const HOMOLOG = 'postgresql://u:s@homolog.proxy.rlwy.net:12345/railway'
   const base = {
     VERCEL_ENV: 'preview',
     VERCEL_GIT_COMMIT_REF: 'homologacao',
-    HOMOLOGACAO_BANCO_HOST: 'roundhouse.proxy.rlwy.net:12382',
+    HOMOLOGACAO_BANCO_HOST: 'homolog.proxy.rlwy.net:12345',
   }
 
   it('aplica quando a DATABASE_URL é do banco da homologação', () => {
@@ -117,7 +117,7 @@ describe('homologação (branch homologacao, banco próprio)', () => {
   })
 
   it('hostDoBanco lê host:porta e devolve null para o que não é URL', () => {
-    expect(hostDoBanco(HOMOLOG)).toBe('roundhouse.proxy.rlwy.net:12382')
+    expect(hostDoBanco(HOMOLOG)).toBe('homolog.proxy.rlwy.net:12345')
     expect(hostDoBanco('postgresql://u:s@host/banco')).toBe('host')
     expect(hostDoBanco('')).toBeNull()
     expect(hostDoBanco(undefined)).toBeNull()

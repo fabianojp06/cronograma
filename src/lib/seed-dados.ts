@@ -63,7 +63,7 @@ const esbocos: { projeto: Omit<ProjetoSeed, 'acoes'>; acoes: EsbocoAcao[] }[] = 
       equipe: 'STI',
       natureza: 'Desenvolvimento',
       categoria: 'Sistemas',
-      responsavel: 'Fabiano Garcia',
+      responsavel: 'Mariana Garcia',
       apoio: 'Equipe STI',
       setorEnvolvido: 'CTCEA — Diretoria',
       comentario: 'Substitui as planilhas PLA-DEP e CRO-DEP.',

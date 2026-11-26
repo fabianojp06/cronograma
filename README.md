@@ -5,19 +5,55 @@
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)
 ![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-![Licença](https://img.shields.io/badge/licen%C3%A7a-uso%20interno-lightgrey)
+![Licença](https://img.shields.io/badge/licen%C3%A7a-todos%20os%20direitos%20reservados-lightgrey)
 
-Sistema de acompanhamento de projetos e planos de ação da **CTCEA**. Substitui as
-planilhas de plano de ação consolidado (**PLA-DEP**) e de cronograma por projeto
-(**CRO-DEP**), além da Matriz de Priorização e do Card WIN semanal. Diferente
-delas, guarda o histórico de cada alteração.
+Sistema web de acompanhamento de projetos e planos de ação, feito para a **CTCEA**
+(uma OSCIP brasileira). Substitui duas planilhas Excel de plano de ação e de
+cronograma, a Matriz de Priorização e o Card WIN semanal. Diferente das planilhas,
+guarda o histórico de cada alteração e mostra o projeto como ele estava em qualquer
+data passada.
 
-> Uso interno da CTCEA. O acesso é restrito a contas `@ctcea.org.br`.
+O sistema está publicado na Vercel, mas o acesso é restrito a contas
+`@ctcea.org.br`, então o login não abre para quem só avalia o código. Para ver
+rodando, suba a sua própria cópia pela seção
+[Como rodar localmente](#como-rodar-localmente): são quatro comandos, com dados de
+exemplo. Você usa a sua própria aplicação do Clerk e libera o seu e-mail em
+`EMAILS_EXCECAO`.
+
+## Em resumo
+
+- **Stack:** Next.js 16 (App Router, Server Components e Server Actions), TypeScript,
+  Prisma 7 com PostgreSQL, Tailwind 4 e Clerk.
+- **Qualidade:** mais de mil testes unitários (Vitest), cerca de 270 testes de
+  integração das Server Actions contra um Postgres de verdade, testes de navegador
+  (Playwright) e CI no GitHub Actions com lint, testes e build.
+- **Decisões que valem a leitura:**
+  - **Regra de negócio em módulos puros** (`src/lib`), sem Prisma nem Next, cada um
+    com seu teste. O painel e os dashboards usam as mesmas funções, então nunca
+    somam diferente.
+  - **Auditoria como requisito central:** toda mudança de status ou de data grava
+    `HistoricoAlteracao`. É dele que sai a "foto em uma data" (o projeto como estava
+    num dia passado) e a curva de avanço do Flash Report.
+  - **Garantias no banco, não só na tela:** o limite de 3 WINs por semana usa índice
+    único parcial e `CHECK` em SQL. Os testes de integração conferem que as duas
+    camadas existem.
+  - **Acesso fechado por padrão:** o `proxy.ts` exige login e e-mail verificado do
+    domínio permitido em toda rota, e as Server Actions recusam por perfil
+    (Administrador, Colaborador e Leitor), porque esconder um botão não é segurança.
+  - **Migrations aditivas, aplicadas só no build de produção** (`VERCEL_ENV`), com a
+    decisão em função pura e testada. Há um ambiente de homologação com banco próprio.
+  - **Gráficos em SVG e `div`, sem biblioteca**, renderizados no servidor, com regras
+    de leitura escritas (um eixo, cor de status reservada, números sempre visíveis).
+  - **Sem dependência de ferramenta externa para testar:** o teste de navegador troca
+    o Clerk por um falso, por configuração, e o falso recusa carregar na Vercel.
+- **Onde ler primeiro:** [`CLAUDE.md`](CLAUDE.md) registra cada decisão e o motivo, e o
+  histórico de pull requests mostra a evolução por etapas.
 
 ---
 
 ## Sumário
 
+- [Em resumo](#em-resumo)
 - [Visão geral](#visão-geral)
 - [Funcionalidades](#funcionalidades)
 - [Stack](#stack)
@@ -390,7 +426,7 @@ A produção roda na **Vercel**, no projeto `cronograma-lktu`, com o banco no
 4. Abra o pull request. O CI precisa passar antes do merge.
 
 Parte do backlog é executada por um loop autônomo
-([`autoloop.sh`](autoloop.sh), ou [`autoloop.ps1`](autoloop.ps1) no Windows), que
+([`scripts/autoloop.sh`](scripts/autoloop.sh), ou [`scripts/autoloop.ps1`](scripts/autoloop.ps1) no Windows), que
 lê o [`PROGRESS.md`](PROGRESS.md), implementa a próxima etapa e só segue se a
 verificação passar. As regras dele estão no [`CLAUDE.md`](CLAUDE.md).
 
@@ -419,5 +455,6 @@ verificação passar. As regras dele estão no [`CLAUDE.md`](CLAUDE.md).
 
 ## Licença
 
-Software de uso interno da CTCEA. Todos os direitos reservados. A cópia, a
-distribuição ou o uso fora da organização não são permitidos sem autorização.
+Todos os direitos reservados. O código pode ser lido e executado localmente para
+avaliação técnica; cópia, distribuição e uso comercial dependem de autorização.
+Veja o arquivo [`LICENSE`](LICENSE).

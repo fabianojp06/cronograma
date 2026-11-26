@@ -50,7 +50,7 @@ next-env.d.ts
 *.xlsx
 !tests/**/*.xlsx
 
-# log do loop autônomo (autoloop.sh / autoloop.ps1): gerado a cada rodada
+# log do loop autônomo (scripts/autoloop.sh / scripts/autoloop.ps1): gerado a cada rodada
 /autoloop.log
 
 # Playwright
