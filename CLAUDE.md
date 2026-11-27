@@ -824,8 +824,11 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
 - **Pasta `docs/Manual do Usuário/`**: cópia do manual em Markdown, GERADA de `manual-conteudo.ts`,
   `guia-relatorios.ts` e do glossário (`manual-markdown.ts`, puro). Ao mudar o manual, rode
   `npm run gerar:manual` e commite o arquivo: `manual-markdown.test.ts` falha se estiver
-  desatualizado (`-- --conferir` só confere). Não edite o `.md` à mão. PDF e vídeo narrado entram
-  nesta pasta em etapas próprias.
+  desatualizado (`-- --conferir` só confere). Não edite o `.md` à mão. **PDFs** em `pdf/` (um por perfil,
+  um por funcionalidade e o guia dos relatórios): `npm run gerar:manual-pdf` (Chromium do
+  Playwright) e commite os PDFs e o `manifest.json`; `manual-pdf-plano.test.ts` compara o hash do
+  HTML de origem com o manifesto. Ao mudar o manual, rode os DOIS comandos. O vídeo narrado entra
+  nesta pasta em etapa própria.
 - **O que o CI cobra** (`manual.test.ts`): toda `page.tsx` de `src/app` precisa
   estar em `rotas` de alguma seção (ou em `ROTAS_SEM_MANUAL`, com motivo); rota
   do manual que deixou de existir quebra; todo item de `MENU` precisa de seção.
