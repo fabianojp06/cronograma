@@ -956,6 +956,7 @@ test.describe('líder do projeto na lista', () => {
 
     await page.goto('/projetos/novo')
     await page.locator('#nome').fill('Projeto com líder da lista')
+    await page.locator('#prioridade').fill('1')
     await page.getByLabel('Responsável (líder do projeto)').selectOption({ label: 'Ana Souza' })
     await page.getByRole('button', { name: 'Salvar projeto' }).click()
     await expect(page.getByText('criado.')).toBeVisible()
@@ -964,6 +965,12 @@ test.describe('líder do projeto na lista', () => {
     )
     expect(novo.liderId).not.toBeNull()
     expect(novo.responsavel).toBe('Ana Souza')
+
+    // A prioridade aparece como coluna logo depois do nome do projeto.
+    await page.goto('/projetos')
+    await expect(page.locator('thead th').nth(0)).toHaveText('Projeto')
+    await expect(page.locator('thead th').nth(1)).toHaveText('Prioridade')
+    await expect(page.locator('tbody tr', { hasText: 'Projeto com líder da lista' })).toContainText('1')
   })
 })
 

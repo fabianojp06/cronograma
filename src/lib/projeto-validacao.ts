@@ -71,7 +71,15 @@ function limiteDoCampo(campo: CampoTextoOpcional): number {
   return campo === 'comentario' ? TAMANHO_MAXIMO_COMENTARIO : TAMANHO_MAXIMO_TEXTO
 }
 
-export function validarDadosProjeto(entrada: EntradaProjeto): ResultadoValidacao {
+export type OpcoesValidacao = {
+  /** Na CRIAÇÃO a prioridade é obrigatória; na edição de projeto antigo, não. */
+  prioridadeObrigatoria?: boolean
+}
+
+export function validarDadosProjeto(
+  entrada: EntradaProjeto,
+  opcoes: OpcoesValidacao = {},
+): ResultadoValidacao {
   const erros: ErrosProjeto = {}
 
   const nome = lerCampo(entrada, 'nome')
@@ -93,7 +101,9 @@ export function validarDadosProjeto(entrada: EntradaProjeto): ResultadoValidacao
 
   let prioridade: number | null = null
   const prioridadeBruta = lerCampo(entrada, 'prioridade')
-  if (prioridadeBruta !== '') {
+  if (prioridadeBruta === '') {
+    if (opcoes.prioridadeObrigatoria) erros.prioridade = 'Informe a prioridade do projeto.'
+  } else {
     const numero = Number(prioridadeBruta)
     if (!Number.isInteger(numero) || numero < 1) {
       erros.prioridade = 'A prioridade deve ser um número inteiro maior ou igual a 1.'

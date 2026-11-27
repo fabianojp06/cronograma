@@ -53,6 +53,18 @@ describe('validarDadosProjeto', () => {
     expect(resultado.dados.referencia).toBe('PLA-DEP-2026-014')
   })
 
+  it('exige a prioridade só quando a criação pede', () => {
+    for (const prioridade of [undefined, '', '   ']) {
+      const criando = validarDadosProjeto({ nome: 'X', prioridade }, { prioridadeObrigatoria: true })
+      expect(criando.ok, `criando, prioridade=${JSON.stringify(prioridade)}`).toBe(false)
+      if (!criando.ok) expect(criando.erros.prioridade).toMatch(/Informe a prioridade/)
+      // Edição de projeto antigo: continua podendo ficar sem prioridade.
+      expect(validarDadosProjeto({ nome: 'X', prioridade }).ok).toBe(true)
+    }
+    const preenchida = validarDadosProjeto({ nome: 'X', prioridade: '2' }, { prioridadeObrigatoria: true })
+    expect(preenchida.ok && preenchida.dados.prioridade).toBe(2)
+  })
+
   it('converte prioridade válida para número e rejeita valores inválidos', () => {
     const valido = validarDadosProjeto({ nome: 'X', prioridade: '3' })
     expect(valido.ok && valido.dados.prioridade).toBe(3)

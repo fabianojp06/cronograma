@@ -84,6 +84,7 @@ export function ListaProjetos({
         <thead>
           <tr className="bg-tableHeadBg text-left text-xs font-semibold text-textMuted">
             <th className="px-3 py-2 font-semibold">Projeto</th>
+            <th className="px-3 py-2 font-semibold">Prioridade</th>
             <th className="px-3 py-2 font-semibold">Equipe</th>
             <th className="px-3 py-2 font-semibold">Categoria</th>
             <th className="px-3 py-2 font-semibold">Responsável</th>
@@ -118,6 +119,7 @@ export function ListaProjetos({
                   </Link>
                 ) : null}
               </td>
+              <td className="px-3 py-3 tabular-nums text-textMuted">{linha.prioridade ?? '-'}</td>
               <td className="px-3 py-3 text-textMuted">{linha.equipe ?? '-'}</td>
               <td className="px-3 py-3 text-textMuted">{linha.categoria ?? '-'}</td>
               <td className="px-3 py-3 text-textMuted">{linha.responsavel ?? '-'}</td>

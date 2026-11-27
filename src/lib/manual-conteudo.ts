@@ -83,6 +83,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     passos: [
       'Os indicadores no topo somam a carteira inteira: projetos, ações, concluídas e atrasadas.',
       'Use os filtros (equipe, categoria, responsável, status, período) e o campo "Buscar" para reduzir a lista. Os indicadores acompanham o filtro.',
+      'A coluna "Prioridade", logo depois do nome do projeto, mostra o número definido no cadastro (1 é a mais alta) e a lista segue essa ordem. Projetos antigos sem prioridade mostram "-".',
       'Clique em um projeto para abrir o cronograma dele. A lista tem 25 projetos por página; "Ver todos" mostra tudo.',
       'Para levar a uma reunião, use "Exportar": Excel (projetos, todas as ações ou só as atrasadas) ou a impressão do navegador, que gera PDF.',
     ],
@@ -90,8 +91,8 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
       'Uma ação está atrasada quando o término previsto já passou e ela não foi concluída.',
       'Mudar um filtro volta à primeira página. Para o PDF da carteira inteira, clique em "Ver todos" antes de imprimir.',
     ],
-    desde: '2026-09-17',
-    palavras: ['indicadores', 'exportar', 'excel', 'pdf', 'filtro', 'busca'],
+    desde: '2026-11-27',
+    palavras: ['indicadores', 'exportar', 'excel', 'pdf', 'filtro', 'busca', 'prioridade'],
   },
   {
     id: 'projetos-lista',
@@ -247,7 +248,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     perfil: 'editor',
     rotas: ['/projetos/novo', '/projetos/[id]/editar'],
     passos: [
-      'Em "Projetos", clique em "Novo projeto" e preencha nome, equipe, natureza, categoria, responsável e demais campos.',
+      'Em "Projetos", clique em "Novo projeto" e preencha nome, prioridade (obrigatória: um número inteiro a partir de 1, onde 1 é a mais alta), equipe, natureza, categoria, responsável e demais campos.',
       'Para alterar, abra o projeto e clique em "Editar".',
       'Só um administrador exclui, em "Excluir projeto" na tela do projeto. A exclusão é lógica: o projeto sai das telas, mas os dados são mantidos, e um administrador pode restaurá-lo em Administração > Lixeira.',
     ],

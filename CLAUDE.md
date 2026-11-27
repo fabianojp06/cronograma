@@ -1236,6 +1236,11 @@ Listas longas não vão inteiras para a tela. `paginacao.ts` (puro) lê `?pagina
 (`?pagina=todas` desliga) e fatia; `correspondeABusca` compara sem acento nem
 caixa e exige TODAS as palavras digitadas, em qualquer campo.
 
+- **Prioridade do projeto** (`Projeto.prioridade`, inteiro ≥ 1, 1 = a mais alta): é a coluna
+  logo após "Projeto" no painel e em `/projetos`, e a ordem padrão da lista. É **obrigatória na
+  criação** pelo formulário "Novo projeto" (`criarProjeto` passa `prioridadeObrigatoria`); a edição
+  de projeto antigo sem prioridade continua possível (mostra "-"). Promover WIN, usar modelo e a
+  importação de planilha NÃO exigem: o banco segue aceitando nulo.
 - **Painel e `/projetos`**: 25 por página, campo "Buscar" (nome, referência,
   equipe, categoria, responsável) junto dos filtros (`?busca=`). Os indicadores
   do painel somam a carteira FILTRADA inteira, não só a página. O Excel de
