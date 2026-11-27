@@ -24,6 +24,7 @@
     "migrar:producao": "tsx scripts/migrar-producao.ts",
     "importar:card-win": "tsx scripts/importar-card-win.ts",
     "carregar:modelos": "tsx scripts/carregar-modelos-iniciais.ts",
+    "gerar:manual": "tsx scripts/gerar-manual.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
