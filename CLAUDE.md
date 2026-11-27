@@ -1237,7 +1237,7 @@ Listas longas não vão inteiras para a tela. `paginacao.ts` (puro) lê `?pagina
 caixa e exige TODAS as palavras digitadas, em qualquer campo.
 
 - **Prioridade do projeto** (`Projeto.prioridade`, inteiro ≥ 1, 1 = a mais alta): é a coluna
-  logo após "Projeto" no painel e em `/projetos`, e a ordem padrão da lista. É **obrigatória na
+  logo após "Projeto" no painel e em `/projetos`, e a ordem padrão da lista: CRESCENTE, sem prioridade por último, nome desempata (`ORDEM_PADRAO_PROJETOS` em `projeto-filtros.ts`, usada por painel, `/projetos`, Dashboards e Excel; não escreva o `orderBy` à mão). É **obrigatória na
   criação** pelo formulário "Novo projeto" (`criarProjeto` passa `prioridadeObrigatoria`); a edição
   de projeto antigo sem prioridade continua possível (mostra "-"). Promover WIN, usar modelo e a
   importação de planilha NÃO exigem: o banco segue aceitando nulo.

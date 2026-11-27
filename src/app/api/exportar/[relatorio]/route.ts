@@ -17,6 +17,7 @@ import {
   filtrarPorSinal,
   filtrarPorStatus,
   lerFiltros,
+  ORDEM_PADRAO_PROJETOS,
   ordenarLinhas,
   whereProjetoAtivo,
 } from '@/lib/projeto-filtros'
@@ -37,7 +38,7 @@ async function montarTabela(
     const filtros = lerFiltros(busca)
     const projetos = await prisma.projeto.findMany({
       where: whereProjetoAtivo(filtros),
-      orderBy: [{ prioridade: 'asc' }, { nome: 'asc' }],
+      orderBy: ORDEM_PADRAO_PROJETOS,
       select: {
         id: true,
         referencia: true,

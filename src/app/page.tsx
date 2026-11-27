@@ -14,6 +14,7 @@ import {
   filtrarPorBusca,
   filtrarPorSinal,
   filtrarPorStatus,
+  ORDEM_PADRAO_PROJETOS,
   ordenarLinhas,
   filtrosComoParametros,
   lerFiltros,
@@ -37,7 +38,7 @@ export default async function PainelPage({ searchParams }: PageProps<'/'>) {
   const [projetos, valores] = await Promise.all([
     prisma.projeto.findMany({
       where: whereProjetoAtivo(filtros),
-      orderBy: [{ prioridade: 'asc' }, { nome: 'asc' }],
+      orderBy: ORDEM_PADRAO_PROJETOS,
       select: {
         id: true,
         referencia: true,

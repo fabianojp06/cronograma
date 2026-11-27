@@ -119,6 +119,16 @@ export function filtrarPorSinal<T extends { sinal: Farol }>(
   return linhas.filter((linha) => linha.sinal.sinal === filtros.sinal)
 }
 
+/**
+ * Ordem padrão de toda lista de projetos: prioridade CRESCENTE (1 é a mais alta),
+ * quem não tem prioridade por último (explícito, para não depender do padrão do
+ * banco), e o nome desempata. Painel, `/projetos`, Dashboards e Excel usam esta.
+ */
+export const ORDEM_PADRAO_PROJETOS: (
+  | { prioridade: { sort: 'asc'; nulls: 'last' } }
+  | { nome: 'asc' }
+)[] = [{ prioridade: { sort: 'asc', nulls: 'last' } }, { nome: 'asc' }]
+
 /** "Pior sinal primeiro": ordem estável, o empate segue a ordem em que as linhas chegaram. */
 export function ordenarLinhas<T extends { sinal: Farol }>(
   linhas: T[],

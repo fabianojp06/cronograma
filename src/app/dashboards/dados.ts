@@ -45,7 +45,12 @@ import {
   recortarPorPeriodo,
   semanaNoPeriodo,
 } from '@/lib/filtro-periodo'
-import { filtrarPorStatus, lerFiltros, whereProjetoAtivo } from '@/lib/projeto-filtros'
+import {
+  filtrarPorStatus,
+  lerFiltros,
+  ORDEM_PADRAO_PROJETOS,
+  whereProjetoAtivo,
+} from '@/lib/projeto-filtros'
 import { montarLinhas } from '@/lib/projetos-listagem'
 import type { StatusAcao } from '@/lib/acao-validacao'
 
@@ -58,7 +63,7 @@ export async function carregarDashboard(parametros: Record<string, string | stri
   const [projetosBrutos, valores, registrosWin, winsTodos, historico, riscosAbertos, linhasPeso] = await Promise.all([
     prisma.projeto.findMany({
       where: whereProjetoAtivo(filtros),
-      orderBy: [{ prioridade: 'asc' }, { nome: 'asc' }],
+      orderBy: ORDEM_PADRAO_PROJETOS,
       select: {
         id: true,
         referencia: true,

@@ -210,7 +210,7 @@ export function FiltrosProjetos({
               name="ordem"
               defaultValue={filtros.ordem ?? ''}
             >
-              <option value="">Padrão (prioridade e nome)</option>
+              <option value="">Padrão (prioridade crescente e nome)</option>
               <option value="sinal">Pior sinal primeiro</option>
             </select>
           </div>
