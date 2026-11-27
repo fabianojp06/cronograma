@@ -827,8 +827,13 @@ conteúdo em `src/lib/manual-conteudo.ts` (seções e glossário), regras puras 
   desatualizado (`-- --conferir` só confere). Não edite o `.md` à mão. **PDFs** em `pdf/` (um por perfil,
   um por funcionalidade e o guia dos relatórios): `npm run gerar:manual-pdf` (Chromium do
   Playwright) e commite os PDFs e o `manifest.json`; `manual-pdf-plano.test.ts` compara o hash do
-  HTML de origem com o manifesto. Ao mudar o manual, rode os DOIS comandos. O vídeo narrado entra
-  nesta pasta em etapa própria.
+  HTML de origem com o manifesto. Ao mudar o manual, rode os DOIS comandos. **Manual narrado** em `video/<nome>/`
+  (piloto: `primeiros-passos`): página HTML com MP3 embutido que destaca e rola até o trecho falado
+  (regra pura em `manual-video.ts`). A VOZ não é gerada no repositório: `pedido-narracao.md` vai para o
+  Claude web, que devolve um MP3 por trecho (`audio/<id>.mp3`); `npm run gerar:manual-video -- <nome>`
+  mede, junta e calcula os tempos. As telas saem de `npm run capturar:telas-manual` (apaga e recria os
+  dados do banco LOCAL; recusa qualquer outro). Sem os MP3 a página sai só com o texto. Mudou o roteiro:
+  rode o gerador de novo (o teste confere o pedido de narração).
 - **O que o CI cobra** (`manual.test.ts`): toda `page.tsx` de `src/app` precisa
   estar em `rotas` de alguma seção (ou em `ROTAS_SEM_MANUAL`, com motivo); rota
   do manual que deixou de existir quebra; todo item de `MENU` precisa de seção.

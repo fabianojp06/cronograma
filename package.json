@@ -26,6 +26,8 @@
     "carregar:modelos": "tsx scripts/carregar-modelos-iniciais.ts",
     "gerar:manual": "tsx scripts/gerar-manual.ts",
     "gerar:manual-pdf": "tsx scripts/gerar-manual-pdf.ts",
+    "gerar:manual-video": "tsx scripts/gerar-manual-video.ts",
+    "capturar:telas-manual": "tsx scripts/capturar-telas-manual.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

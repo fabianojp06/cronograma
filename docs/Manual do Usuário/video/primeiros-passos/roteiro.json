@@ -1,0 +1,174 @@
+{
+  "titulo": "Primeiros passos no Cronograma",
+  "subtitulo": "Sistema Cronograma CTCEA · Manual do Usuário",
+  "resumo": "Como entrar, se cadastrar, entender o seu perfil, ler o painel de projetos e se orientar pelo menu. Para quem está começando no sistema.",
+  "secoes": [
+    {
+      "id": "abertura",
+      "titulo": "Abertura"
+    },
+    {
+      "id": "entrar",
+      "titulo": "Entrar e se cadastrar"
+    },
+    {
+      "id": "perfis",
+      "titulo": "Seu perfil"
+    },
+    {
+      "id": "painel",
+      "titulo": "O painel de projetos"
+    },
+    {
+      "id": "menu",
+      "titulo": "Menu, ajuda e avisos"
+    }
+  ],
+  "blocos": [
+    {
+      "id": "abertura",
+      "secao": "abertura",
+      "titulo": "Abertura",
+      "fala": "Olá! Este é o manual de primeiros passos do Sistema Cronograma da CTCEA. Em poucos minutos você vai ver como entrar e se cadastrar, o que cada perfil pode fazer, como ler o painel de projetos e como se orientar pelo menu. Você pode ouvir do começo ao fim, ou usar os botões Anterior e Próximo para ir de um trecho a outro."
+    },
+    {
+      "id": "entrar",
+      "secao": "entrar",
+      "titulo": "Entrar no sistema",
+      "fala": "Para entrar, abra o endereço do sistema, ou o link de um projeto que alguém enviou para você, e clique em Entrar. Se você ainda não tem conta, use Criar conta com o seu e-mail da CTCEA. Só entram e-mails da CTCEA, e verificados. Qualquer outro e-mail vê a tela de acesso negado.",
+      "passos": [
+        "Abra o endereço do sistema, ou o link de um projeto que recebeu, e clique em \"Entrar\".",
+        "Se ainda não tem conta, use \"Criar conta\" com o seu e-mail @ctcea.org.br."
+      ],
+      "nota": {
+        "rotulo": "Regra",
+        "texto": "Só e-mails @ctcea.org.br e verificados entram. Outro domínio vê a tela \"Acesso negado\"."
+      }
+    },
+    {
+      "id": "cadastro",
+      "secao": "entrar",
+      "titulo": "Seu primeiro cadastro",
+      "fala": "Na primeira vez, o sistema pede para você dizer quem é. Se o seu nome já está na lista, porque veio das planilhas, escolha o seu nome. Se não está, cadastre o seu nome. Escreva como ele aparece nos projetos, com os acentos, porque duas grafias viram duas pessoas nos relatórios. Concluído o cadastro, você segue direto para a tela que tentou abrir.",
+      "passos": [
+        "Na tela \"Bem-vindo ao sistema\", escolha o seu nome na lista, se ele já estiver lá.",
+        "Se não estiver, cadastre o seu nome.",
+        "Concluído o cadastro, você segue para a tela que tentou abrir."
+      ],
+      "nota": {
+        "rotulo": "Dica",
+        "texto": "Escreva o nome como ele aparece nos projetos, com os acentos. Sem cadastro de colaborador, você não pode ser responsável por ações nem recebe avisos."
+      },
+      "tela": {
+        "arquivo": "bem-vindo",
+        "legenda": "Tela de primeiro acesso: escolha o seu nome na lista ou cadastre-o."
+      }
+    },
+    {
+      "id": "perfis",
+      "secao": "perfis",
+      "titulo": "Colaborador, Leitor e Administrador",
+      "fala": "O sistema tem três perfis. O colaborador é o padrão: cria e edita projetos, ações, comentários e o próprio Card WIN. O leitor só consulta e exporta, e os botões de gravar viram um aviso de somente leitura. O administrador faz tudo o que o colaborador faz e ainda exclui projetos, edita os pesos da priorização, gerencia colaboradores e vê o painel do sistema. Se você não consegue gravar algo que deveria, confira com a sua liderança qual é o seu perfil.",
+      "tabela": {
+        "cabecalho": [
+          "Perfil",
+          "O que pode fazer"
+        ],
+        "linhas": [
+          [
+            "Colaborador (padrão)",
+            "Cria e edita projetos, ações, comentários e o próprio Card WIN."
+          ],
+          [
+            "Leitor",
+            "Só consulta e exporta. Os botões de gravar viram um aviso de somente leitura."
+          ],
+          [
+            "Administrador",
+            "Tudo o que o colaborador faz, e ainda exclui projetos, edita os pesos da priorização, gerencia colaboradores e vê o painel do sistema."
+          ]
+        ]
+      },
+      "nota": {
+        "rotulo": "Dica",
+        "texto": "O sistema sempre precisa de pelo menos um administrador ativo. Quem muda o perfil de alguém é um administrador, em Administração, Colaboradores."
+      }
+    },
+    {
+      "id": "painel-visao",
+      "secao": "painel",
+      "titulo": "A visão geral do painel",
+      "fala": "O painel é a tela inicial. No topo, os indicadores somam a carteira inteira: projetos, ações, concluídas e atrasadas. Abaixo, a lista de projetos mostra, em cada linha, o progresso e o status. Clique no nome de um projeto para abrir o cronograma dele.",
+      "passos": [
+        "Os indicadores no topo somam a carteira inteira: projetos, ações, concluídas e atrasadas.",
+        "Abaixo, cada linha da lista mostra o progresso e o status do projeto.",
+        "Clique em um projeto para abrir o cronograma dele."
+      ],
+      "tela": {
+        "arquivo": "painel",
+        "legenda": "Painel consolidado: indicadores no topo e a lista de projetos."
+      }
+    },
+    {
+      "id": "painel-lista",
+      "secao": "painel",
+      "titulo": "Prioridade, filtros e exportação",
+      "fala": "Na lista, a coluna Prioridade vem logo depois do nome do projeto. O número um é a prioridade mais alta, e a lista já vem em ordem crescente. Projetos sem prioridade aparecem por último. Use os filtros e o campo Buscar para reduzir a lista, e os indicadores acompanham o filtro. Para levar a uma reunião, use Exportar, em Excel ou em PDF pela impressão do navegador.",
+      "passos": [
+        "A coluna \"Prioridade\" mostra o número do cadastro: 1 é a mais alta. A lista vem em ordem crescente, e projetos sem prioridade ficam por último.",
+        "Use os filtros e o campo \"Buscar\" para reduzir a lista. Os indicadores acompanham o filtro.",
+        "Para levar a uma reunião, use \"Exportar\": Excel ou a impressão do navegador, que gera PDF."
+      ],
+      "nota": {
+        "rotulo": "Dica",
+        "texto": "A lista tem 25 projetos por página. Para o PDF da carteira inteira, clique em \"Ver todos\" antes de imprimir."
+      },
+      "tela": {
+        "arquivo": "lista",
+        "legenda": "Lista de projetos com a coluna Prioridade logo depois do nome."
+      }
+    },
+    {
+      "id": "menu-grupos",
+      "secao": "menu",
+      "titulo": "O menu em grupos",
+      "fala": "O menu no topo tem o Painel e três grupos. Trabalho reúne Projetos, Priorização e Modelos. Pessoas reúne Meus projetos, Minhas ações, Card WIN e Equipe. Análise reúne Dashboards e Reunião. Clique no nome do grupo para abrir a lista e escolha a tela. O grupo da tela em que você está fica destacado. Quem administra o sistema vê também o grupo Administração.",
+      "passos": [
+        "Trabalho: Projetos, Priorização e Modelos.",
+        "Pessoas: Meus projetos, Minhas ações, Card WIN e Equipe.",
+        "Análise: Dashboards e Reunião.",
+        "Quem administra vê também o grupo \"Administração\"."
+      ],
+      "tela": {
+        "arquivo": "menu",
+        "legenda": "O grupo Trabalho aberto, com as telas dele."
+      }
+    },
+    {
+      "id": "ajuda",
+      "secao": "menu",
+      "titulo": "Ajuda, tema e avisos",
+      "fala": "Ao lado do sino, o botão de sol ou lua alterna entre o tema claro e o escuro. O ícone de interrogação abre Ajuda e preferências: o Manual, o tour, que é um passeio de um minuto sobre onde fica cada coisa, e a escolha do tema. O sino mostra quantas notificações você não leu, com os avisos de comentários e de liberações de início.",
+      "passos": [
+        "O botão de sol ou lua alterna entre o tema claro e o escuro com um clique.",
+        "O ícone de interrogação abre \"Ajuda e preferências\": o Manual, \"Fazer o tour\" e o tema.",
+        "O sino mostra quantas notificações você não leu."
+      ],
+      "nota": {
+        "rotulo": "Dica",
+        "texto": "Os avisos ficam só dentro do sistema. Avisos lidos há mais de 30 dias são apagados."
+      },
+      "tela": {
+        "arquivo": "ajuda",
+        "legenda": "Ajuda e preferências: Manual, tour e escolha do tema."
+      }
+    },
+    {
+      "id": "encerramento",
+      "secao": "menu",
+      "titulo": "E agora?",
+      "fala": "Esses são os primeiros passos. O manual completo, com todas as funcionalidades do sistema, fica em Ajuda e preferências, no item Manual. Bom trabalho!",
+      "paragrafo": "O manual completo, com todas as funcionalidades, fica em \"Ajuda e preferências\" > \"Manual\"."
+    }
+  ]
+}
