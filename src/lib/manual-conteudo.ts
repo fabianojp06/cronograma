@@ -83,7 +83,7 @@ export const SECOES_MANUAL: readonly SecaoManual[] = [
     passos: [
       'Os indicadores no topo somam a carteira inteira: projetos, ações, concluídas e atrasadas.',
       'Use os filtros (equipe, categoria, responsável, status, período) e o campo "Buscar" para reduzir a lista. Os indicadores acompanham o filtro.',
-      'A coluna "Prioridade", logo depois do nome do projeto, mostra o número definido no cadastro (1 é a mais alta) e a lista segue essa ordem. Projetos antigos sem prioridade mostram "-".',
+      'A coluna "Prioridade", logo depois do nome do projeto, mostra o número definido no cadastro (1 é a mais alta) e a lista vem em ordem crescente de prioridade (1, 2, 3…), com o nome desempatando. Projetos sem prioridade mostram "-" e ficam por último. "Pior sinal primeiro", em "Ordem", troca essa ordem pela do sinal.',
       'Clique em um projeto para abrir o cronograma dele. A lista tem 25 projetos por página; "Ver todos" mostra tudo.',
       'Para levar a uma reunião, use "Exportar": Excel (projetos, todas as ações ou só as atrasadas) ou a impressão do navegador, que gera PDF.',
     ],
