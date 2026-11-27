@@ -51,15 +51,15 @@ afterAll(async () => {
 
 describe('criar e editar o projeto', () => {
   it('criar com líder grava o id e o nome canônico', async () => {
-    const r = await criarProjeto({}, fd({ nome: 'P', lider: `c:${anaId}` }))
+    const r = await criarProjeto({}, fd({ nome: 'P', prioridade: '1', lider: `c:${anaId}` }))
     expect(r.criado).toBeDefined()
     const p = await prisma.projeto.findFirstOrThrow()
     expect(p).toMatchObject({ liderId: anaId, responsavel: 'Ana Silva' })
   })
 
   it('recusa líder inativo ou inexistente', async () => {
-    expect((await criarProjeto({}, fd({ nome: 'P', lider: `c:${inativoId}` }))).erros?.responsavel).toBeDefined()
-    expect((await criarProjeto({}, fd({ nome: 'P', lider: 'c:nao-existe' }))).erros?.responsavel).toBeDefined()
+    expect((await criarProjeto({}, fd({ nome: 'P', prioridade: '1', lider: `c:${inativoId}` }))).erros?.responsavel).toBeDefined()
+    expect((await criarProjeto({}, fd({ nome: 'P', prioridade: '1', lider: 'c:nao-existe' }))).erros?.responsavel).toBeDefined()
     expect(await prisma.projeto.count()).toBe(0)
   })
 

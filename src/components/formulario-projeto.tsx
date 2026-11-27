@@ -116,8 +116,9 @@ export function FormularioProjeto({
           <Campo
             nome="prioridade"
             defaultValue={valores?.prioridade}
-            rotulo="Prioridade"
+            rotulo={editando ? 'Prioridade' : 'Prioridade *'}
             erros={erros}
+            required={!editando}
             type="number"
             min={1}
             step={1}

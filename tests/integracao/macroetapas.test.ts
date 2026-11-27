@@ -303,7 +303,7 @@ describe('macroetapa na ação', () => {
 
 describe('cliente e objetivo do projeto', () => {
   it('criar persiste e editar só o nome não os apaga (campo ausente)', async () => {
-    const r = await criarProjeto({}, fd({ nome: 'Novo', cliente: 'Marinha', objetivo: 'Modernizar' }))
+    const r = await criarProjeto({}, fd({ nome: 'Novo', prioridade: '1', cliente: 'Marinha', objetivo: 'Modernizar' }))
     expect(r.criado).toBeDefined()
     const id = r.criado!.id
     let p = await prisma.projeto.findUniqueOrThrow({ where: { id } })
@@ -315,14 +315,23 @@ describe('cliente e objetivo do projeto', () => {
   })
 
   it('campo vazio remove; texto novo troca', async () => {
-    const id = (await criarProjeto({}, fd({ nome: 'P', cliente: 'A', objetivo: 'B' }))).criado!.id
+    const id = (await criarProjeto({}, fd({ nome: 'P', prioridade: '1', cliente: 'A', objetivo: 'B' }))).criado!.id
     await atualizarProjeto({}, fd({ id, nome: 'P', cliente: '', objetivo: 'C' }))
     const p = await prisma.projeto.findUniqueOrThrow({ where: { id } })
     expect([p.cliente, p.objetivo]).toEqual([null, 'C'])
   })
 
+  it('criar sem prioridade é recusado; editar projeto sem prioridade continua possível', async () => {
+    const r = await criarProjeto({}, fd({ nome: 'Sem prioridade' }))
+    expect(r.erros?.prioridade).toMatch(/Informe a prioridade/)
+    expect(await prisma.projeto.count({ where: { nome: 'Sem prioridade' } })).toBe(0)
+    const antigo = await prisma.projeto.create({ data: { nome: 'Antigo' }, select: { id: true } })
+    const e = await atualizarProjeto({}, fd({ id: antigo.id, nome: 'Antigo renomeado' }))
+    expect(e.salvo).toBeDefined()
+  })
+
   it('cliente acima de 120 caracteres é recusado', async () => {
-    const r = await criarProjeto({}, fd({ nome: 'P', cliente: 'x'.repeat(121) }))
+    const r = await criarProjeto({}, fd({ nome: 'P', prioridade: '1', cliente: 'x'.repeat(121) }))
     expect(r.erros?.cliente).toBeDefined()
     expect(await prisma.projeto.count({ where: { nome: 'P' } })).toBe(0)
   })

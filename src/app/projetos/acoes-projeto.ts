@@ -46,7 +46,7 @@ export async function criarProjeto(
   }
   if (!(await contaPodeEditar(userId))) return { erroGeral: MENSAGEM_SOMENTE_LEITURA }
 
-  const validacao = validarDadosProjeto(formData)
+  const validacao = validarDadosProjeto(formData, { prioridadeObrigatoria: true })
   if (!validacao.ok) return { erros: validacao.erros }
 
   let id: string
